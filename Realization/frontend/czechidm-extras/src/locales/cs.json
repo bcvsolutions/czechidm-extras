@@ -1,0 +1,36 @@
+{
+  "module": {
+    "name": "Extras modul",
+    "author": "BCV solutions s.r.o."
+  },
+  "error": {
+    "IMPORT_WRONG_LINE_LENGTH": {
+      "title": "Chybný soubor",
+      "message": "Na řádku [{{number}}] v zadaném souboru se nachází chyba."
+    },
+    "IMPORT_CANT_READ_FILE_PATH": {
+      "title": "Soubor nelze číst",
+      "message": "Není možné přečíst soubor v zadané cestě [{{path}}]. Zkontrolujte prosím, zda je cesta zadána správně."
+    },
+    "SYSTEM_SCHEMA_ATTRIBUTES_NOT_FOUND": {
+      "title": "Nebyly nalezeny atributy schématu",
+      "message": "Schéma [{{schema}}] na systému [{{system}}] neobsahuje žádné atributy."
+    },
+    "SYSTEM_NAME_NOT_FOUND": {
+      "title": "Systém nebyl nalezen",
+      "message": "Systém [{{system}}] nebyl nalezen. Zkontrolujte prosím, zda bylo jméno správně zadáno."
+    },
+    "CONNECTOR_OBJECT_CLASS_NOT_FOUND": {
+      "title": "Objektová třída konektoru nebyla nalezena",
+      "message": "Objektová třída konektoru pro systém [{{system}}] nebyla nalezena. Ověřte prosím, zda je vytvořeno schéma systému."
+    },
+    "CONNECTOR_CONFIGURATION_FOR_SYSTEM_NOT_FOUND": {
+      "title": "Nenalezen konektor pro systém",
+      "message": "Konektor pro systém [{{system}}] není definovaný. Vyplňte prosím definici konektoru v základních údajích systému."
+    },
+    "CONNECTOR_INSTANCE_NOT_FOUND": {
+      "title": "Instance konektoru nebyla nalezena",
+      "message": "Instance konektoru pro systém [{{system}}] nebyla nalezena. Ujistěte se prosím, zda zadáváte správn0 jméno systému."
+    }
+  }
+}
