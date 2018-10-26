@@ -1,0 +1,36 @@
+{
+  "module": {
+    "name": "Extras module",
+    "author": "BCV solutions s.r.o."
+  },
+  "error": {
+    "IMPORT_WRONG_LINE_LENGTH": {
+      "title": "Wrong file format",
+      "message": "On line [{{number}}] in given file is some error."
+    },
+    "IMPORT_CANT_READ_FILE_PATH": {
+      "title": "Cannot read file path",
+      "message": "Can read the file in path [{{path}}]. Please check if you put in right path."
+    },
+    "SYSTEM_SCHEMA_ATTRIBUTES_NOT_FOUND": {
+      "title": "No schema attributes were found",
+      "message": "Schema [{{schema}}] on system [{{system}}] have no attributes."
+    },
+    "SYSTEM_NAME_NOT_FOUND": {
+      "title": "System was not found",
+      "message": "System [{{system}}] was not found. Please, check if name is right."
+    },
+    "CONNECTOR_OBJECT_CLASS_NOT_FOUND": {
+      "title": "Connector object class was not found",
+      "message": "Connector object class for system [{{system}}] was not found. Please, check if some schema was generated."
+    },
+    "CONNECTOR_CONFIGURATION_FOR_SYSTEM_NOT_FOUND": {
+      "title": "Connector was not selected",
+      "message": "Connector for system [{{system}}] is not defined. Please, select connector definition in system settings."
+    },
+    "CONNECTOR_INSTANCE_NOT_FOUND": {
+      "title": "Connector instance was not found",
+      "message": "Connector instance for system [{{system}}] was not found. Please, make sure you added right system name."
+    }
+  }
+}
