@@ -17,6 +17,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
 
 /**
+ * Reuses core TestHelper and adds acc spec. methods
  * Copy from acc module
  *
  * @author Peter Sourek <peter.sourek@bcvsolutions.eu>

@@ -19,10 +19,7 @@ public enum ExtrasGroupPermission implements GroupPermission {
 	/*
 	 * Define your group permission there and example permission you can remove
 	 */
-	EXAMPLEEXTRAS(
-			IdmBasePermission.ADMIN);
-
-	public static final String EXAMPLE_EXTRAS_ADMIN = "EXAMPLEEXTRAS" + BasePermission.SEPARATOR + "ADMIN";
+	;
 
 	private final List<BasePermission> permissions;
 	

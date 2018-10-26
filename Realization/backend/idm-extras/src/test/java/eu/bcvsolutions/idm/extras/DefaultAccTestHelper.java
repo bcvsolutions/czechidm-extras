@@ -54,6 +54,8 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentity_;
 import joptsimple.internal.Strings;
 
 /**
+ *
+ * Acc / Provisioning test helper
  * Copy from acc module
  *
  * @author Peter Sourek <peter.sourek@bcvsolutions.eu>

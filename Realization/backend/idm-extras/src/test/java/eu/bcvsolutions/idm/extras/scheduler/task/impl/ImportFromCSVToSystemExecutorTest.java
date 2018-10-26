@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * //TODO: Write class description
+ * Basic test for virtual system importing
  *
  * @author Peter Sourek <peter.sourek@bcvsolutions.eu>
  */

@@ -10,6 +10,7 @@ import org.joda.time.DateTime;
 import eu.bcvsolutions.idm.core.api.domain.DefaultFieldLengths;
 
 /**
+ * Entity for test table resource
  * Copy from acc module
  *
  * @author Peter Sourek <peter.sourek@bcvsolutions.eu>
