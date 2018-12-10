@@ -1,0 +1,1047 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:activiti="http://activiti.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="eu.bcvsolutions.sync.action">
+  <process id="syncRoleAd" name="Synchronization - Roles from LDAP" isExecutable="true">
+    <documentation>Workflow for synchronization of groups from LDAP.
+
+Input variables:
+- uid (String),
+- entityType (enum SystemEntityType),
++ icAttributes (List of IcAttribute),
+- syncConfigId (UUID for SysSyncConfig),
+- actionType (String)
+- situation(String),
++ accountId(UUID),
++ entityId(UUID)</documentation>
+    <scriptTask id="scripttask1" name="Missing entity" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.util.UUID;
+import eu.bcvsolutions.idm.acc.dto.AccAccountDto;
+
+logItem.addToLog("distinguishedName " + distinguishedName);
+logItem.addToLog("name " + name);
+
+SysSyncItemLogDto variableLog;
+
+    variableLog = defaultSynchronizationService.resolveMissingEntitySituation(uid, entityType, icAttributes, syncConfigId, actionType);
+    AccAccountDto account = accAccountService.getAccount(uid, systemId);
+    if (account == null) {
+      logItem.addToLog("Error: Account has not been found.");
+      return;
+    }
+    execution.setVariable("log", variableLog);
+    execution.setVariable("accountId", account.getId());
+</script>
+    </scriptTask>
+    <scriptTask id="scripttask2" name="Linked" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+        import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto;
+        import groovy.transform.Field;
+        import org.slf4j.Logger;
+        import org.slf4j.LoggerFactory;
+
+        logItem.addToLog("Info - distinguishedName "+distinguishedName);
+        logItem.addToLog("Info - name "+name);
+
+        SysSyncItemLogDto variableLog;
+
+        variableLog = defaultSynchronizationService.resolveLinkedSituation(uid, entityType, icAttributes, accountId, syncConfigId, actionType);
+
+        execution.setVariable("log", variableLog);
+</script>
+    </scriptTask>
+    <scriptTask id="scripttask3" name="Missing account" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+
+        return defaultSynchronizationService.resolveMissingAccountSituation(uid, entityType, accountId, syncConfigId, actionType);
+
+      </script>
+    </scriptTask>
+    <endEvent id="endevent1" name="End"></endEvent>
+    <sequenceFlow id="flow2" sourceRef="scripttask2" targetRef="scripttask9"></sequenceFlow>
+    <sequenceFlow id="flow3" sourceRef="scripttask1" targetRef="scripttask10"></sequenceFlow>
+    <sequenceFlow id="flow4" sourceRef="scripttask8" targetRef="scripttask9"></sequenceFlow>
+    <startEvent id="startevent1" name="Start"></startEvent>
+    <exclusiveGateway id="exclusivegateway1" name="Exclusive Gateway"></exclusiveGateway>
+    <sequenceFlow id="flow6" sourceRef="exclusivegateway1" targetRef="scripttask1">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${situation.equals("MISSING_ENTITY")}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow7" sourceRef="exclusivegateway1" targetRef="scripttask2">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${situation.equals("LINKED")}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow8" sourceRef="exclusivegateway1" targetRef="scripttask8">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${situation.equals("UNLINKED")}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow9" sourceRef="exclusivegateway2" targetRef="scripttask3">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${situation.equals("MISSING_ACCOUNT")}]]></conditionExpression>
+    </sequenceFlow>
+    <scriptTask id="scripttask4" name="Resolve catalogue" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.ic.api.IcAttribute;
+import groovy.transform.Field;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
+import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
+import org.springframework.data.domain.Page;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
+
+IdmRoleCatalogueDto getCatalogueByCode(String code) {
+    IdmRoleCatalogueFilter filter = new IdmRoleCatalogueFilter();
+    filter.setCode(code);
+    Page&lt;IdmRoleCatalogueDto&gt; result = roleCatalogueService.find(filter, null);
+    if (result.getTotalElements() != 1) {
+        return null
+    }
+    return result.getContent().get(0);
+}
+
+IdmRoleCatalogueDto createCatalogue(String code, UUID parent) {
+    IdmRoleCatalogueDto dto = new IdmRoleCatalogueDto();
+    dto.setCode(code);
+    dto.setName(code);
+    dto.setParent(parent);
+
+    return roleCatalogueService.save(dto);
+}
+//______________________________________________
+
+UUID resolveCatalogue(String distinguishedName){ // TODO overwrite- edit creating role catalogue... this example creates role catalogue like DN with root of catalogue -- first OU from right -- ignores DC and CN, returns UUID of catalogue, which will be filled in role's list of catalogues
+  if (distinguishedName == null ) {
+    logItem.addToLog("Distinguished name was not found, skipping creating of catalog");
+    execution.setVariable("catalogueId", null);
+    return;
+  }
+  String dn = distinguishedName;
+	int c = dn.indexOf(",DC="); // where domain starts
+	if (c != -1){
+		dn = dn.substring(0, c);
+	}
+	dn = dn.replaceAll("OU=", "");
+  List&lt;String&gt; list = Arrays.asList(dn.split("\\s*,\\s*"));
+  def lastId;
+
+	lastId = getCatalogueByCode(list.get(list.size()-1));
+	if (lastId == null) {
+    	lastId = createCatalogue(list.get(list.size()-1), null); // to create main folder of catalogue
+  	}
+
+  for (int i = list.size()-2; i &gt; 0; i--) {
+    lastId = getCatalogueByCode(list.get(i));
+    if( lastId == null ){
+      lastId = createCatalogue(list.get(i), getCatalogueByCode(list.get(i+1)).getId()); // create catalogue fo other folders
+    }
+  }
+  if (lastId == null){
+    execution.setVariable("catalogueId", null);
+  } else {
+  execution.setVariable("catalogueId", lastId.getId());
+}
+  }
+
+ def removeLastItemFromCatalogue(){ // TODO override - how to find name of catalogue, which will be erased from role
+   execution.setVariable("catalogue", null);
+ }
+  //_____________________________________________________________________
+
+resolveCatalogue(distinguishedName);
+removeLastItemFromCatalogue();
+
+</script>
+    </scriptTask>
+    <sequenceFlow id="flow10" sourceRef="scripttask4" targetRef="exclusivegateway1"></sequenceFlow>
+    <scriptTask id="scripttask5" name="Set automatic role by attributes" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+import groovy.transform.Field;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
+import org.springframework.data.domain.Page;
+
+         // TODO overwrite- add your own attributes
+
+            String AUTOMATIC_ROLE_IDENTITY_ATTRIBUT = "code_of_identity_eav";
+
+            def formAttIdentity = formAttributeService.findAttribute(IdmIdentity.class.getName(), "default", AUTOMATIC_ROLE_IDENTITY_ATTRIBUT);
+            if(formAttIdentity == null) {
+              execution.setVariable("automaticAttributes", null);
+              return null;
+            }
+
+        		IdmAutomaticRoleAttributeRuleDto [] attributes = new IdmAutomaticRoleAttributeRuleDto[2]; // number of attributes
+        		String location = name.substring(2,3);
+          	String workposition = name.substring(3);
+
+        		IdmAutomaticRoleAttributeRuleDto firstRule = new IdmAutomaticRoleAttributeRuleDto();
+        		firstRule.setValue(location); // value of attribute
+        		firstRule.setAttributeName(AUTOMATIC_ROLE_IDENTITY_ATTRIBUT); // code of form definition
+        		firstRule.setFormAttribute(formAttIdentity.getId()); // type of form definition, code of Form definition, code of EAV attrinute
+        		firstRule.setType(AutomaticRoleAttributeRuleType.IDENTITY_EAV); // type of attribute -- attribute of entity or eav (IDENTITY/IDENTITY_EAV/CONTRACT/CONTRACT_EAV)
+
+        		IdmAutomaticRoleAttributeRuleDto secondRule = new IdmAutomaticRoleAttributeRuleDto();
+        		secondRule.setValue(workposition);
+        		secondRule.setAttributeName("position");
+        		secondRule.setType(AutomaticRoleAttributeRuleType.CONTRACT);
+
+        		attributes[0] = firstRule;
+        		attributes[1] = secondRule;
+            execution.setVariable("automaticAttributes", attributes);
+
+      </script>
+    </scriptTask>
+    <scriptTask id="scripttask6" name="Set automatic role by org structure" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+        import groovy.transform.Field;
+        import org.slf4j.Logger;
+        import org.slf4j.LoggerFactory;
+        import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+        import org.springframework.data.domain.Page;
+        import java.util.stream.Collectors;
+        import eu.bcvsolutions.idm.core.api.dto.IdmTreeTypeDto;
+
+              execution.setVariable("organizationTreeNode", null);
+
+                // TODO overwrite- add your own values, returns TreeNodeDto
+                // method returns IdmTreeNode, which will be assigned as automatic role by organization
+                  if (STRUCTURE_FORM_ATTRIBUTE != null) {
+                    IdmTreeTypeDto treeType = treeTypeService.getByCode(CODE_OF_TYPE_STRUCTURE);
+                    String abbrevitation = name//.substring(2); // value of EAV
+                    def pomList = formService.findOwners(IdmTreeNodeDto.class, STRUCTURE_FORM_ATTRIBUTE, abbrevitation, null).getContent(); // class of EAV, code of EAV, value of EAV , returns IdmTreeNodeDto
+
+                    if (treeType != null) {
+                      pomList = pomList.stream().filter({pom -&gt; pom.getTreeType() == treeType.getId()}).collect(Collectors.toList());
+
+                      if(pomList.size() == 1){
+                        execution.setVariable("organizationTreeNode", pomList.get(0));
+                    }
+
+
+                    } else {
+                      logItem.addToLog("Error: Organization of role {} was not found", name); // organization not found
+                    }
+                 }
+      </script>
+    </scriptTask>
+    <sequenceFlow id="flow12" sourceRef="scripttask6" targetRef="scripttask5"></sequenceFlow>
+    <sequenceFlow id="flow13" sourceRef="scripttask5" targetRef="scripttask4"></sequenceFlow>
+    <scriptTask id="scripttask7" name="Set attributes" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+        import eu.bcvsolutions.idm.ic.api.IcAttribute;
+        import groovy.transform.Field;
+        import org.slf4j.Logger;
+        import org.slf4j.LoggerFactory;
+        import org.springframework.data.domain.Page;
+
+        final String roleName = "__NAME__"; // name of role
+        String nameV = null;
+
+        if (icAttributes != null){
+        	for (IcAttribute icAttribute : icAttributes) {
+        		if (roleName.equalsIgnoreCase(icAttribute.getName())) {
+        			Object nameValue = icAttribute.getValue();
+
+        			if (nameValue == null) {
+        				logItem.addToLog("The value of roleName is null!");
+        			} else {
+        				nameV = nameValue;
+        			}
+        		}
+        	}
+        }
+
+        Object distinguishedNameV = null;
+
+        if (icAttributes != null){
+        	for (IcAttribute icAttribute : icAttributes) {
+        		if (DISTINGUISHEDNAME_ATTRIBUTE_NAME.equalsIgnoreCase(icAttribute.getName())) {
+        			Object distinguishedNameValue = icAttribute.getValue();
+        			if (distinguishedNameValue == null) {
+        				logItem.addToLog("The value of distinguishedName is null!");
+        			} else {
+        				distinguishedNameV = distinguishedNameValue;
+        			}
+        		}
+        	}
+        }
+
+        execution.setVariable("distinguishedName", distinguishedNameV);
+        execution.setVariable("name", nameV);
+        execution.setVariable("TRANSFORMATION_SCRIPT", "\""+distinguishedName+"\"");
+
+        execution.setVariable("organizationTreeNode", null);
+        execution.setVariable("automaticAttributes", null);
+        execution.setVariable("catalogue", null);
+        execution.setVariable("catalogueId", null);
+
+      </script>
+    </scriptTask>
+    <sequenceFlow id="flow14" sourceRef="exclusivegateway2" targetRef="scripttask7"></sequenceFlow>
+    <sequenceFlow id="flow15" sourceRef="scripttask7" targetRef="scripttask6"></sequenceFlow>
+    <sequenceFlow id="flow16" sourceRef="scripttask3" targetRef="scripttask12"></sequenceFlow>
+    <exclusiveGateway id="exclusivegateway2" name="Exclusive Gateway"></exclusiveGateway>
+    <sequenceFlow id="flow17" sourceRef="startevent1" targetRef="scripttask11"></sequenceFlow>
+    <scriptTask id="scripttask8" name="Unlinked" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+        import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto;
+        import groovy.transform.Field;
+        import org.slf4j.Logger;
+        import org.slf4j.LoggerFactory;
+
+        logItem.addToLog("Info - distinguishedName "+distinguishedName);
+        logItem.addToLog("Info - name "+name);
+
+        SysSyncItemLogDto variableLog;
+
+        variableLog = defaultSynchronizationService.resolveUnlinkedSituation(uid, entityType, entityId, syncConfigId, actionType, icAttributes);
+
+        execution.setVariable("log", variableLog);
+</script>
+    </scriptTask>
+    <scriptTask id="scripttask9" name="Create automatic roles and catalog" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+          import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType
+          import eu.bcvsolutions.idm.acc.domain.SystemOperationType
+          import eu.bcvsolutions.idm.acc.dto.AccRoleAccountDto
+          import eu.bcvsolutions.idm.acc.dto.filter.AccAccountFilter
+          import eu.bcvsolutions.idm.acc.dto.filter.AccRoleAccountFilter
+          import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter
+          import eu.bcvsolutions.idm.acc.dto.filter.SysSystemFilter
+          import eu.bcvsolutions.idm.acc.dto.filter.SysSystemAttributeMappingFilter
+          import eu.bcvsolutions.idm.acc.dto.filter.SysSystemMappingFilter
+          import eu.bcvsolutions.idm.acc.dto.AccAccountDto
+          import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto
+          import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto
+          import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto
+          import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto
+          import eu.bcvsolutions.idm.acc.dto.SysSystemDto
+          import eu.bcvsolutions.idm.acc.service.api.AccAccountService
+          import eu.bcvsolutions.idm.acc.service.api.AccRoleAccountService
+          import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService
+          import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService
+          import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService
+          import eu.bcvsolutions.idm.acc.service.api.SysSystemService
+          import eu.bcvsolutions.idm.acc.service.impl.DefaultSysRoleSystemAttributeService
+          import eu.bcvsolutions.idm.acc.service.impl.DefaultSysSystemService
+          import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
+          import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType
+          import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
+          import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto
+          import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto
+          import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto
+          import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto
+          import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto
+          import eu.bcvsolutions.idm.core.api.dto.filter.EmptyFilter
+          import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter
+          import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter
+          import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+          import eu.bcvsolutions.idm.core.model.entity.IdmRole
+          import eu.bcvsolutions.idm.core.model.entity.IdmRoleCatalogue
+          import eu.bcvsolutions.idm.core.model.entity.IdmRoleGuarantee
+          import eu.bcvsolutions.idm.core.api.service.IdmIdentityService
+          import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService
+          import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService
+          import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+          import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleCatalogueRoleService
+          import eu.bcvsolutions.idm.ic.api.IcAttribute
+          import groovy.transform.Field
+          import groovy.transform.TypeChecked
+          import org.apache.commons.mail.Email
+          import org.slf4j.Logger
+          import org.slf4j.LoggerFactory
+          import org.springframework.data.domain.Page
+          import org.springframework.data.domain.PageRequest
+          import eu.bcvsolutions.idm.acc.dto.*
+          import eu.bcvsolutions.idm.acc.dto.filter.*
+          import eu.bcvsolutions.idm.acc.service.impl.DefaultSysSchemaObjectClassService
+          import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation
+          import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType
+          import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto
+          import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto
+          import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter
+          import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService
+          import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService
+          import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService
+          import eu.bcvsolutions.idm.core.api.service.IdmRoleService
+          import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmIdentityRoleService
+          import java.util.stream.Collectors
+          import eu.bcvsolutions.idm.core.api.service.AutomaticRoleManager;
+          import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
+          import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
+          import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+          import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+          import eu.bcvsolutions.idm.core.api.dto.IdmRoleTreeNodeDto;
+          import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleRequestDto;
+          import eu.bcvsolutions.idm.core.api.domain.RequestOperationType;
+          import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleRequestType;
+          import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleTreeNodeFilter;
+          import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
+          import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleRequestDto;
+          import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleRequestService;
+          import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
+          import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemAttributeFilter;
+          import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
+          import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
+          import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
+          import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+          import java.util.UUID;
+          import eu.bcvsolutions.idm.core.api.dto.AbstractIdmAutomaticRoleDto;
+
+          boolean roleAlreadyHasCatalogue(List&lt;IdmRoleCatalogueRoleDto&gt; actualCatalogues, IdmRoleCatalogueRoleDto catRoleDto) {
+          for (def cat in actualCatalogues) {
+            if (cat.getRole().equals(catRoleDto.getRole()) &amp;&amp; cat.getRoleCatalogue().equals(catRoleDto.getRoleCatalogue())) {
+                logItem.addToLog("Role ${catRoleDto.getRole()} is already in catalogue ${catRoleDto.getRoleCatalogue()}");
+                return true;
+            }
+          }
+          return false;
+          }
+
+          def addCtg(IdmRoleDto role) {
+          if (catalogueId == null) {
+          return;
+          }
+          List&lt;IdmRoleCatalogueRoleDto&gt; actualCatalogues = roleCatalogueRoleService.findAllByRole(role.getId());
+          List&lt;IdmRoleCatalogueRoleDto&gt; finalCatalogues = new ArrayList(actualCatalogues);
+
+            IdmRoleCatalogueRoleDto catRoleDto = new IdmRoleCatalogueRoleDto();
+            catRoleDto.setRole(role.getId());
+            catRoleDto.setRoleCatalogue(catalogueId);
+            if (!roleAlreadyHasCatalogue(actualCatalogues, catRoleDto)) { // podminka-jestli role jiz je v katalogu. Jestli ne, odstranují se ostatni katalogy a prida se role do katalogu
+              if (catalogue != null) {
+                for ( IdmRoleCatalogueRoleDto ctl : actualCatalogues ){
+                  if(ctl.getRoleCatalogue() == catalogue) {
+                    finalCatalogues.remove(ctl);
+                  }
+                }
+              }
+
+                logItem.addToLog("Putting role ${catRoleDto.getRole()} into catalogue ${catRoleDto.getRoleCatalogue()}");
+                catRoleDto = roleCatalogueRoleService.save(catRoleDto);
+                finalCatalogues.add(catRoleDto);
+                role = roleService.save(role);
+            }
+          }
+
+          def addAutomaticRoleOrganization(String name, IdmRoleDto role){
+            if (!AUTO_ROLE_ORG_STRUCTURE_ENABLED) {
+              logItem.addToLog("Automatic role by organization structure is disabled, exiting: addAutomaticRoleOrganization");
+              return;
+            }
+            IdmTreeNodeDto eav = organizationTreeNode; // treeNodeDto
+            if (eav == null){
+              deleteAutomaticRoleStructure(role);
+              return;
+            }
+
+            IdmRoleTreeNodeFilter filter = new IdmRoleTreeNodeFilter();
+            filter.setRoleId(role.getId());
+            def list = roleTreeNodeService.find(filter, null).getContent();
+            if (list.size() == 1) {
+              UUID treeId = list.get(0).getTreeNode();
+              if (eav.getId() == treeId){ // if organization is unchanged, it is not necessary change automatic role
+                return;
+              }
+            }
+            for (IdmRoleTreeNodeDto treeNode : list){
+              automaticRoleManager.deleteAutomaticRole(treeNode, true); // delete automatic role by request
+              }
+
+            IdmRoleTreeNodeDto treeNode = new IdmRoleTreeNodeDto();
+            treeNode.setTreeNode(eav.getId());
+            treeNode.setName(name);
+            treeNode.setRole(role.getId());
+            automaticRoleManager.createAutomaticRoleByTree(treeNode, false); // create automatic role by organization structure
+          }
+
+          def deleteAutomaticRoleStructure(IdmRoleDto role){
+            IdmRoleTreeNodeFilter filter = new IdmRoleTreeNodeFilter();
+            filter.setRoleId(role.getId());
+            def list = roleTreeNodeService.find(filter, null).getContent();
+            for (IdmRoleTreeNodeDto treeNode : list){
+              automaticRoleManager.deleteAutomaticRole(treeNode, true); // delete automatic role by request
+              }
+          }
+
+          def addAutomaticRoles(String uid, IdmRoleDto role){ // automatic roles by attribute
+            logItem.addToLog("Starting with addAutomaticRoles");
+            if (!AUTO_ROLE_ATTRIBUTES_ENABLED) {
+              logItem.addToLog("Automatic role attributes are disabled, exiting: addAutomaticRoles");
+              return;
+            }
+
+            if(automaticAttributes == null) {
+              deleteAutoRole(role)
+              return;
+            }
+              changeAutoAttRoles(uid, role);
+              return;
+          }
+
+          def changeAutoAttRoles(String uid, IdmRoleDto role){
+            IdmAutomaticRoleFilter filter = new IdmAutomaticRoleFilter();
+            filter.setRoleId(role.getId());
+            List&lt;IdmAutomaticRoleAttributeDto&gt; list = automaticRoleAttributeService.find(filter, null).getContent();
+            if(list.size() != 1) {
+              logItem.addToLog("Warning: IdmAutomaticRoleAttributeDto was not found for " + role.getId() + " continuing with creating automatic role");
+              IdmAutomaticRoleAttributeDto autoRole = createAutoRole(role);
+              IdmAutomaticRoleAttributeRuleDto [] attributes = automaticAttributes;
+              addAutoRoleId(autoRole, attributes);
+              automaticRoleManager.createAutomaticRoleByAttribute(autoRole, true, attributes);
+            } else {
+              IdmAutomaticRoleAttributeDto autoRole = list.get(0);
+              autoRole.setName(role.getCode());
+              IdmAutomaticRoleAttributeRuleDto [] attributes = automaticAttributes;
+              addAutoRoleId(autoRole, attributes);
+
+              automaticRoleManager.changeAutomaticRoleRules(autoRole, true, attributes);
+            }
+          }
+
+          IdmAutomaticRoleAttributeDto createAutoRole(IdmRoleDto role) {
+            IdmAutomaticRoleAttributeDto autoRole = new IdmAutomaticRoleAttributeDto(); // create automatic role with two attributes
+          	autoRole.setRole(role.getId());
+          	autoRole.setName(role.getCode());
+          	autoRole.setConcept(true);
+            return autoRole;
+        }
+
+          def addAutoRoleId (IdmAutomaticRoleAttributeDto autoRole, IdmAutomaticRoleAttributeRuleDto [] attributes) {
+          for (IdmAutomaticRoleAttributeRuleDto att : attributes){
+            if (att != null){
+              att.setAutomaticRoleAttribute(autoRole.getId());
+              }
+            }
+          }
+
+          def deleteAutoRole(IdmRoleDto role) {
+            IdmAutomaticRoleFilter filter = new IdmAutomaticRoleFilter();
+            filter.setRoleId(role.getId());
+            List&lt;IdmAutomaticRoleAttributeDto&gt; list = automaticRoleAttributeService.find(filter, null).getContent();
+
+            for (def automaticRoleAttribute : list) {
+              automaticRoleManager.deleteAutomaticRole(automaticRoleAttribute, true);
+            }
+          }
+
+          // attribute name - nazev eav (memberOf)
+          // transformationScript - what will be put into eav as value (return "cn=..,ou=..,dn=.."")
+          // objectClassName - name of schema (__ACCOUNT__)
+          def addResource(UUID roleId, String attributeName, String transformationScript, String objectClassName) {
+              if (SYSTEM_CODE_FOR_ROLE_MAPPING == null) {
+                return;
+              }
+              UUID systemId = defaultSysSystemService.getByCode(SYSTEM_CODE_FOR_ROLE_MAPPING).getId();
+               defaultSysRoleSystemAttributeService.addRoleMappingAttribute(systemId, roleId, attributeName, transformationScript, objectClassName); //sysRoleSystemAttributeService
+          }
+
+          // ------------------------------------------------------------------------------------------------------------
+
+
+          logItem.addToLog("SYNC finished, now for the guarantees and catalogues");
+
+          if(actionType.equals("UPDATE_ENTITY") || actionType.equals("LINK_AND_UPDATE_ENTITY") ) {
+          UUID roleId = defaultAccRoleAccountService.getRoleId(accountId);
+
+          IdmRoleDto role = roleService.get(roleId);
+          role.setCanBeRequested(canBeRequested); // set option, if identity can request this role
+          role = roleService.save(role);
+
+          //
+          addResource(roleId, MEMBER_OF_ATTRIBUTE_NAME, TRANSFORMATION_SCRIPT, OBJECT_CLASS_NAME); // add to role- system, mapping and transformation to attribute 'memberOf' - Distinguished Name. | in linked situation if DN is not changed, it is not necessary change even automatic role
+
+          addAutomaticRoleOrganization(name, role); // create automatic roles by organization structure
+
+          addAutomaticRoles(name, role);// create automatic roles by attribute
+
+          addCtg(role); // add role to catalog
+          //
+          //
+          logItem.addToLog("SYNC ${roleId} DONE");
+        }
+      </script>
+    </scriptTask>
+    <sequenceFlow id="flow18" sourceRef="scripttask9" targetRef="scripttask12"></sequenceFlow>
+    <scriptTask id="scripttask10" name="Create automatic roles and catalog" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>
+        import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType
+        import eu.bcvsolutions.idm.acc.domain.SystemOperationType
+        import eu.bcvsolutions.idm.acc.dto.AccRoleAccountDto
+        import eu.bcvsolutions.idm.acc.dto.filter.AccAccountFilter
+        import eu.bcvsolutions.idm.acc.dto.filter.AccRoleAccountFilter
+        import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter
+        import eu.bcvsolutions.idm.acc.dto.filter.SysSystemFilter
+        import eu.bcvsolutions.idm.acc.dto.filter.SysSystemAttributeMappingFilter
+        import eu.bcvsolutions.idm.acc.dto.filter.SysSystemMappingFilter
+        import eu.bcvsolutions.idm.acc.dto.AccAccountDto
+        import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto
+        import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto
+        import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto
+        import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto
+        import eu.bcvsolutions.idm.acc.dto.SysSystemDto
+        import eu.bcvsolutions.idm.acc.service.api.AccAccountService
+        import eu.bcvsolutions.idm.acc.service.api.AccRoleAccountService
+        import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService
+        import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService
+        import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService
+        import eu.bcvsolutions.idm.acc.service.api.SysSystemService
+        import eu.bcvsolutions.idm.acc.service.impl.DefaultSysRoleSystemAttributeService
+        import eu.bcvsolutions.idm.acc.service.impl.DefaultSysSystemService
+        import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
+        import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType
+        import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
+        import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto
+        import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto
+        import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto
+        import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto
+        import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto
+        import eu.bcvsolutions.idm.core.api.dto.filter.EmptyFilter
+        import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter
+        import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter
+        import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+        import eu.bcvsolutions.idm.core.model.entity.IdmRole
+        import eu.bcvsolutions.idm.core.model.entity.IdmRoleCatalogue
+        import eu.bcvsolutions.idm.core.model.entity.IdmRoleGuarantee
+        import eu.bcvsolutions.idm.core.api.service.IdmIdentityService
+        import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService
+        import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService
+        import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+        import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleCatalogueRoleService
+        import eu.bcvsolutions.idm.ic.api.IcAttribute
+        import groovy.transform.Field
+        import groovy.transform.TypeChecked
+        import org.apache.commons.mail.Email
+        import org.slf4j.Logger
+        import org.slf4j.LoggerFactory
+        import org.springframework.data.domain.Page
+        import org.springframework.data.domain.PageRequest
+        import eu.bcvsolutions.idm.acc.dto.*
+        import eu.bcvsolutions.idm.acc.dto.filter.*
+        import eu.bcvsolutions.idm.acc.service.impl.DefaultSysSchemaObjectClassService
+        import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation
+        import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType
+        import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto
+        import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto
+        import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter
+        import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService
+        import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService
+        import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService
+        import eu.bcvsolutions.idm.core.api.service.IdmRoleService
+        import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmIdentityRoleService
+        import java.util.stream.Collectors
+        import eu.bcvsolutions.idm.core.api.service.AutomaticRoleManager;
+        import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
+        import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
+        import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+        import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+        import eu.bcvsolutions.idm.core.api.dto.IdmRoleTreeNodeDto;
+        import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleRequestDto;
+        import eu.bcvsolutions.idm.core.api.domain.RequestOperationType;
+        import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleRequestType;
+        import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleTreeNodeFilter;
+        import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
+        import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleRequestDto;
+        import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleRequestService;
+        import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
+        import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemAttributeFilter;
+        import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
+        import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
+        import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
+        import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+        import java.util.UUID;
+        import eu.bcvsolutions.idm.core.api.dto.AbstractIdmAutomaticRoleDto;
+        import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
+        import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityContractFilter;
+        import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
+
+        boolean roleAlreadyHasCatalogue(List&lt;IdmRoleCatalogueRoleDto&gt; actualCatalogues, IdmRoleCatalogueRoleDto catRoleDto) {
+            for (def cat in actualCatalogues) {
+                if (cat.getRole().equals(catRoleDto.getRole()) &amp;&amp; cat.getRoleCatalogue().equals(catRoleDto.getRoleCatalogue())) {
+                    logItem.addToLog("Role ${catRoleDto.getRole()} is already in catalogue ${catRoleDto.getRoleCatalogue()}");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        def addCtg(IdmRoleDto role) {
+          if (catalogueId == null) {
+            return;
+          }
+            List&lt;IdmRoleCatalogueRoleDto&gt; actualCatalogues = roleCatalogueRoleService.findAllByRole(role.getId());
+
+                IdmRoleCatalogueRoleDto catRoleDto = new IdmRoleCatalogueRoleDto();
+                catRoleDto.setRole(role.getId());
+                catRoleDto.setRoleCatalogue(catalogueId);
+                if (!roleAlreadyHasCatalogue(actualCatalogues, catRoleDto)) {
+                    logItem.addToLog("Putting role ${catRoleDto.getRole()} into catalogue ${catRoleDto.getRoleCatalogue()}");
+                    catRoleDto = roleCatalogueRoleService.save(catRoleDto);
+        			}
+        }
+
+        def addAutomaticRoleOrganization(String name, IdmRoleDto role){
+          if (!AUTO_ROLE_ORG_STRUCTURE_ENABLED) {
+            logItem.addToLog("Automatic role by organization structure is disabled, exiting: addAutomaticRoleOrganization");
+            return;
+          }
+          IdmTreeNodeDto eav = organizationTreeNode; // treeNodeDto
+        	if (eav == null){
+        		logItem.addToLog("The organization was not found for role name:" + role.getCode() + " id: " + role.getId());
+        		return;
+        	}
+          IdmRoleTreeNodeDto treeNode = new IdmRoleTreeNodeDto();
+          treeNode.setTreeNode(eav.getId());
+          treeNode.setName(name);
+          treeNode.setRole(role.getId());
+
+          automaticRoleManager.createAutomaticRoleByTree(treeNode, false); // create automatic role by organization structure
+        }
+
+        def removeAutoAttRoles(IdmRoleDto role){
+        	logItem.addToLog("Starting with removeAutoAttRoles");
+        	IdmAutomaticRoleFilter filter = new IdmAutomaticRoleFilter();
+        	filter.setRoleId(role.getId());
+        	def list = automaticRoleAttributeService.find(filter, null).getContent();
+        	for (def autoRole : list){
+        		automaticRoleManager.deleteAutomaticRole(autoRole, true);
+        	}
+        }
+
+        def addAutomaticRoles(String uid, IdmRoleDto role){ // automatic roles by attribute
+        	logItem.addToLog("Starting with addAutomaticRoles");
+          if (!AUTO_ROLE_ATTRIBUTES_ENABLED) {
+            logItem.addToLog("Automatic role attributes are disabled, exiting: addAutomaticRoles");
+            return;
+          }
+          if(automaticAttributes == null) {
+            logItem.addToLog("Automatic role attributes not found, aborting: addAutomaticRoles");
+            return;
+          }
+          	IdmAutomaticRoleAttributeDto autoRole = new IdmAutomaticRoleAttributeDto(); // create automatic role with two attributes
+          	autoRole.setRole(role.getId());
+          	autoRole.setName(role.getCode());
+          	autoRole.setConcept(true);
+
+         		IdmAutomaticRoleAttributeRuleDto [] attributes = automaticAttributes;
+            addAutoRoleId(autoRole, attributes);
+          	automaticRoleManager.createAutomaticRoleByAttribute(autoRole, true, attributes);
+        }
+
+        def addAutoRoleId (IdmAutomaticRoleAttributeDto autoRole, IdmAutomaticRoleAttributeRuleDto [] attributes) {
+          for (IdmAutomaticRoleAttributeRuleDto att : attributes){
+            if (att != null){
+              att.setAutomaticRoleAttribute(autoRole.getId());
+            }
+          }
+        }
+
+        // attribute name - nazev eav (memberOf)
+        // transformationScript - what will be put into eav as value (return "cn=..,ou=..,dn=.."")
+        // objectClassName - name of schema (__ACCOUNT__)
+        def addResource(UUID roleId, String attributeName, String transformationScript, String objectClassName) {
+          if (SYSTEM_CODE_FOR_ROLE_MAPPING == null) {
+            return;
+          }
+          UUID systemId = defaultSysSystemService.getByCode(SYSTEM_CODE_FOR_ROLE_MAPPING).getId();
+          defaultSysRoleSystemAttributeService.addRoleMappingAttribute(systemId, roleId, attributeName, transformationScript, objectClassName);
+        }
+
+        def resolveMembers(roleId, membersAttribute) { // resolving membership - if some identities are already part of this group
+            String formAttribute = DISTINGUISHED_NAME_FORM_ATTRIBUTE_IDENTITY_CODE;
+            if (formAttribute == null || membersAttribute == null) {
+              logItem.addToLog("RESOLVING MEMBERS FOR " + roleId + ", " + membersAttribute + "is skipped");
+              return;
+            }
+            logItem.addToLog("RESOLVING MEMBERS FOR " + roleId + ", " + membersAttribute);
+            for (member in membersAttribute.getValues()){
+                // add role to users main ppv
+                def memberId = resolveMemberId(member);
+                if (memberId == null) {
+                  logItem.addToLog("User " + member + " does not have existing identity"); // some users in AD does not have to be in IdM
+                  continue;
+                }
+                // filter all valid or valid in future contracts
+                IdmIdentityContractFilter filter = new IdmIdentityContractFilter();
+  		          filter.setValidNowOrInFuture(true);
+  		          filter.setIdentity(memberId);
+  		          List&lt;IdmIdentityContractDto&gt; contractsValidNowOrInFuture = identityContractService.find(filter, null).getContent();
+
+        				if (contractsValidNowOrInFuture.isEmpty()) { // skip if identity does not have a contract
+                  logItem.addToLog("User  " + membersAttribute + " does not have valid contract for role: " + roleId);
+        					continue; // if one user does not have contract, at least to other users we add role
+        					//return;
+        				}
+                if (!hasUserRoleAssignedOnMainPosition(roleId, memberId)) {
+                  for(IdmIdentityContractDto contract : contractsValidNowOrInFuture) {
+                    addRoleToUser(roleId,memberId, contract);
+                  }
+                }
+            }
+        }
+
+        def resolveMemberId(member) {
+            def owners = formService.findOwners(IdmIdentityDto.class, DISTINGUISHED_NAME_FORM_ATTRIBUTE_IDENTITY_CODE, member, null)?.getContent();
+            return Optional.ofNullable(owners).orElse(Collections.&amp;emptyList()).stream()
+                    .map({o -&gt; o.getId()})
+                    .findAny()
+                    .orElse(null);
+        }
+
+        def addRoleToUser(roleId, userId, contract) {
+            def operation = ConceptRoleRequestOperation.ADD;
+            def roleRequest = new IdmRoleRequestDto();
+            roleRequest.setApplicant(userId);
+            roleRequest.setRequestedByType(RoleRequestedByType.MANUALLY);
+            roleRequest.setExecuteImmediately(true);
+            roleRequest = roleRequestService.save(roleRequest);
+            IdmConceptRoleRequestDto conceptRoleRequest = new IdmConceptRoleRequestDto();
+            conceptRoleRequest.setRoleRequest(roleRequest.getId());
+            conceptRoleRequest.setIdentityContract(contract?.getId());
+            conceptRoleRequest.setIdentityRole(null);
+            conceptRoleRequest.setRole(roleId);
+            conceptRoleRequest.setAutomaticRole(null);
+            conceptRoleRequest.setOperation(operation);
+            conceptRoleRequestService.save(conceptRoleRequest);
+            roleRequestService.startRequestInternal(roleRequest.getId(), true);
+        }
+
+        def hasUserRoleAssignedOnMainPosition(roleId, memberId) {
+            def foundRoles = identityRoleService.findAllByContract(identityContractService.getPrimeContract(memberId)?.getId());
+            Optional.ofNullable(foundRoles).orElse(Collections.&amp;emptyList).stream()
+            .anyMatch({r -&gt; r.id == roleId});
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+
+        logItem.addToLog("SYNC finished, now for the guarantees and catalogues");
+
+        if(actionType.equals("CREATE_ENTITY")) {
+
+        UUID roleId = defaultAccRoleAccountService.getRoleId(accountId);
+
+        IdmRoleDto role = roleService.get(roleId);
+        role.setCanBeRequested(canBeRequested) // set option, if role can be requested by identity/user
+        roleService.save(role)
+
+        //
+        addResource(roleId, MEMBER_OF_ATTRIBUTE_NAME, TRANSFORMATION_SCRIPT, OBJECT_CLASS_NAME); // add to role- system, mapping and transformation to attribute 'memberOf' - Distinguished Name.
+
+        addAutomaticRoleOrganization(name, role); // create automatic role by organization structure
+
+        addAutomaticRoles(name, role);// reate automatic role  by attribute
+
+        addCtg(role); // add role to catalog
+
+        IcAttribute membersAttribute = null;
+        for (attr in icAttributes) {
+            if (attr.getName().equals("member")) {
+                membersAttribute = attr
+            }
+        }
+        resolveMembers(roleId, membersAttribute);
+        //
+
+        logItem.addToLog("SYNC ${roleId} DONE");
+        }
+      </script>
+    </scriptTask>
+    <sequenceFlow id="flow19" sourceRef="scripttask10" targetRef="scripttask12"></sequenceFlow>
+    <scriptTask id="scripttask11" name="Create item log" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto;
+
+SysSyncItemLogDto logItem = new SysSyncItemLogDto();
+execution.setVariable("logItem", logItem);
+
+      </script>
+    </scriptTask>
+    <sequenceFlow id="flow20" sourceRef="scripttask11" targetRef="exclusivegateway2"></sequenceFlow>
+    <scriptTask id="scripttask12" name="Save item log" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script>execution.setVariable("logItem", logItem.getLog());</script>
+    </scriptTask>
+    <sequenceFlow id="flow21" sourceRef="scripttask12" targetRef="endevent1"></sequenceFlow>
+    <dataObject id="canBeRequested" name="canBeRequested" itemSubjectRef="xsd:boolean">
+      <extensionElements>
+        <activiti:value>false</activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="OBJECT_CLASS_NAME" name="OBJECT_CLASS_NAME" itemSubjectRef="xsd:string">
+      <extensionElements>
+        <activiti:value>__ACCOUNT__</activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="MEMBER_OF_ATTRIBUTE_NAME" name="MEMBER_OF_ATTRIBUTE_NAME" itemSubjectRef="xsd:string">
+      <extensionElements>
+        <activiti:value>memberOf</activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="DISTINGUISHEDNAME_ATTRIBUTE_NAME" name="DISTINGUISHEDNAME_ATTRIBUTE_NAME" itemSubjectRef="xsd:string">
+      <extensionElements>
+        <activiti:value>EAV_ATTRIBUTE</activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="STRUCTURE_FORM_ATTRIBUTE" name="STRUCTURE_FORM_ATTRIBUTE" itemSubjectRef="xsd:string">
+      <extensionElements>
+        <activiti:value></activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="CODE_OF_TYPE_STRUCTURE" name="CODE_OF_TYPE_STRUCTURE" itemSubjectRef="xsd:string">
+      <extensionElements>
+        <activiti:value>ORGANIZATIONS</activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="SYSTEM_CODE_FOR_ROLE_MAPPING" name="SYSTEM_CODE_FOR_ROLE_MAPPING" itemSubjectRef="xsd:string">
+      <extensionElements>
+        <activiti:value></activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="DISTINGUISHED_NAME_FORM_ATTRIBUTE_IDENTITY_CODE" name="DISTINGUISHED_NAME_FORM_ATTRIBUTE_IDENTITY_CODE" itemSubjectRef="xsd:string"></dataObject>
+    <dataObject id="AUTO_ROLE_ORG_STRUCTURE_ENABLED" name="AUTO_ROLE_ORG_STRUCTURE_ENABLED" itemSubjectRef="xsd:boolean">
+      <extensionElements>
+        <activiti:value>false</activiti:value>
+      </extensionElements>
+    </dataObject>
+    <dataObject id="AUTO_ROLE_ATTRIBUTES_ENABLED" name="AUTO_ROLE_ATTRIBUTES_ENABLED" itemSubjectRef="xsd:boolean">
+      <extensionElements>
+        <activiti:value>false</activiti:value>
+      </extensionElements>
+    </dataObject>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_syncRoleAd">
+    <bpmndi:BPMNPlane bpmnElement="syncRoleAd" id="BPMNPlane_syncRoleAd">
+      <bpmndi:BPMNShape bpmnElement="scripttask1" id="BPMNShape_scripttask1">
+        <omgdc:Bounds height="77.0" width="161.0" x="900.0" y="120.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask2" id="BPMNShape_scripttask2">
+        <omgdc:Bounds height="77.0" width="161.0" x="900.0" y="252.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask3" id="BPMNShape_scripttask3">
+        <omgdc:Bounds height="77.0" width="161.0" x="900.0" y="458.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="endevent1" id="BPMNShape_endevent1">
+        <omgdc:Bounds height="35.0" width="35.0" x="1295.0" y="479.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="startevent1" id="BPMNShape_startevent1">
+        <omgdc:Bounds height="35.0" width="35.0" x="83.0" y="60.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="exclusivegateway1" id="BPMNShape_exclusivegateway1">
+        <omgdc:Bounds height="40.0" width="40.0" x="770.0" y="271.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask4" id="BPMNShape_scripttask4">
+        <omgdc:Bounds height="63.0" width="125.0" x="620.0" y="260.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask5" id="BPMNShape_scripttask5">
+        <omgdc:Bounds height="71.0" width="138.0" x="460.0" y="256.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask6" id="BPMNShape_scripttask6">
+        <omgdc:Bounds height="73.0" width="147.0" x="280.0" y="251.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask7" id="BPMNShape_scripttask7">
+        <omgdc:Bounds height="55.0" width="105.0" x="150.0" y="260.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="exclusivegateway2" id="BPMNShape_exclusivegateway2">
+        <omgdc:Bounds height="40.0" width="40.0" x="80.0" y="267.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask8" id="BPMNShape_scripttask8">
+        <omgdc:Bounds height="71.0" width="162.0" x="900.0" y="350.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask9" id="BPMNShape_scripttask9">
+        <omgdc:Bounds height="66.0" width="105.0" x="1130.0" y="280.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask10" id="BPMNShape_scripttask10">
+        <omgdc:Bounds height="77.0" width="105.0" x="1130.0" y="120.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask11" id="BPMNShape_scripttask11">
+        <omgdc:Bounds height="55.0" width="105.0" x="48.0" y="157.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="scripttask12" id="BPMNShape_scripttask12">
+        <omgdc:Bounds height="55.0" width="105.0" x="1260.0" y="285.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+        <omgdi:waypoint x="1061.0" y="290.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1130.0" y="313.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+        <omgdi:waypoint x="1061.0" y="158.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1130.0" y="158.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow4" id="BPMNEdge_flow4">
+        <omgdi:waypoint x="1062.0" y="385.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1182.0" y="346.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6">
+        <omgdi:waypoint x="790.0" y="271.0"></omgdi:waypoint>
+        <omgdi:waypoint x="790.0" y="158.0"></omgdi:waypoint>
+        <omgdi:waypoint x="900.0" y="158.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
+        <omgdi:waypoint x="810.0" y="291.0"></omgdi:waypoint>
+        <omgdi:waypoint x="900.0" y="290.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8">
+        <omgdi:waypoint x="790.0" y="311.0"></omgdi:waypoint>
+        <omgdi:waypoint x="789.0" y="385.0"></omgdi:waypoint>
+        <omgdi:waypoint x="900.0" y="385.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow9" id="BPMNEdge_flow9">
+        <omgdi:waypoint x="100.0" y="307.0"></omgdi:waypoint>
+        <omgdi:waypoint x="99.0" y="496.0"></omgdi:waypoint>
+        <omgdi:waypoint x="749.0" y="496.0"></omgdi:waypoint>
+        <omgdi:waypoint x="900.0" y="496.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10">
+        <omgdi:waypoint x="745.0" y="291.0"></omgdi:waypoint>
+        <omgdi:waypoint x="770.0" y="291.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow12" id="BPMNEdge_flow12">
+        <omgdi:waypoint x="427.0" y="287.0"></omgdi:waypoint>
+        <omgdi:waypoint x="460.0" y="291.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow13" id="BPMNEdge_flow13">
+        <omgdi:waypoint x="598.0" y="291.0"></omgdi:waypoint>
+        <omgdi:waypoint x="620.0" y="291.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow14" id="BPMNEdge_flow14">
+        <omgdi:waypoint x="120.0" y="287.0"></omgdi:waypoint>
+        <omgdi:waypoint x="150.0" y="287.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow15" id="BPMNEdge_flow15">
+        <omgdi:waypoint x="255.0" y="287.0"></omgdi:waypoint>
+        <omgdi:waypoint x="280.0" y="287.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow16" id="BPMNEdge_flow16">
+        <omgdi:waypoint x="980.0" y="458.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1312.0" y="340.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow17" id="BPMNEdge_flow17">
+        <omgdi:waypoint x="100.0" y="95.0"></omgdi:waypoint>
+        <omgdi:waypoint x="100.0" y="157.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow18" id="BPMNEdge_flow18">
+        <omgdi:waypoint x="1235.0" y="313.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1260.0" y="312.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow19" id="BPMNEdge_flow19">
+        <omgdi:waypoint x="1182.0" y="197.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1312.0" y="285.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow20" id="BPMNEdge_flow20">
+        <omgdi:waypoint x="100.0" y="212.0"></omgdi:waypoint>
+        <omgdi:waypoint x="100.0" y="267.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow21" id="BPMNEdge_flow21">
+        <omgdi:waypoint x="1312.0" y="340.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1312.0" y="479.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
