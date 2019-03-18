@@ -24,7 +24,7 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 
 public abstract class AbstractContractSetEavTreesProcessor<E extends Serializable> extends CoreEventProcessor<E> {
 
-	public static final String EAV_CONFIG_NAME = "idm.sec.extras.processor.set-structure-to-eav";
+	public static final String EAV_CONFIG_NAME = "module.extras.processor.set-structure-to-eav";
 
 	@Autowired
 	private FormService formService;
