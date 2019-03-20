@@ -51,7 +51,7 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends Serializabl
 		// just for identityContract
 		addValues(contract.getWorkPosition(), values);
 		//
-		IdmFormDefinitionDto definition = formService.getDefinition(contract.getClass());
+		IdmFormDefinitionDto definition = formService.getDefinition(contract.getClass(), FormService.DEFAULT_DEFINITION_CODE);
 		List result = formService.saveValues(contract.getId(),
 				IdmIdentityContract.class,
 				definition,
