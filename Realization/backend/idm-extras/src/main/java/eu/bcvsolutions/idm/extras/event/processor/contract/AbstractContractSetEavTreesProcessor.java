@@ -24,7 +24,8 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 
 public abstract class AbstractContractSetEavTreesProcessor<E extends Serializable> extends CoreEventProcessor<E> {
 
-	public static final String EAV_CONFIG_NAME = "module.extras.processor.set-structure-to-eav";
+	public static final String EAV_CONFIG_NODE_NAME = "module.extras.processor.set-node-to-eav";
+	public static final String EAV_CONFIG_TREE_NAME = "module.extras.processor.set-structure-to-eav";
 
 	@Autowired
 	private FormService formService;
@@ -44,29 +45,38 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends Serializabl
 		filter.setIdentityContractId(contract.getId());
 		List<IdmContractPositionDto> positions = positionService.find(filter, null).getContent();
 		//
-		String eavName = configurationService.getValue(EAV_CONFIG_NAME);
+		String eavNameTree = configurationService.getValue(EAV_CONFIG_TREE_NAME);
+		String eavNameNode = configurationService.getValue(EAV_CONFIG_NODE_NAME);
 		//
-		List<String> values = new LinkedList<>();
-		positions.forEach(position -> addValues(position.getWorkPosition(), values));
+		List<String> valuesTree = new LinkedList<>();
+		List<String> valuesNode = new LinkedList<>();
+		// add all tree
+		positions.forEach(position -> addValues(position.getWorkPosition(), valuesTree, valuesNode));
 		// just for identityContract
-		addValues(contract.getWorkPosition(), values);
+		addValues(contract.getWorkPosition(), valuesTree, valuesNode);
 		//
-		IdmFormDefinitionDto definition = formService.getDefinition(contract.getClass());
-		List result = formService.saveValues(contract.getId(),
+		IdmFormDefinitionDto definition = formService.getDefinition(contract.getClass(), FormService.DEFAULT_DEFINITION_CODE);
+		getResult(contract.getId(), definition, eavNameTree, valuesTree);
+		getResult(contract.getId(), definition, eavNameNode, valuesNode);
+	}
+
+	private void getResult(UUID contract, IdmFormDefinitionDto definition, String eavName, List<String> values){
+		List resultTree = formService.saveValues(contract,
 				IdmIdentityContract.class,
 				definition,
 				eavName,
 				Lists.newArrayList(values));
-		if (result == null) {
+		if (resultTree == null) {
 			throw new IllegalArgumentException("Values not saved for some reason!");
 		}
 	}
 
-	public void addValues(UUID workPosition, List<String> values) {
+	public void addValues(UUID workPosition, List<String> treeValues, List<String> nodeValues) {
 		IdmTreeNodeDto idmTreeNodeDto = treeNodeService.get(workPosition);
 		List<IdmTreeNodeDto> allNodes = treeNodeService.findAllParents(idmTreeNodeDto.getId(), null);
 		allNodes.add(idmTreeNodeDto);
-		allNodes.forEach(parent -> addParentsToEav(parent.getCode(), values));
+		allNodes.forEach(parent -> addParentsToEav(parent.getCode(), treeValues));
+		addParentsToEav(idmTreeNodeDto.getCode(), nodeValues);
 	}
 
 	public void addParentsToEav(String code, List<String> values) {
