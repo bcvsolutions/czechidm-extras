@@ -18,8 +18,11 @@ import eu.bcvsolutions.idm.core.api.event.EventType;
 import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
 import eu.bcvsolutions.idm.core.api.service.IdmContractPositionService;
 import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
+import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 
 public abstract class AbstractContractSetEavTreesProcessor<E extends Serializable> extends CoreEventProcessor<E> {
@@ -35,6 +38,8 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends Serializabl
 	private ConfigurationService configurationService;
 	@Autowired
 	private IdmContractPositionService positionService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
 
 	public AbstractContractSetEavTreesProcessor(EventType... type) {
 		super(type);
@@ -56,27 +61,59 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends Serializabl
 		addValues(contract.getWorkPosition(), valuesTree, valuesNode);
 		//
 		IdmFormDefinitionDto definition = formService.getDefinition(contract.getClass(), FormService.DEFAULT_DEFINITION_CODE);
+		boolean attributeNodepresent = false;
+		boolean attributeTreeepresent = false;
+		for (IdmFormAttributeDto attribute : definition.getFormAttributes()) {
+			if(attribute.getCode().equals(eavNameNode)){
+				attributeNodepresent = true;
+			}
+			if(attribute.getCode().equals(eavNameTree)){
+				attributeTreeepresent = true;
+			}
+		}
+		if(!attributeNodepresent) {
+			createFormAttribute(eavNameNode, definition.getId());
+		}
+		if(!attributeTreeepresent){
+			createFormAttribute(eavNameTree, definition.getId());
+		}
 		getResult(contract.getId(), definition, eavNameTree, valuesTree);
 		getResult(contract.getId(), definition, eavNameNode, valuesNode);
 	}
 
+	private void createFormAttribute(String code, UUID formDefinition){
+		IdmFormAttributeDto formAttributeDto = new IdmFormAttributeDto();
+		formAttributeDto.setCode(code);
+		formAttributeDto.setName(code);
+		formAttributeDto.setFormDefinition(formDefinition);
+		formAttributeDto.setPersistentType(PersistentType.SHORTTEXT);
+		formAttributeDto.setMultiple(true);
+		formAttributeService.save(formAttributeDto);
+	}
+
 	private void getResult(UUID contract, IdmFormDefinitionDto definition, String eavName, List<String> values){
-		List resultTree = formService.saveValues(contract,
-				IdmIdentityContract.class,
-				definition,
-				eavName,
-				Lists.newArrayList(values));
-		if (resultTree == null) {
-			throw new IllegalArgumentException("Values not saved for some reason!");
+		if(values.size()>0) {
+			List resultTree = formService.saveValues(contract,
+					IdmIdentityContract.class,
+					definition,
+					eavName,
+					Lists.newArrayList(values));
+			if (resultTree == null) {
+				throw new IllegalArgumentException("Values not saved for some reason!");
+			}
 		}
 	}
 
 	public void addValues(UUID workPosition, List<String> treeValues, List<String> nodeValues) {
-		IdmTreeNodeDto idmTreeNodeDto = treeNodeService.get(workPosition);
-		List<IdmTreeNodeDto> allNodes = treeNodeService.findAllParents(idmTreeNodeDto.getId(), null);
-		allNodes.add(idmTreeNodeDto);
-		allNodes.forEach(parent -> addParentsToEav(parent.getCode(), treeValues));
-		addParentsToEav(idmTreeNodeDto.getCode(), nodeValues);
+		if(workPosition!=null) {
+			IdmTreeNodeDto idmTreeNodeDto = treeNodeService.get(workPosition);
+			if (idmTreeNodeDto != null) {
+				List<IdmTreeNodeDto> allNodes = treeNodeService.findAllParents(idmTreeNodeDto.getId(), null);
+				allNodes.add(idmTreeNodeDto);
+				allNodes.forEach(parent -> addParentsToEav(parent.getCode(), treeValues));
+				addParentsToEav(idmTreeNodeDto.getCode(), nodeValues);
+			}
+		}
 	}
 
 	public void addParentsToEav(String code, List<String> values) {
