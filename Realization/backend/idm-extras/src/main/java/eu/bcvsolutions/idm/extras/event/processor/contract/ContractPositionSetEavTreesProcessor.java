@@ -15,9 +15,15 @@ import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
 import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.api.event.processor.ContractPositionProcessor;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
-
+/**
+ * Class for setting tree structure or node to eav of contract - contract position
+ *
+ * @author Marek Klement
+ */
 @Component(ContractPositionSetEavTreesProcessor.PROCESSOR_NAME)
 @Description("Set structure to eav")
 public class ContractPositionSetEavTreesProcessor
@@ -46,14 +52,19 @@ public class ContractPositionSetEavTreesProcessor
 		filter.setId(contractPositionDto.getIdentityContract());
 		List<IdmIdentityContractDto> contracts = contractService.find(filter, null).getContent();
 		if (contracts.size() == 0) {
-			throw new IllegalArgumentException("Contracts should not be null!");
+			throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_CONTRACT_IS_NULL);
 		} else if (contracts.size() > 1) {
-			throw new IllegalArgumentException("Contracts should have just one contract!");
+			throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_MULTIPLE_CONTRACTS_FOUND);
 		}
 		IdmIdentityContractDto contract = contracts.get(0);
 		actualProcess(contract);
 		LOG.info("Attributes added successfully!");
 		return new DefaultEventResult<>(event, this);
+	}
+
+	@Override
+	public boolean conditional(EntityEvent<IdmContractPositionDto> event) {
+		return super.conditional(event);
 	}
 }
 

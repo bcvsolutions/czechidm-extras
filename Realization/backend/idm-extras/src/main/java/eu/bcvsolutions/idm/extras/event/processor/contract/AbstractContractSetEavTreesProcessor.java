@@ -15,6 +15,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmContractPositionFilter;
 import eu.bcvsolutions.idm.core.api.event.CoreEventProcessor;
 import eu.bcvsolutions.idm.core.api.event.EventType;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
 import eu.bcvsolutions.idm.core.api.service.IdmContractPositionService;
 import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
@@ -24,7 +25,13 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
+/**
+ * Abstract class for setting tree structure or node to eav of contract
+ *
+ * @author Marek Klement
+ */
 public abstract class AbstractContractSetEavTreesProcessor<E extends Serializable> extends CoreEventProcessor<E> {
 
 	public static final String EAV_CONFIG_NODE_NAME = "module.extras.processor.set-node-to-eav";
@@ -52,36 +59,40 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends Serializabl
 		//
 		String eavNameTree = configurationService.getValue(EAV_CONFIG_TREE_NAME);
 		String eavNameNode = configurationService.getValue(EAV_CONFIG_NODE_NAME);
+
+		final boolean doTreeDown = eavNameTree != null && !eavNameTree.equals("");
 		//
 		List<String> valuesTree = new LinkedList<>();
 		List<String> valuesNode = new LinkedList<>();
 		// add all tree
-		positions.forEach(position -> addValues(position.getWorkPosition(), valuesTree, valuesNode));
+		positions.forEach(position -> addValues(position.getWorkPosition(), valuesTree, valuesNode, doTreeDown));
 		// just for identityContract
-		addValues(contract.getWorkPosition(), valuesTree, valuesNode);
+		addValues(contract.getWorkPosition(), valuesTree, valuesNode, doTreeDown);
 		//
 		IdmFormDefinitionDto definition = formService.getDefinition(contract.getClass(), FormService.DEFAULT_DEFINITION_CODE);
 		boolean attributeNodepresent = false;
 		boolean attributeTreeepresent = false;
 		for (IdmFormAttributeDto attribute : definition.getFormAttributes()) {
-			if(attribute.getCode().equals(eavNameNode)){
+			if (attribute.getCode().equals(eavNameNode)) {
 				attributeNodepresent = true;
 			}
-			if(attribute.getCode().equals(eavNameTree)){
+			if (attribute.getCode().equals(eavNameTree)) {
 				attributeTreeepresent = true;
 			}
 		}
-		if(!attributeNodepresent) {
+		if (!attributeNodepresent) {
 			createFormAttribute(eavNameNode, definition.getId());
 		}
-		if(!attributeTreeepresent){
+		if (!attributeTreeepresent && doTreeDown) {
 			createFormAttribute(eavNameTree, definition.getId());
 		}
-		getResult(contract.getId(), definition, eavNameTree, valuesTree);
+		if (doTreeDown) {
+			getResult(contract.getId(), definition, eavNameTree, valuesTree);
+		}
 		getResult(contract.getId(), definition, eavNameNode, valuesNode);
 	}
 
-	private void createFormAttribute(String code, UUID formDefinition){
+	private void createFormAttribute(String code, UUID formDefinition) {
 		IdmFormAttributeDto formAttributeDto = new IdmFormAttributeDto();
 		formAttributeDto.setCode(code);
 		formAttributeDto.setName(code);
@@ -91,26 +102,28 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends Serializabl
 		formAttributeService.save(formAttributeDto);
 	}
 
-	private void getResult(UUID contract, IdmFormDefinitionDto definition, String eavName, List<String> values){
-		if(values.size()>0) {
+	private void getResult(UUID contract, IdmFormDefinitionDto definition, String eavName, List<String> values) {
+		if (values.size() > 0) {
 			List resultTree = formService.saveValues(contract,
 					IdmIdentityContract.class,
 					definition,
 					eavName,
 					Lists.newArrayList(values));
 			if (resultTree == null) {
-				throw new IllegalArgumentException("Values not saved for some reason!");
+				throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_NOT_SAVED);
 			}
 		}
 	}
 
-	public void addValues(UUID workPosition, List<String> treeValues, List<String> nodeValues) {
-		if(workPosition!=null) {
+	public void addValues(UUID workPosition, List<String> treeValues, List<String> nodeValues, boolean treeEnabled) {
+		if (workPosition != null) {
 			IdmTreeNodeDto idmTreeNodeDto = treeNodeService.get(workPosition);
 			if (idmTreeNodeDto != null) {
-				List<IdmTreeNodeDto> allNodes = treeNodeService.findAllParents(idmTreeNodeDto.getId(), null);
-				allNodes.add(idmTreeNodeDto);
-				allNodes.forEach(parent -> addParentsToEav(parent.getCode(), treeValues));
+				if (treeEnabled) {
+					List<IdmTreeNodeDto> allNodes = treeNodeService.findAllParents(idmTreeNodeDto.getId(), null);
+					allNodes.add(idmTreeNodeDto);
+					allNodes.forEach(parent -> addParentsToEav(parent.getCode(), treeValues));
+				}
 				addParentsToEav(idmTreeNodeDto.getCode(), nodeValues);
 			}
 		}

@@ -13,6 +13,11 @@ import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.api.event.processor.IdentityContractProcessor;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 
+/**
+ * Class for setting tree structure or node to eav of contract - identity contract
+ *
+ * @author Marek Klement
+ */
 @Component(IdentityContractSetEavTreesProcessor.PROCESSOR_NAME)
 @Description("Set structure to eav")
 public class IdentityContractSetEavTreesProcessor extends AbstractContractSetEavTreesProcessor<IdmIdentityContractDto>
