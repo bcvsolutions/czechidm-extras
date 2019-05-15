@@ -3,7 +3,6 @@ package eu.bcvsolutions.idm.extras.event.processor.contract;
 import java.util.List;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -102,7 +101,6 @@ public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 	}
 
 	@Test
-	@Ignore
 	public void changeStructureWhenChanged() {
 		String rootNode2a = "rootNode2a";
 		String rootNode2b = "rootNode2b";
@@ -120,27 +118,24 @@ public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 		//
 		String eavNameTree = configurationService.getValue(AbstractContractSetEavTreesProcessor.EAV_CONFIG_TREE_NAME);
 		//
-		IdmFormAttributeDto formAttributeDef = formAttributeService.findAttribute(IdmIdentityContract.class.getName(), FormService.DEFAULT_DEFINITION_CODE, eavNameTree);
-		//
 		IdmFormDefinitionDto definition = formService.getDefinition(identityContact.getClass(), FormService.DEFAULT_DEFINITION_CODE);
 		//
 		List<IdmFormValueDto> values = formService.getValues(identityContact, definition, eavNameTree);
 		Assert.assertEquals("Values size should be 2!", 2, values.size());
-		IdmFormValueDto firstBefore = values.get(0);
-		IdmFormValueDto secondBefore = values.get(1);
 		//
 		grandchildNode.setParent(rootNode2.getId());
 		treeNodeService.save(grandchildNode);
 		List<IdmFormValueDto> newValues = formService.getValues(identityContact, definition, eavNameTree);
 		Assert.assertEquals("Values size should be 2!", 2, newValues.size());
-		IdmFormValueDto firstAfter = newValues.get(0);
-		IdmFormValueDto secondAfter = newValues.get(1);
+		String firstAfter = newValues.get(0).getShortTextValue();
+		String secondAfter = newValues.get(1).getShortTextValue();
 		int counterSame = 0;
 		String sameName = "";
 		for (IdmFormValueDto val : values) {
-			if (newValues.contains(val)) {
+			String nodeName = val.getShortTextValue();
+			if (nodeName.equals(firstAfter) || nodeName.equals(secondAfter)) {
 				++counterSame;
-				sameName = val.getShortTextValue();
+				sameName = nodeName;
 			}
 		}
 		Assert.assertEquals("Amount of same records should be 1!", 1, counterSame);

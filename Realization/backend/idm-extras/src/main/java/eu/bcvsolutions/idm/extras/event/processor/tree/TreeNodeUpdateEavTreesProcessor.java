@@ -2,13 +2,14 @@ package eu.bcvsolutions.idm.extras.event.processor.tree;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
 
-import eu.bcvsolutions.idm.core.api.dto.BaseDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+import eu.bcvsolutions.idm.core.api.event.CoreEvent;
 import eu.bcvsolutions.idm.core.api.event.CoreEventProcessor;
 import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
@@ -51,15 +52,22 @@ public class TreeNodeUpdateEavTreesProcessor extends CoreEventProcessor<IdmTreeN
 
 	@Override
 	public boolean conditional(EntityEvent<IdmTreeNodeDto> event) {
-		String parent = "parent";
 		IdmTreeNodeDto content = event.getContent();
-		IdmTreeNodeDto source = event.getSource();
-		BaseDto newParent = content.getEmbedded().get(parent);
-		BaseDto oldParent = source.getEmbedded().get(parent);
+		IdmTreeNodeDto source = event.getOriginalSource();
+		if (source == null) {
+			return false;
+		}
+		UUID newParent = content.getParent();
+		UUID oldParent = source.getParent();
 		if (newParent == null && oldParent == null) {
 			return false;
 		} else if (newParent == null || oldParent == null) {
 			return true;
 		} else return !newParent.equals(oldParent);
+	}
+
+	@Override
+	public int getOrder() {
+		return CoreEvent.DEFAULT_ORDER + 1;
 	}
 }
