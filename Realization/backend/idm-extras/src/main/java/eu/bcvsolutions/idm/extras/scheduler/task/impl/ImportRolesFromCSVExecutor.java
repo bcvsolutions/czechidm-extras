@@ -3,6 +3,7 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +28,9 @@ import eu.bcvsolutions.idm.acc.dto.filter.SysSystemFilter;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.acc.service.impl.DefaultSysRoleSystemService;
+import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleService;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
@@ -37,16 +40,18 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  * This LRT imports all roles from csv to IDM
  *
  * @author Marek Klement
+ * @author Petr Hanák
  */
 @Component
 @Description("Get all roles on mapping - system and import from CSV to IDM")
-public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<Boolean> {
+public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportRolesFromCSVExecutor.class);
 
 	public static final String PARAM_CSV_FILE_PATH = "Path to file";
 	public static final String PARAM_SYSTEM_NAME = "System name";
 	public static final String PARAM_ROLES_COLUMN_NAME = "Column with name";
+	private static final char COLUMN_SEPARATOR = ';';
 
 	private String pathToFile;
 	private String systemName;
@@ -62,8 +67,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private SysSystemMappingService mappingService;
 
 	@Override
-	public Boolean process() {
-		// todo same code as in ImportFromCSVToSystemExecutor - Abstract class can be created
+	public OperationResult process() {
+		// TODO same code as in ImportFromCSVToSystemExecutor - Abstract class can be created
 		LOG.debug("Start process");
 		File fl = new File(pathToFile);
 		if (!fl.canRead()) {
@@ -79,34 +84,50 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 					ImmutableMap.of("system", systemName));
 		}
 		SysSystemDto system = systems.get(0);
-		parseCSV(system);
+		List<String> allCsvRoles = parseCSV();
+		
+		this.count = (long) allCsvRoles.size();
+		this.counter = 0L;
+		
+		for (String role : allCsvRoles) {
+			createRole(role, system);
+			
+			++this.counter;
+			if (!this.updateState()) {
+				break;
+			}
+		}
 		//
-		return true;
+		return new OperationResult.Builder(OperationState.CREATED).build();
 	}
 
 	/**
-	 * this method parse CSV file - mostly read and work with it
-	 * @param system
-	 * @return
+	 * this method parse CSV file - read and return list of roles
+	 * @return allCsvRoles
 	 */
-	private boolean parseCSV(SysSystemDto system) {
+	private List<String> parseCSV() {
 		CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
-				// todo maybe setting of separator
-				.withSeparator(';').build();
+				// TODO maybe setting of separator
+				.withSeparator(COLUMN_SEPARATOR).build();
 		CSVReader reader = null;
+		List<String> allCsvRoles = new ArrayList<>();
 		try {
 			reader = new CSVReaderBuilder(new FileReader(pathToFile)).withCSVParser(parser).build();
 			String[] header = reader.readNext();
-			//
-			int roleNumber = findRoleNumber(header);
-			if(roleNumber==-1){
-				// todo ResultCodeException
+			// find number of column with role name
+			int columnNumber = findColumnNumber(header);
+			if (columnNumber == -1) {
+				// TODO ResultCodeException
 				throw new IllegalArgumentException("Column not found!");
 			}
 			for (String[] line : reader) {
-				createRoles(line, system, roleNumber);
+				// TODO - do we split multivalued attribute by '\n'?
+				String[] roles = line[columnNumber].split("\\r?\\n");
+				for (String role : roles) {
+					allCsvRoles.add(role);
+				}
 			}
-		} catch (IOException e){
+		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
 		} finally {
 			if (reader != null) {
@@ -117,7 +138,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				}
 			}
 		}
-		return true;
+		return allCsvRoles;
 	}
 
 	/**
@@ -125,7 +146,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param header
 	 * @return
 	 */
-	private int findRoleNumber(String[] header) {
+	private int findColumnNumber(String[] header) {
 		int counterHeader = 0;
 		for (String item : header){
 			if(item.equals(rolesColumnName)){
@@ -138,36 +159,31 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 	/**
 	 * creates roles from column given in input
-	 * @param line
+	 * @param role
 	 * @param system
-	 * @param roleNumber
 	 * @return
 	 */
-	private boolean createRoles(String[] line, SysSystemDto system, int roleNumber) {
-		String lineRole = line[roleNumber];
-		// todo - do we split multivaued attribute by '\n'?
-		String[] split = lineRole.split("/n");
-		for (String role : split) {
-			IdmRoleDto roleDto = new IdmRoleDto();
-			// code should not contain spaces
-			roleDto.setCode(role.replace(' ', '_'));
-			roleDto.setName(role);
-			roleDto.setPriority(0);
-			roleDto = roleService.save(roleDto);
-			SysRoleSystemDto roleSystem = new SysRoleSystemDto();
-			roleSystem.setSystem(system.getId());
-			roleSystem.setRole(roleDto.getId());
-			// get system mapping
-			SysSystemMappingDto systemMapping = getSystemMapping(system);
-			roleSystem.setSystemMapping(systemMapping.getId());
-			roleSystemService.save(roleSystem);
-		}
+	private boolean createRole(String role, SysSystemDto system) {
+		// TODO add mapped attribute with role name to role-system mapping
+		IdmRoleDto roleDto = new IdmRoleDto();
+		// code should not contain spaces
+		roleDto.setCode(role.replace(' ', '_'));
+		roleDto.setName(role);
+		roleDto.setPriority(0);
+		roleDto = roleService.save(roleDto);
+		SysRoleSystemDto roleSystem = new SysRoleSystemDto();
+		roleSystem.setSystem(system.getId());
+		roleSystem.setRole(roleDto.getId());
+		// get system mapping
+		SysSystemMappingDto systemMapping = getSystemMapping(system);
+		roleSystem.setSystemMapping(systemMapping.getId());
+		roleSystemService.save(roleSystem);
 		return true;
 	}
 
 	/**
 	 * get system mapping from system
-	 * todo maybe change setting for mapping
+	 * TODO maybe change setting for mapping
 	 * @param system
 	 * @return
 	 */
