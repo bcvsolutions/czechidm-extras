@@ -3,6 +3,7 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSystemFilter;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
+import eu.bcvsolutions.idm.acc.service.impl.DefaultSysRoleSystemAttributeService;
 import eu.bcvsolutions.idm.acc.service.impl.DefaultSysRoleSystemService;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
@@ -61,6 +63,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private static final String PARAM_SYSTEM_NAME = "System name";
 	private static final String PARAM_ROLES_COLUMN_NAME = "Column with name";
 	private static final char COLUMN_SEPARATOR = ';';
+	private static final String OBJECT_CLASSNAME = "__ACCOUNT__";
+	private static final String MERGE_ATTRIBUTE_NAME = "rights";
 
 	private String pathToFile;
 	private String systemName;
@@ -77,26 +81,16 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	@Autowired
 	private DefaultSysRoleSystemService roleSystemService;
 	@Autowired
+	private DefaultSysRoleSystemAttributeService roleSystemAttributeService;
+	@Autowired
 	private SysSystemMappingService mappingService;
 
 	@Override
 	public OperationResult process() {
 		// TODO same code as in ImportFromCSVToSystemExecutor - Abstract class can be created
 		LOG.debug("Start process");
-		File fl = new File(pathToFile);
-		if (!fl.canRead()) {
-			throw new ResultCodeException(ExtrasResultCode.IMPORT_CANT_READ_FILE_PATH,
-					ImmutableMap.of("path", pathToFile));
-		}
-		SysSystemFilter systemFilter = new SysSystemFilter();
-		systemFilter.setCodeableIdentifier(systemName);
-		List<SysSystemDto> systems = sysSystemService.find(systemFilter, null).getContent();
-		//
-		if (systems.isEmpty()) {
-			throw new ResultCodeException(ExtrasResultCode.SYSTEM_NAME_NOT_FOUND,
-					ImmutableMap.of("system", systemName));
-		}
-		SysSystemDto system = systems.get(0);
+		validatePathToFile();
+		SysSystemDto system = findSystem();
 		List<String> allCsvRoles = parseCSV();
 		
 		if (!allCsvRoles.isEmpty()) {
@@ -105,17 +99,18 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			
 			UUID catalogueId = createCatalogue(systemName);
 			
-			for (String role : allCsvRoles) {
-				IdmRoleDto roleDto = roleService.getByCode(roleNameToCode(role));
-				if (roleDto == null) {
-					roleDto = createRole(role, system);
+			for (String roleName : allCsvRoles) {
+				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
+				if (role == null) {
+					role = createRole(roleName, system);
 				} else {
-					// TODO check and update role info
-					this.logItemProcessed(roleDto, taskNotCompleted("Role " + role + " already exists in IdM"));
+					// TODO check and update role info - updateRole
+					
+					this.logItemProcessed(role, taskNotCompleted("Role " + roleName + " already exists in IdM"));
 				}
 				
-				if (!roleIsInCatalogue(roleDto.getId(), catalogueId)) {
-					addRoleToCatalogue(roleDto, catalogueId);
+				if (!roleIsInCatalogue(role.getId(), catalogueId)) {
+					addRoleToCatalogue(role, catalogueId);
 				}
 				
 				++this.counter;
@@ -127,9 +122,31 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			//	TODO test
 			throw new ResultCodeException(ExtrasResultCode.ROLES_NOT_FOUND);
 		}
-		
 		//
 		return new OperationResult.Builder(OperationState.CREATED).build();
+	}
+	
+	private void validatePathToFile() {
+		File fl = new File(pathToFile);
+		if (!fl.canRead()) {
+			throw new ResultCodeException(ExtrasResultCode.IMPORT_CANT_READ_FILE_PATH,
+					ImmutableMap.of("path", pathToFile));
+		}
+	}
+	
+	/**
+	 * @return
+	 */
+	private SysSystemDto findSystem() {
+		SysSystemFilter systemFilter = new SysSystemFilter();
+		systemFilter.setCodeableIdentifier(systemName);
+		List<SysSystemDto> systems = sysSystemService.find(systemFilter, null).getContent();
+		//
+		if (systems.isEmpty()) {
+			throw new ResultCodeException(ExtrasResultCode.SYSTEM_NAME_NOT_FOUND,
+					ImmutableMap.of("system", systemName));
+		}
+		return systems.get(0);
 	}
 
 	/**
@@ -189,28 +206,31 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 	/**
 	 * creates roles from column given in input
-	 * @param role
+	 * assigns system to role
+	 * @param roleName
 	 * @param system
 	 * @return
 	 */
-	private IdmRoleDto createRole(String role, SysSystemDto system) {
-		IdmRoleDto roleDto = new IdmRoleDto();
-		roleDto.setCode(roleNameToCode(role));
-		roleDto.setName(role);
-		roleDto.setPriority(0);
-		roleDto = roleService.save(roleDto);
+	private IdmRoleDto createRole(String roleName, SysSystemDto system) {
+		IdmRoleDto role = new IdmRoleDto();
+		role.setCode(roleNameToCode(roleName));
+		role.setName(roleName);
+		role.setPriority(0);
+		role = roleService.save(role);
 		
+		SysSystemMappingDto systemMapping = getSystemMapping(system);
 		SysRoleSystemDto roleSystem = new SysRoleSystemDto();
 		roleSystem.setSystem(system.getId());
-		roleSystem.setRole(roleDto.getId());
-		// get system mapping
-		SysSystemMappingDto systemMapping = getSystemMapping(system);
+		roleSystem.setRole(role.getId());
 		roleSystem.setSystemMapping(systemMapping.getId());
 		roleSystemService.save(roleSystem);
-		// TODO add mapped attribute with role name to role-system mapping
 		
-		this.logItemProcessed(roleDto, taskCompleted("Role " + role + " created"));
-		return roleDto;
+		String transformationScript = MessageFormat.format("\"{0}\"", roleName);		
+		// TODO move string parameters to constants
+		roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), MERGE_ATTRIBUTE_NAME, transformationScript, OBJECT_CLASSNAME);
+		
+		this.logItemProcessed(role, taskCompleted("Role " + roleName + " created"));
+		return role;
 	}
 	
 	private String roleNameToCode(String role) {
@@ -220,13 +240,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 	/**
 	 * gets system mapping from system
-	 * TODO maybe change setting for mapping
 	 * @param system
 	 * @return
 	 */
 	private SysSystemMappingDto getSystemMapping(SysSystemDto system) {
-		List<SysSystemMappingDto> bySystem = mappingService.findBySystem(system, SystemOperationType.SYNCHRONIZATION, SystemEntityType.IDENTITY);
-		return bySystem.get(0);
+		List<SysSystemMappingDto> systemMappings = mappingService.findBySystem(system, SystemOperationType.PROVISIONING, SystemEntityType.IDENTITY);
+		return systemMappings.get(0);
 	}
 	
 	/**
@@ -238,12 +257,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		if (catalog != null) {
 		  return catalog.getId();
 		} else {
-		  IdmRoleCatalogueDto dto = new IdmRoleCatalogueDto();
-		  dto.setCode(catalogueName);
-		  dto.setName(catalogueName);
-		  dto.setParent(null);
+		  IdmRoleCatalogueDto catalogue = new IdmRoleCatalogueDto();
+		  catalogue.setCode(catalogueName);
+		  catalogue.setName(catalogueName);
+		  catalogue.setParent(null);
 
-		  return roleCatalogueService.save(dto).getId();
+		  return roleCatalogueService.save(catalogue).getId();
 		}
 	}
 	
