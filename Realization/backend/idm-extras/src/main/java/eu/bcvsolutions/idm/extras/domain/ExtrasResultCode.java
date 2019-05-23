@@ -20,7 +20,8 @@ public enum ExtrasResultCode implements ResultCode {
 	EXTRAS_CLIENT_ERROR(HttpStatus.BAD_REQUEST, "Example generated error [%s]"),
 
 	// Import CSV
-	IMPORT_CANT_READ_FILE_PATH(HttpStatus.BAD_REQUEST, "Can read the file in path [%s]."),
+	IMPORT_CANT_READ_FILE_PATH(HttpStatus.BAD_REQUEST, "Can't read the file in path [%s]."),
+	IMPORT_EMPTY_FILE_PATH(HttpStatus.BAD_REQUEST, "Empty path to CSV file."),
 	IMPORT_WRONG_LINE_LENGTH(HttpStatus.BAD_REQUEST, "On line [%s] was found some error."),
 	CONNECTOR_INSTANCE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Connector instance for system %s not found!"),
 	CONNECTOR_OBJECT_CLASS_NOT_FOUND(HttpStatus.BAD_REQUEST, "Connector object class for system %s not found!"),
