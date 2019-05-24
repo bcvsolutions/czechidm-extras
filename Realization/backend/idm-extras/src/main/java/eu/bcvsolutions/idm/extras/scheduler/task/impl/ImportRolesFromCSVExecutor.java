@@ -87,6 +87,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private String multiValueSeparator;
 	private String memberOfAttribute;
 	private Boolean canBeRequested;
+	private Boolean hasDescription;
 
 	@Autowired
 	private SysSystemService sysSystemService;
@@ -109,27 +110,28 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		LOG.debug("Start process");
 		validatePathToFile();
 		SysSystemDto system = findSystem();
-		List<String> allCsvRoles = parseCSV();
+		Map<String, String> roleDescriptions = parseCSV();
 		
-		if (!allCsvRoles.isEmpty()) {
-			this.count = (long) allCsvRoles.size();
+		if (!roleDescriptions.isEmpty()) {
+			this.count = (long) roleDescriptions.size();
 			this.counter = 0L;
 			
 			UUID catalogueId = createCatalogue(systemName);
-			
-			for (String roleName : allCsvRoles) {
+			for (String roleName : roleDescriptions.keySet()) {
+				if (roleName.length() < 1) {
+					continue;
+				}
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				if (role == null) {
-					role = createRole(roleName, system);
+					role = createRole(roleName, system, roleDescriptions.get(roleName));
 					if (!roleIsInCatalogue(role.getId(), catalogueId)) {
 						addRoleToCatalogue(role, catalogueId);
 					}
 				} else {
-					// TODO check and update role info? - updateRole
-					updateRole(role);
+					updateRole(role, roleDescriptions.get(roleName));
+					// TODO move to update role		
 					this.logItemProcessed(role, taskNotCompleted("Role " + roleName + " already exists in IdM"));
 				}
-				
 				
 				++this.counter;
 				if (!this.updateState()) {
@@ -171,7 +173,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * this method parse CSV file - read selected CSV column and return list of roles
 	 * @return
 	 */
-	private List<String> parseCSV() {
+	private Map<String, String> parseCSV() {
 		if (multiValueSeparator == null) {
 			multiValueSeparator = MULTI_VALUE_SEPARATOR;
 		}
@@ -182,26 +184,32 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			reader = new CSVReaderBuilder(new FileReader(pathToFile)).withCSVParser(parser).build();
 			String[] header = reader.readNext();
 			// find number of column with role name
-			int roleColumnNumber = findColumnNumber(header);
-			int descriptionColumnNumber = findColumnNumber(header);
-			
+			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
 			if (roleColumnNumber == -1) {
 				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", rolesColumnName));
 			}
+			//	find number of column with description name
+			int descriptionColumnNumber = -1;
+			if (hasDescription) {
+				descriptionColumnNumber = findColumnNumber(header, descriptionColumnName);				
+			}
 			
-			List<String> allCsvRoles = new ArrayList<>();
 			Map<String, String> roleDescriptions = new HashMap<>();
 			for (String[] line : reader) {
-				// TODO - do we split multivalued attribute by '\n'?
 				String[] roles = line[roleColumnNumber].split(multiValueSeparator);
-				String description = line[descriptionColumnNumber];
-				
-				for (String role : roles) {
-					allCsvRoles.add(role);
-					roleDescriptions.put(role, description);
+				//	has description
+				if (hasDescription) {					
+					String description = line[descriptionColumnNumber];
+					for (String role : roles) {
+						roleDescriptions.put(role, description);
+					}
+				} else {
+					for (String role : roles) {
+						roleDescriptions.put(role, "");
+					}
 				}
 			}
-			return allCsvRoles;
+			return roleDescriptions;
 		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
 		} finally {
@@ -220,10 +228,10 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param header
 	 * @return
 	 */
-	private int findColumnNumber(String[] header) {
+	private int findColumnNumber(String[] header, String columnName) {
 		int counterHeader = 0;
 		for (String item : header){
-			if(item.equals(rolesColumnName)){
+			if(item.equals(columnName)){
 				return counterHeader;
 			}
 			counterHeader++;
@@ -238,13 +246,15 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param system
 	 * @return
 	 */
-	private IdmRoleDto createRole(String roleName, SysSystemDto system) {
+	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description) {
 		IdmRoleDto role = new IdmRoleDto();
 		role.setCode(roleNameToCode(roleName));
 		role.setName(roleName);
 		role.setPriority(0);
 		role.setCanBeRequested(canBeRequested);
-//		role.setDescription(description);
+		if (hasDescription) {
+			role.setDescription(description);			
+		}
 		role = roleService.save(role);
 		
 		SysSystemMappingDto systemMapping = getSystemMapping(system);
@@ -271,10 +281,14 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * Updates canBeRequested and description
 	 * @param role
 	 */
-	private void updateRole(IdmRoleDto role) {
-		// TODO how to check if role can be requested?		
-		role.setCanBeRequested(canBeRequested);
-//		role.setDescription(description);
+	private void updateRole(IdmRoleDto role, String description) {
+		// TODO how to check if role can be requested?
+		if (role.isCanBeRequested() != canBeRequested) {
+			role.setCanBeRequested(canBeRequested);
+		}
+		if (role.getDescription() != description) {			
+		role.setDescription(description);
+		}
 		role = roleService.save(role);
 	}
 
@@ -365,6 +379,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
 		memberOfAttribute = getParameterConverter().toString(properties, PARAM_MEMBER_OF_ATTRIBUTE);
 		canBeRequested = getParameterConverter().toBoolean(properties, PARAM_CAN_BE_REQUESTED);
+		if (descriptionColumnName != null) {
+			hasDescription = true;
+		} else {
+			hasDescription = false;
+		}
+		
 	}
 	
 	@Override
