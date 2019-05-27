@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +51,11 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExe
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
 /**
- * This LRT imports all roles from CSV to IDM
+ * This LRT imports all roles from CSV to IdM
+ * Creates catalog with name of the connected system
+ * Adds role system mapped attribute for merge
+ * Fills / updates description
+ * Updates can be requested
  *
  * @author Marek Klement
  * @author Petr Hanák
@@ -106,16 +109,15 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 	@Override
 	public OperationResult process() {
-		// TODO same code as in ImportFromCSVToSystemExecutor - Abstract class can be created
 		LOG.debug("Start process");
 		validatePathToFile();
 		SysSystemDto system = findSystem();
 		Map<String, String> roleDescriptions = parseCSV();
-		
+
 		if (!roleDescriptions.isEmpty()) {
 			this.count = (long) roleDescriptions.size();
 			this.counter = 0L;
-			
+
 			UUID catalogueId = createCatalogue(systemName);
 			for (String roleName : roleDescriptions.keySet()) {
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
@@ -134,7 +136,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				}
 			}
 		} else {
-			//	TODO test
 			throw new ResultCodeException(ExtrasResultCode.ROLES_NOT_FOUND);
 		}
 		//
@@ -169,9 +170,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @return
 	 */
 	private Map<String, String> parseCSV() {
-		if (multiValueSeparator == null) {
-			multiValueSeparator = MULTI_VALUE_SEPARATOR;
-		}
 		CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
@@ -191,7 +189,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 					throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", descriptionColumnName));
 				}
 			}
-			
+
 			Map<String, String> roleDescriptions = new HashMap<>();
 			for (String[] line : reader) {
 				String[] roles = line[roleColumnNumber].split(multiValueSeparator);
@@ -257,21 +255,21 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			role.setDescription(description);			
 		}
 		role = roleService.save(role);
-		
+
 		SysSystemMappingDto systemMapping = getSystemMapping(system);
 		SysRoleSystemDto roleSystem = new SysRoleSystemDto();
 		roleSystem.setSystem(system.getId());
 		roleSystem.setRole(role.getId());
 		roleSystem.setSystemMapping(systemMapping.getId());
 		roleSystemService.save(roleSystem);
-		
+
 		String transformationScript = MessageFormat.format("\"{0}\"", roleName);		
 		roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttribute, transformationScript, OBJECT_CLASSNAME);
-		
+
 		this.logItemProcessed(role, taskCompleted("Role " + roleName + " created"));
 		return role;
 	}
-	
+
 	/**
 	 * Gets role name and return role code
 	 * @param roleName
@@ -281,7 +279,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		// role code should not contain spaces
 		return roleName.replace(' ', '_');
 	}
-	
+
 	/**
 	 * Updates canBeRequested and description
 	 * @param role
@@ -292,7 +290,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			role.setCanBeRequested(canBeRequested);
 			canBeReqUpdated = true;
 		}
-		if (role.getDescription() != description) {
+		if (!role.getDescription().equals(description)) {
 			role.setDescription(description);
 			descriptionUpdated = true;
 		}
@@ -313,7 +311,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		List<SysSystemMappingDto> systemMappings = mappingService.findBySystem(system, SystemOperationType.PROVISIONING, SystemEntityType.IDENTITY);
 		return systemMappings.get(0);
 	}
-	
+
 	/**
 	 * Check if catalog already exists otherwise create new one
 	 * @param catalogueName
@@ -332,7 +330,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		  return roleCatalogueService.save(catalog).getId();
 		}
 	}
-	
+
 	/**
 	 * @param code
 	 * @return
@@ -346,7 +344,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	    }
 	    return result.getContent().get(0);
 	}
-	
+
     /**
      * @param role
      * @param catalogueId
@@ -362,7 +360,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	    catRoleDto = roleCatalogueRoleService.save(catRoleDto);
 	    role = roleService.save(role);
     }
-    
+
     /**
      * @param roleId
      * @param catalogueId
@@ -391,14 +389,17 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
 		memberOfAttribute = getParameterConverter().toString(properties, PARAM_MEMBER_OF_ATTRIBUTE);
 		canBeRequested = getParameterConverter().toBoolean(properties, PARAM_CAN_BE_REQUESTED);
+		// if not filled, init multiValueSeparator and check if csv has description		
+		if (multiValueSeparator == null) {
+			multiValueSeparator = MULTI_VALUE_SEPARATOR;
+		}
 		if (descriptionColumnName != null) {
 			hasDescription = true;
 		} else {
 			hasDescription = false;
 		}
-		
 	}
-	
+
 	@Override
 	public Map<String, Object> getProperties() {
 		LOG.debug("Start getProperties");
@@ -413,7 +414,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		props.put(PARAM_CAN_BE_REQUESTED, canBeRequested);
 		return props;
 	}
-	
+
 	@Override
 	public List<IdmFormAttributeDto> getFormAttributes() {
 		IdmFormAttributeDto pathToFileAttribute = new IdmFormAttributeDto(PARAM_CSV_FILE_PATH, PARAM_CSV_FILE_PATH,
@@ -447,12 +448,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		//
 		return Lists.newArrayList(pathToFileAttribute, systemNameAttribute, rolesColumnNameAttribute, descriptionColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, memberOfAttribute, canBeRequestedAttribute);
 	}
-	
+
 	private OperationResult taskCompleted(String message) {
 		return new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
 				ImmutableMap.of("message", message))).build();
 	}
-	
+
 	private OperationResult taskNotCompleted(String message) {
 		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
 				ImmutableMap.of("message", message))).build();
