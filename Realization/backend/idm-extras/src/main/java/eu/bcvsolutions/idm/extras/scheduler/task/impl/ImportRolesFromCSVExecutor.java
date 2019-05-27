@@ -72,9 +72,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private static final String PARAM_MEMBER_OF_ATTRIBUTE = "MemberOf attribute name";
 	private static final String PARAM_CAN_BE_REQUESTED = "Can be requested";	
 
-	// Defaults	
+	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
-	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n";
+	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
 	private static final String MEMBER_OF_ATTRIBUTE = "rights";
 	private static final Boolean CAN_BE_REQUESTED = true;
 	private static final String OBJECT_CLASSNAME = "__ACCOUNT__";
@@ -118,9 +118,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			
 			UUID catalogueId = createCatalogue(systemName);
 			for (String roleName : roleDescriptions.keySet()) {
-				if (roleName.length() < 1) {
-					continue;
-				}
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				if (role == null) {
 					role = createRole(roleName, system, roleDescriptions.get(roleName));
@@ -129,8 +126,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 					}
 				} else {
 					updateRole(role, roleDescriptions.get(roleName));
-					// TODO move to update role		
-					this.logItemProcessed(role, taskNotCompleted("Role " + roleName + " already exists in IdM"));
 				}
 				
 				++this.counter;
@@ -191,21 +186,27 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			//	find number of column with description name
 			int descriptionColumnNumber = -1;
 			if (hasDescription) {
-				descriptionColumnNumber = findColumnNumber(header, descriptionColumnName);				
+				descriptionColumnNumber = findColumnNumber(header, descriptionColumnName);
+				if (descriptionColumnNumber == -1) {
+					throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", descriptionColumnName));
+				}
 			}
 			
 			Map<String, String> roleDescriptions = new HashMap<>();
 			for (String[] line : reader) {
 				String[] roles = line[roleColumnNumber].split(multiValueSeparator);
-				//	has description
 				if (hasDescription) {					
 					String description = line[descriptionColumnNumber];
 					for (String role : roles) {
-						roleDescriptions.put(role, description);
+						if (role.length() > 0) {
+							roleDescriptions.put(role, description);
+						}
 					}
 				} else {
 					for (String role : roles) {
-						roleDescriptions.put(role, "");
+						if (role.length() > 0) {
+							roleDescriptions.put(role, "");
+						}
 					}
 				}
 			}
@@ -265,16 +266,20 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		roleSystemService.save(roleSystem);
 		
 		String transformationScript = MessageFormat.format("\"{0}\"", roleName);		
-		// TODO move string parameters to constants
 		roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttribute, transformationScript, OBJECT_CLASSNAME);
 		
 		this.logItemProcessed(role, taskCompleted("Role " + roleName + " created"));
 		return role;
 	}
 	
-	private String roleNameToCode(String role) {
-		// code should not contain spaces
-		return role.replace(' ', '_');
+	/**
+	 * Gets role name and return role code
+	 * @param roleName
+	 * @return
+	 */
+	private String roleNameToCode(String roleName) {
+		// role code should not contain spaces
+		return roleName.replace(' ', '_');
 	}
 	
 	/**
@@ -282,14 +287,21 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param role
 	 */
 	private void updateRole(IdmRoleDto role, String description) {
-		// TODO how to check if role can be requested?
+		Boolean canBeReqUpdated = false, descriptionUpdated = false;
 		if (role.isCanBeRequested() != canBeRequested) {
 			role.setCanBeRequested(canBeRequested);
+			canBeReqUpdated = true;
 		}
-		if (role.getDescription() != description) {			
-		role.setDescription(description);
+		if (role.getDescription() != description) {
+			role.setDescription(description);
+			descriptionUpdated = true;
 		}
-		role = roleService.save(role);
+		if (canBeReqUpdated || descriptionUpdated) {
+			role = roleService.save(role);
+			this.logItemProcessed(role, taskCompleted("Role " + role.getName() + " updated"));			
+		} else {
+			this.logItemProcessed(role, taskNotCompleted("Nothing to update! Role name: " + role.getName()));
+		}
 	}
 
 	/**
