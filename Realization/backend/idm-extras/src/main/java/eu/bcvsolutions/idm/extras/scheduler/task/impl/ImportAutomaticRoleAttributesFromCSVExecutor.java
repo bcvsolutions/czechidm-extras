@@ -3,7 +3,6 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +22,7 @@ import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 
+import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
@@ -30,15 +30,15 @@ import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleAttributeRuleFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmAutomaticRoleAttributeRuleService;
-import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmAutomaticRoleAttributeService;
 import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleService;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
-import eu.bcvsolutions.idm.core.security.api.domain.BasePermission;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
 /**
@@ -57,9 +57,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	private static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	private static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
 	private static final String PARAM_COLUMN_FIRST_ATTRIBUTE = "Column with first attribute";
-	private static final String PARAM_COLUMN_FIRST_CONTRACT_EAV = "Column with first contract eav";
+	private static final String PARAM_FIRST_CONTRACT_EAV_NAME = "First contract eav name";
 	private static final String PARAM_COLUMN_SECOND_ATTRIBUTE = "Column with second attribute";
-	private static final String PARAM_COLUMN_SECOND_CONTRACT_EAV = "Column with second contract eav";
+	private static final String PARAM_SECOND_CONTRACT_EAV_NAME = "Second contract eav name";
 	
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
@@ -78,7 +78,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	@Autowired
 	private DefaultIdmRoleService roleService;
 	@Autowired
-	private DefaultIdmAutomaticRoleAttributeService automaticRoleAttributeService;
+	private IdmAutomaticRoleAttributeService automaticRoleAttributeService;
 	@Autowired
 	private DefaultIdmAutomaticRoleAttributeRuleService automaticRoleAttributeRuleService;
 	
@@ -93,32 +93,29 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 			this.counter = 0L;
 
 			for (String roleName : roleAttributeValues.keySet()) {
+				System.out.println(roleAttributeValues.get(roleName));
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				
 				if (role != null) {
 					List<String> attributeValues = roleAttributeValues.get(roleName);
 					// Handle first attribute
 					String firstAttributeValue = attributeValues.get(0);
-					
-//					IdmAutomaticRoleAttributeDto firstAutomaticRoleAttribute = findAutomaticAttribute(firstAttributeValue);
-					IdmAutomaticRoleAttributeRuleDto firstAutomaticRoleAttributeRule = findAutomaticAttributeRule(firstAttributeValue);
-					
-					if (firstAutomaticRoleAttributeRule != null) {
-						createAutomaticRoleAttribute(role, firstAttributeValue);
-					} else {
-						updateAutomaticRoleAttribute(role, firstAttributeValue, firstAutomaticRoleAttributeRule);
+					IdmAutomaticRoleAttributeRuleDto firstAutomaticRoleAttributeRule = findAutomaticAttributeRule(role, firstContractEavAttributeName, firstAttributeValue);
+					// Create automatic role
+					IdmAutomaticRoleAttributeDto automaticRoleAttribute = createAutomaticRoleAttribute(role, firstContractEavAttributeName, attributeValues);
+					if (firstAutomaticRoleAttributeRule == null) {
+						createAutomaticRoleAttributeRule(automaticRoleAttribute, firstContractEavAttributeName, firstAttributeValue);
 					}
 					
 					// Handle second attribute
 					if (hasSecondAttribute) {
 						String secondAttributeValue = attributeValues.get(1);
-						IdmAutomaticRoleAttributeRuleDto secondAutomaticRoleAttributeRule = findAutomaticAttributeRule(secondAttributeValue);
-						if (secondAutomaticRoleAttributeRule != null) {
-							createAutomaticRoleAttribute(role, secondAttributeValue);
-						} else {
-							updateAutomaticRoleAttribute(role, secondAttributeValue, secondAutomaticRoleAttributeRule);
+						IdmAutomaticRoleAttributeRuleDto secondAutomaticRoleAttributeRule = findAutomaticAttributeRule(role, secondContractEavAttributeName, secondAttributeValue);
+						if (secondAutomaticRoleAttributeRule == null) {
+							createAutomaticRoleAttributeRule(automaticRoleAttribute, secondContractEavAttributeName, secondAttributeValue);
 						}
 					}
+					this.logItemProcessed(role, taskCompleted("Automatic role: " + automaticRoleAttribute.getName() + " created"));
 				} else {
 					throw new ResultCodeException(ExtrasResultCode.ROLE_NOT_FOUND, ImmutableMap.of("role name", roleName));
 				}
@@ -136,69 +133,73 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	}
 	
 	/**
-	 * Create attribute
+	 * Create automatic role
 	 * 
 	 * @param role
-	 * @param attributeValues
+	 * @param attributeName
+	 * @param attributeValue
+	 * @return
 	 */
-	private void createAutomaticRoleAttribute(IdmRoleDto role, String attributeValue) {
+	private IdmAutomaticRoleAttributeDto createAutomaticRoleAttribute(IdmRoleDto role, String attributeName, List<String> attributeValues) {
 		IdmAutomaticRoleAttributeDto automaticRoleAttribute = new IdmAutomaticRoleAttributeDto();
-		automaticRoleAttribute.setName(attributeValue);
+		if (hasSecondAttribute) {
+			automaticRoleAttribute.setName(role.getName() + " | " + attributeValues.get(0) + " | " + attributeValues.get(1));
+		} else {
+			automaticRoleAttribute.setName(role.getName() + " | " + attributeValues.get(0));
+		}
 		automaticRoleAttribute.setRole(role.getId());
-		automaticRoleAttributeService.save(automaticRoleAttribute);
-		
-//		TODO find contract eav form definition
-		
+		return automaticRoleAttributeService.save(automaticRoleAttribute);
+	}
+
+	/**
+	 * Create automatic role attribute rule
+	 * 
+	 * @param automaticRoleAttribute
+	 * @param attributeName
+	 * @param attributeValue
+	 */
+	private void createAutomaticRoleAttributeRule(IdmAutomaticRoleAttributeDto automaticRoleAttribute, String attributeName, String attributeValue) {
 		IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule = new IdmAutomaticRoleAttributeRuleDto();
-		automaticRoleAttributeRule.setAttributeName(attributeValue);
 		automaticRoleAttributeRule.setAutomaticRoleAttribute(automaticRoleAttribute.getId());
 		automaticRoleAttributeRule.setType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
-//		automaticRoleAttributeRule.setFormAttribute(formAttribute.getId());
-	}
-	
-	/**
-	 * Update Attribute
-	 * 
-	 * @param role
-	 * @param attributeValues
-	 */
-	private void updateAutomaticRoleAttribute(IdmRoleDto role, String attributeValue, IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule) {
-//		automaticRoleAttributeRule.setName(attributeValue);
-//		automaticRoleAttributeRule.setRole(role.getId());
+		automaticRoleAttributeRule.setAttributeName(attributeName);
+		automaticRoleAttributeRule.setValue(attributeValue);
 		automaticRoleAttributeRuleService.save(automaticRoleAttributeRule);
 	}
 	
 	/**
 	 * Check if role has automatic attributes with requested name
 	 * 
+	 * @param attributeName
+	 * @param attributeValue
 	 * @return
 	 */
-	private IdmAutomaticRoleAttributeRuleDto findAutomaticAttributeRule(String attributeValue) {
-		IdmAutomaticRoleAttributeRuleFilter automaticRoleAttributeRuleFilter = new IdmAutomaticRoleAttributeRuleFilter();
-//		automaticRoleAttributeRuleFilter.setComparison(comparison);
-		automaticRoleAttributeRuleFilter.setValue(attributeValue);
-		
-		Page<IdmAutomaticRoleAttributeRuleDto> result = automaticRoleAttributeRuleService.find(automaticRoleAttributeRuleFilter, null);
+	private IdmAutomaticRoleAttributeRuleDto findAutomaticAttributeRule(IdmRoleDto role, String attributeName, String attributeValue) {
+		IdmAutomaticRoleFilter roleFilter = new IdmAutomaticRoleFilter();
+		roleFilter.setRoleId(role.getId());
+		roleFilter.setRuleType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
+		roleFilter.setHasRules(true);
+		Page<IdmAutomaticRoleAttributeDto> result = automaticRoleAttributeService.find(roleFilter, null);
 		if (result.getContent().size() > 0) {
-			return result.getContent().get(0);
+			IdmAutomaticRoleAttributeDto automaticRoleAttribute = result.getContent().get(0);
+			IdmAutomaticRoleAttributeRuleFilter ruleFilter = new IdmAutomaticRoleAttributeRuleFilter();
+			ruleFilter.setAutomaticRoleAttributeId(automaticRoleAttribute.getId());
+			ruleFilter.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
+			ruleFilter.setValue(attributeValue);
+			ruleFilter.setAttributeName(attributeName);
+			ruleFilter.setType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
+			Page<IdmAutomaticRoleAttributeRuleDto> rules = automaticRoleAttributeRuleService.find(ruleFilter, null);
+			if (rules.getContent().size() > 0) {
+				return rules.getContent().get(0);
+			}
 		}
 		
 		return null;
 	}
 	
 	/**
-	 * Find contract eav definition
-	 * 
-	 * @return
-	 */
-	private IdmFormAttributeDto findContractEavDefinition(String attributeValue) {
-//		IdmAutomaticRoleAttributeRuleFilter
-		
-		return null;
-	}
-	
-	/**
 	 * this method parse CSV file - read selected CSV column and return list of roles
+	 * 
 	 * @return
 	 */
 	private Map<String, List<String>> parseCSV() {
@@ -275,6 +276,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	
 	/**
 	 * finds number of column we need for name and code of role
+	 * 
 	 * @param header
 	 * @return
 	 */
@@ -291,6 +293,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	
 	/**
 	 * Gets role name and return role code
+	 * 
 	 * @param roleName
 	 * @return
 	 */
@@ -308,9 +311,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
 		firstAttributeColumnName = getParameterConverter().toString(properties, PARAM_COLUMN_FIRST_ATTRIBUTE);
-		firstContractEavAttributeName = getParameterConverter().toString(properties, PARAM_COLUMN_FIRST_CONTRACT_EAV);
+		firstContractEavAttributeName = getParameterConverter().toString(properties, PARAM_FIRST_CONTRACT_EAV_NAME);
 		secondAttributeColumnName = getParameterConverter().toString(properties, PARAM_COLUMN_SECOND_ATTRIBUTE);
-		secondContractEavAttributeName = getParameterConverter().toString(properties, PARAM_COLUMN_SECOND_CONTRACT_EAV);
+		secondContractEavAttributeName = getParameterConverter().toString(properties, PARAM_SECOND_CONTRACT_EAV_NAME);
 		// if not filled, init multiValueSeparator and check if csv has description		
 		if (multiValueSeparator == null) {
 			multiValueSeparator = MULTI_VALUE_SEPARATOR;
@@ -331,9 +334,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
 		props.put(PARAM_COLUMN_FIRST_ATTRIBUTE, firstAttributeColumnName);
-		props.put(PARAM_COLUMN_FIRST_CONTRACT_EAV, firstContractEavAttributeName);
+		props.put(PARAM_FIRST_CONTRACT_EAV_NAME, firstContractEavAttributeName);
 		props.put(PARAM_COLUMN_SECOND_ATTRIBUTE, secondAttributeColumnName);
-		props.put(PARAM_COLUMN_SECOND_CONTRACT_EAV, secondContractEavAttributeName);
+		props.put(PARAM_SECOND_CONTRACT_EAV_NAME, secondContractEavAttributeName);
 		return props;
 	}
 
@@ -355,16 +358,16 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		multiValueSeparatorAttribute.setPlaceholder("default is new line");
 		IdmFormAttributeDto columnFirstAttrAttribute = new IdmFormAttributeDto(PARAM_COLUMN_FIRST_ATTRIBUTE, PARAM_COLUMN_FIRST_ATTRIBUTE,
 				PersistentType.SHORTTEXT);
-		rolesColumnNameAttribute.setRequired(true);
-		IdmFormAttributeDto columnFirstContractEavAttribute = new IdmFormAttributeDto(PARAM_COLUMN_FIRST_CONTRACT_EAV, PARAM_COLUMN_FIRST_CONTRACT_EAV,
+		columnFirstAttrAttribute.setRequired(true);
+		IdmFormAttributeDto columnFirstContractEavAttribute = new IdmFormAttributeDto(PARAM_FIRST_CONTRACT_EAV_NAME, PARAM_FIRST_CONTRACT_EAV_NAME,
 				PersistentType.SHORTTEXT);
-		rolesColumnNameAttribute.setRequired(true);
+		columnFirstContractEavAttribute.setRequired(true);
 		IdmFormAttributeDto columnSecondAttrAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SECOND_ATTRIBUTE, PARAM_COLUMN_SECOND_ATTRIBUTE,
 				PersistentType.SHORTTEXT);
-		rolesColumnNameAttribute.setRequired(false);
-		IdmFormAttributeDto columnSecondContractEavAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SECOND_CONTRACT_EAV, PARAM_COLUMN_SECOND_CONTRACT_EAV,
+		columnSecondAttrAttribute.setRequired(false);
+		IdmFormAttributeDto columnSecondContractEavAttribute = new IdmFormAttributeDto(PARAM_SECOND_CONTRACT_EAV_NAME, PARAM_SECOND_CONTRACT_EAV_NAME,
 				PersistentType.SHORTTEXT);
-		rolesColumnNameAttribute.setRequired(false);
+		columnSecondContractEavAttribute.setRequired(false);
 		//
 		return Lists.newArrayList(pathToFileAttribute, rolesColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, columnFirstAttrAttribute, columnFirstContractEavAttribute, columnSecondAttrAttribute, columnSecondContractEavAttribute);
 	}
