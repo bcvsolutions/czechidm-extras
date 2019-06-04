@@ -11,9 +11,11 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.ext.XLogger.Level;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.data.domain.Page;
 
 import com.google.common.collect.ImmutableMap;
@@ -29,10 +31,10 @@ import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSystemFilter;
+import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService;
+import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
-import eu.bcvsolutions.idm.acc.service.impl.DefaultSysRoleSystemAttributeService;
-import eu.bcvsolutions.idm.acc.service.impl.DefaultSysRoleSystemService;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
@@ -42,11 +44,11 @@ import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueRoleService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleCatalogueRoleService;
-import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleCatalogueService;
-import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleService;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
@@ -95,15 +97,15 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	@Autowired
 	private SysSystemService sysSystemService;
 	@Autowired
-	private DefaultIdmRoleService roleService;
+	private IdmRoleService roleService;
 	@Autowired
-	private DefaultIdmRoleCatalogueService roleCatalogueService;
+	private IdmRoleCatalogueService roleCatalogueService;
 	@Autowired
-	private DefaultIdmRoleCatalogueRoleService roleCatalogueRoleService;
+	private IdmRoleCatalogueRoleService roleCatalogueRoleService;
 	@Autowired
-	private DefaultSysRoleSystemService roleSystemService;
+	private SysRoleSystemService roleSystemService;
 	@Autowired
-	private DefaultSysRoleSystemAttributeService roleSystemAttributeService;
+	private SysRoleSystemAttributeService roleSystemAttributeService;
 	@Autowired
 	private SysSystemMappingService mappingService;
 
@@ -123,11 +125,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				if (role == null) {
 					role = createRole(roleName, system, roleDescriptions.get(roleName));
-					if (!roleIsInCatalogue(role.getId(), catalogueId)) {
-						addRoleToCatalogue(role, catalogueId);
-					}
 				} else {
 					updateRole(role, roleDescriptions.get(roleName));
+				}
+				if (!roleIsInCatalogue(role.getId(), catalogueId)) {
+					addRoleToCatalogue(role, catalogueId);
 				}
 				
 				++this.counter;
@@ -154,6 +156,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @return
 	 */
 	private SysSystemDto findSystem() {
+//		System.lineSeparator
 		SysSystemFilter systemFilter = new SysSystemFilter();
 		systemFilter.setCodeableIdentifier(systemName);
 		List<SysSystemDto> systems = sysSystemService.find(systemFilter, null).getContent();
@@ -194,19 +197,17 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 			Map<String, String> roleDescriptions = new HashMap<>();
 			for (String[] line : reader) {
-				String[] roles = line[roleColumnNumber].split(multiValueSeparator);
-				if (hasDescription) {					
-					String description = line[descriptionColumnNumber];
-					for (String role : roles) {
-						if (role.length() > 0) {
-							roleDescriptions.put(role, description);
-						}
-					}
+				String[] roleNames = line[roleColumnNumber].split(multiValueSeparator);
+				String description;
+				if (hasDescription) {
+					description = line[descriptionColumnNumber];
 				} else {
-					for (String role : roles) {
-						if (role.length() > 0) {
-							roleDescriptions.put(role, "");
-						}
+					description = "";
+				}
+				for (String roleName : roleNames) {
+					if (!StringUtils.isEmpty(roleName)) {
+						System.out.println(roleName);
+						roleDescriptions.put(roleName, description);
 					}
 				}
 			}
@@ -218,14 +219,14 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				try {
 					reader.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					LOG.error("Reader exception: ", e);
 				}
 			}
 		}
 	}
 
 	/**
-	 * finds number of column we need for name and code of role
+	 * finds number of column
 	 * 
 	 * @param header
 	 * @param columnName
@@ -252,16 +253,18 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @return
 	 */
 	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description) {
+		// Create role
 		IdmRoleDto role = new IdmRoleDto();
 		role.setCode(roleNameToCode(roleName));
 		role.setName(roleName);
 		role.setPriority(0);
 		role.setCanBeRequested(canBeRequested);
 		if (hasDescription) {
-			role.setDescription(description);			
+			role.setDescription(description);
 		}
 		role = roleService.save(role);
 
+		// Create role system
 		SysSystemMappingDto systemMapping = getSystemMapping(system);
 		SysRoleSystemDto roleSystem = new SysRoleSystemDto();
 		roleSystem.setSystem(system.getId());
@@ -269,6 +272,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		roleSystem.setSystemMapping(systemMapping.getId());
 		roleSystemService.save(roleSystem);
 
+		// Create role system mapping with role name		
 		String transformationScript = MessageFormat.format("\"{0}\"", roleName);		
 		roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttribute, transformationScript, OBJECT_CLASSNAME);
 
@@ -325,17 +329,17 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	/**
 	 * Check if catalog already exists otherwise create new one
 	 * 
-	 * @param catalogueName
+	 * @param catalogueCode
 	 * @return
 	 */
-	private UUID createCatalogue(String catalogueName) {
-		IdmRoleCatalogueDto catalog = getCatalogueByCode(catalogueName);
+	private UUID createCatalogue(String catalogueCode) {
+		IdmRoleCatalogueDto catalog = getCatalogueByCode(catalogueCode);
 		if (catalog != null) {
 		  return catalog.getId();
 		} else {
 		  catalog = new IdmRoleCatalogueDto();
-		  catalog.setCode(catalogueName);
-		  catalog.setName(catalogueName);
+		  catalog.setCode(catalogueCode);
+		  catalog.setName(catalogueCode);
 		  catalog.setParent(null);
 		  
 		  return roleCatalogueService.save(catalog).getId();
@@ -435,6 +439,10 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		IdmFormAttributeDto pathToFileAttribute = new IdmFormAttributeDto(PARAM_CSV_FILE_PATH, PARAM_CSV_FILE_PATH,
 				PersistentType.SHORTTEXT);
 		pathToFileAttribute.setRequired(true);
+//		IdmFormAttributeDto pathToFileAttribute = new IdmFormAttributeDto(PARAM_CSV_FILE_PATH, PARAM_CSV_FILE_PATH,
+//				PersistentType.ATTACHMENT);
+//		pathToFileAttribute.setRequired(true);
+		
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
