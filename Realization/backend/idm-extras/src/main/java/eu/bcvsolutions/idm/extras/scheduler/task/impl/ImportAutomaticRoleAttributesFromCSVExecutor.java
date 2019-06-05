@@ -33,11 +33,13 @@ import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleAttributeRuleFilt
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleService;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmAutomaticRoleAttributeRuleService;
-import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmRoleService;
+import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
@@ -75,17 +77,28 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	private String secondContractEavAttributeName;
 	private Boolean hasSecondAttribute;
 	
+	private IdmFormAttributeDto firstFormAttribute;
+	private IdmFormAttributeDto secondFormAttribute;
+	
 	@Autowired
-	private DefaultIdmRoleService roleService;
+	private IdmRoleService roleService;
 	@Autowired
 	private IdmAutomaticRoleAttributeService automaticRoleAttributeService;
 	@Autowired
-	private DefaultIdmAutomaticRoleAttributeRuleService automaticRoleAttributeRuleService;
+	private IdmAutomaticRoleAttributeRuleService automaticRoleAttributeRuleService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
 	
 	@Override
 	public OperationResult process() {
 		LOG.debug("Start process");
 		validatePathToFile();
+		// Find and validate contract eav form attributes
+		firstFormAttribute = findFormAttribute(firstContractEavAttributeName);
+		if (hasSecondAttribute) {
+			secondFormAttribute = findFormAttribute(secondContractEavAttributeName);
+		}
+		
 		Map<String, List<String>> roleAttributeValues = parseCSV();
 
 		if (!roleAttributeValues.isEmpty()) {
@@ -93,7 +106,6 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 			this.counter = 0L;
 
 			for (String roleName : roleAttributeValues.keySet()) {
-				System.out.println(roleAttributeValues.get(roleName));
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				
 				if (role != null) {
@@ -101,20 +113,24 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 					// Handle first attribute
 					String firstAttributeValue = attributeValues.get(0);
 					IdmAutomaticRoleAttributeRuleDto firstAutomaticRoleAttributeRule = findAutomaticAttributeRule(role, firstContractEavAttributeName, firstAttributeValue);
-					// Create automatic role
-					IdmAutomaticRoleAttributeDto automaticRoleAttribute = createAutomaticRoleAttribute(role, firstContractEavAttributeName, attributeValues);
-					if (firstAutomaticRoleAttributeRule == null) {
-						createAutomaticRoleAttributeRule(automaticRoleAttribute, firstContractEavAttributeName, firstAttributeValue);
+					if (firstAutomaticRoleAttributeRule != null) {
+						this.logItemProcessed(role, taskNotCompleted("Role [" + role.getName() + "] already has rule [" + firstAutomaticRoleAttributeRule.getAttributeName() + "]"));
+						continue;
 					}
-					
 					// Handle second attribute
+					String secondAttributeValue = attributeValues.get(1);
 					if (hasSecondAttribute) {
-						String secondAttributeValue = attributeValues.get(1);
 						IdmAutomaticRoleAttributeRuleDto secondAutomaticRoleAttributeRule = findAutomaticAttributeRule(role, secondContractEavAttributeName, secondAttributeValue);
-						if (secondAutomaticRoleAttributeRule == null) {
-							createAutomaticRoleAttributeRule(automaticRoleAttribute, secondContractEavAttributeName, secondAttributeValue);
+						if (secondAutomaticRoleAttributeRule != null) {
+							this.logItemProcessed(role, taskNotCompleted("Automatic role [" + role.getName() + "] already has rule [" + secondAutomaticRoleAttributeRule.getAttributeName() + "]"));
+							continue;
 						}
 					}
+					// Create automatic role attribute
+					IdmAutomaticRoleAttributeDto automaticRoleAttribute = createAutomaticRoleAttribute(role, firstContractEavAttributeName, attributeValues);
+					createAutomaticRoleAttributeRule(automaticRoleAttribute, firstFormAttribute, firstAttributeValue);
+					createAutomaticRoleAttributeRule(automaticRoleAttribute, secondFormAttribute, secondAttributeValue);
+					// task completed
 					this.logItemProcessed(role, taskCompleted("Automatic role: " + automaticRoleAttribute.getName() + " created"));
 				} else {
 					throw new ResultCodeException(ExtrasResultCode.ROLE_NOT_FOUND, ImmutableMap.of("role name", roleName));
@@ -148,6 +164,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 			automaticRoleAttribute.setName(role.getName() + " | " + attributeValues.get(0));
 		}
 		automaticRoleAttribute.setRole(role.getId());
+		automaticRoleAttribute.setConcept(false);
 		return automaticRoleAttributeService.save(automaticRoleAttribute);
 	}
 
@@ -155,16 +172,37 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	 * Create automatic role attribute rule
 	 * 
 	 * @param automaticRoleAttribute
-	 * @param attributeName
+	 * @param contractEavAttribute
 	 * @param attributeValue
+	 * @return
 	 */
-	private void createAutomaticRoleAttributeRule(IdmAutomaticRoleAttributeDto automaticRoleAttribute, String attributeName, String attributeValue) {
+	private void createAutomaticRoleAttributeRule(IdmAutomaticRoleAttributeDto automaticRoleAttribute, IdmFormAttributeDto contractEavAttribute, String attributeValue) {
 		IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule = new IdmAutomaticRoleAttributeRuleDto();
 		automaticRoleAttributeRule.setAutomaticRoleAttribute(automaticRoleAttribute.getId());
 		automaticRoleAttributeRule.setType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
-		automaticRoleAttributeRule.setAttributeName(attributeName);
+		automaticRoleAttributeRule.setAttributeName(contractEavAttribute.getName());
 		automaticRoleAttributeRule.setValue(attributeValue);
+		automaticRoleAttributeRule.setFormAttribute(contractEavAttribute.getId());
 		automaticRoleAttributeRuleService.save(automaticRoleAttributeRule);
+	}
+	
+	/**
+	 * Find form definition attribute
+	 * 
+	 * @param attributeCode
+	 * @return
+	 */
+	private IdmFormAttributeDto findFormAttribute(String attributeCode) {
+		IdmFormAttributeFilter filter = new IdmFormAttributeFilter();
+		filter.setCode(attributeCode);
+		
+		List<IdmFormAttributeDto> result = formAttributeService.find(filter, null).getContent();
+		if (!result.isEmpty()) {
+			return result.get(0);
+		} else {
+			throw new ResultCodeException(ExtrasResultCode.CONTRACT_EAV_NOT_FOUND,
+					ImmutableMap.of("contract eav code", attributeCode));
+		}
 	}
 	
 	/**
@@ -179,9 +217,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		roleFilter.setRoleId(role.getId());
 		roleFilter.setRuleType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
 		roleFilter.setHasRules(true);
-		Page<IdmAutomaticRoleAttributeDto> result = automaticRoleAttributeService.find(roleFilter, null);
-		if (result.getContent().size() > 0) {
-			IdmAutomaticRoleAttributeDto automaticRoleAttribute = result.getContent().get(0);
+		List<IdmAutomaticRoleAttributeDto> result = automaticRoleAttributeService.find(roleFilter, null).getContent();
+		if (result.size() > 0) {
+			IdmAutomaticRoleAttributeDto automaticRoleAttribute = result.get(0);
 			IdmAutomaticRoleAttributeRuleFilter ruleFilter = new IdmAutomaticRoleAttributeRuleFilter();
 			ruleFilter.setAutomaticRoleAttributeId(automaticRoleAttribute.getId());
 			ruleFilter.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);

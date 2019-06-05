@@ -29,6 +29,7 @@ public enum ExtrasResultCode implements ResultCode {
 	COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "Column %s not found!"),
 	ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Role %s found!"),
 	ROLES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No roles found!"),
+	CONTRACT_EAV_NOT_FOUND(HttpStatus.BAD_REQUEST, "Contract eav [%s] not found!"),
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]");
 	
 	private final HttpStatus status;
