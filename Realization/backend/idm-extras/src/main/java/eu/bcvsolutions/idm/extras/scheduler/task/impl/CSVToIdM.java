@@ -16,27 +16,41 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
 public class CSVToIdM {
 	
+
 	private static final Logger LOG = LoggerFactory.getLogger(CSVToIdM.class);
 	
 	private String pathToFile;
+	private IdmAttachmentDto attachment;
 	private String rolesColumnName;
 	private String descriptionColumnName;
 	private String columnSeparator;
 	private String multiValueSeparator;
 	private Boolean hasDescription;
+	
+	private Map<String, String> roleDescriptions;
+	
+	public Map<String, String> getRoleDescriptions() {
+		return roleDescriptions;
+	}
+	
+	public void setRoleDescriptions(Map<String, String> roleDescriptions) {
+		this.roleDescriptions = roleDescriptions;
+	}
 
-	public CSVToIdM(String pathToFile, String rolesColumnName, String descriptionColumnName, String columnSeparator, String multiValueSeparator, Boolean hasDescription) {
+	public CSVToIdM(String pathToFile, IdmAttachmentDto attachment, String rolesColumnName, String descriptionColumnName, String columnSeparator, String multiValueSeparator, Boolean hasDescription) {
 		this.pathToFile = pathToFile;
+		this.attachment = attachment;
 		this.rolesColumnName = rolesColumnName;
 		this.descriptionColumnName = descriptionColumnName;
 		this.columnSeparator = columnSeparator;
 		this.multiValueSeparator = multiValueSeparator;
 		this.hasDescription = hasDescription;
-		// TODO Auto-generated constructor stub
+		this.roleDescriptions = parseCSV();
 	}
 	
 	/**
@@ -50,7 +64,8 @@ public class CSVToIdM {
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
 		try {
-			reader = new CSVReaderBuilder(new FileReader(pathToFile)).withCSVParser(parser).build();
+//			reader = new CSVReaderBuilder(new FileReader(pathToFile)).withCSVParser(parser).build();
+			reader = new CSVReaderBuilder(new FileReader(attachment.getContentPath())).withCSVParser(parser).build();
 			String[] header = reader.readNext();
 			// find number of column with role name
 			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
@@ -77,7 +92,6 @@ public class CSVToIdM {
 				}
 				for (String roleName : roleNames) {
 					if (!StringUtils.isEmpty(roleName)) {
-						System.out.println(roleName);
 						roleDescriptions.put(roleName, description);
 					}
 				}
