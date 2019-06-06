@@ -29,6 +29,7 @@ public enum ExtrasResultCode implements ResultCode {
 	SYSTEM_SCHEMA_ATTRIBUTES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No attributes for object class name %s on system %s were found"),
 	COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "Column %s not found!"),
 	ROLES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No roles found!"),
+	WRONG_FILE_FORMAT(HttpStatus.BAD_REQUEST, "Selected file is not in CSV format!"),
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]");
 	
 	private final HttpStatus status;

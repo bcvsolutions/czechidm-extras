@@ -1,6 +1,5 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.File;
 import java.io.InputStream;
 import java.text.MessageFormat;
 import java.util.List;
@@ -41,7 +40,6 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
@@ -62,7 +60,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportRolesFromCSVExecutor.class);
 
-	private static final String PARAM_CSV_FILE_PATH = "Path to file";
 	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
 	private static final String PARAM_SYSTEM_NAME = "System name";
 	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
@@ -79,7 +76,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private static final Boolean CAN_BE_REQUESTED = true;
 	private static final String OBJECT_CLASSNAME = "__ACCOUNT__";
 
-	private String pathToFile;
 	private UUID attachmentId;
 	private String systemName;
 	private String rolesColumnName;
@@ -110,25 +106,20 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	@Override
 	public OperationResult process() {
 		LOG.debug("Start process");
-		validatePathToFile();
 		SysSystemDto system = findSystem();
+		if (!attachmentManager.get(attachmentId).getMimetype().contains("text/csv")) {
+			throw new ResultCodeException(ExtrasResultCode.WRONG_FILE_FORMAT);
+		}
+		InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
 		
-		IdmAttachmentDto attachment = attachmentManager.get(attachmentId);
-		System.out.println("ATTACHMENT DETAILS");
-		System.out.println(attachment.getContentPath());
-		System.out.println(attachment.getName());
-		System.out.println(attachment.getMimetype());
-		System.out.println(attachment.getEncoding());
-//		InputStream inputStream = attachmentManager.getAttachmentData(attachment.getId());
-		
-		CSVToIdM myParser = new CSVToIdM(pathToFile, attachment, rolesColumnName, descriptionColumnName, columnSeparator, multiValueSeparator, hasDescription);
+		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, descriptionColumnName, columnSeparator, multiValueSeparator, hasDescription);
 		Map<String, String> roleDescriptions = myParser.getRoleDescriptions();
 
 		if (!roleDescriptions.isEmpty()) {
 			this.count = (long) roleDescriptions.size();
 			this.counter = 0L;
 
-			UUID catalogueId = createCatalogue(systemName);
+			UUID catalogueId = createCatalogue(rolesColumnName);
 			for (String roleName : roleDescriptions.keySet()) {
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				if (role == null) {
@@ -150,14 +141,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		}
 		//
 		return new OperationResult.Builder(OperationState.CREATED).build();
-	}
-
-	private void validatePathToFile() {
-		File fl = new File(pathToFile);
-		if (!fl.canRead()) {
-			throw new ResultCodeException(ExtrasResultCode.IMPORT_CANT_READ_FILE_PATH,
-					ImmutableMap.of("path", pathToFile));
-		}
 	}
 
 	/**
@@ -333,7 +316,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public void init(Map<String, Object> properties) {
 		LOG.debug("Start init");
 		super.init(properties);
-		pathToFile = getParameterConverter().toString(properties, PARAM_CSV_FILE_PATH);
 		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
 		descriptionColumnName = getParameterConverter().toString(properties, PARAM_DESCRIPTION_COLUMN_NAME);
@@ -357,7 +339,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public Map<String, Object> getProperties() {
 		LOG.debug("Start getProperties");
 		Map<String, Object> props = super.getProperties();
-		props.put(PARAM_CSV_FILE_PATH, pathToFile);
 		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
 		props.put(PARAM_DESCRIPTION_COLUMN_NAME, descriptionColumnName);
@@ -371,13 +352,14 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 	@Override
 	public List<IdmFormAttributeDto> getFormAttributes() {
-		IdmFormAttributeDto pathToFileAttribute = new IdmFormAttributeDto(PARAM_CSV_FILE_PATH, PARAM_CSV_FILE_PATH,
-				PersistentType.SHORTTEXT);
-		pathToFileAttribute.setRequired(true);
-		// csv file attachment		
+		// csv file attachment
 		IdmFormAttributeDto csvAttachment = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT, PARAM_CSV_ATTACHMENT,
 				PersistentType.ATTACHMENT);
 		csvAttachment.setRequired(true);
+		if (attachmentId != null) {
+			csvAttachment.setDefaultValue(attachmentId.toString());
+			csvAttachment.setPlaceholder(attachmentId.toString());
+		}
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
@@ -404,7 +386,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		canBeRequestedAttribute.setDefaultValue(String.valueOf(CAN_BE_REQUESTED));
 		canBeRequestedAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(pathToFileAttribute, csvAttachment, rolesColumnNameAttribute, descriptionColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, systemNameAttribute, memberOfAttribute, canBeRequestedAttribute);
+		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, descriptionColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, systemNameAttribute, memberOfAttribute, canBeRequestedAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {

@@ -1,7 +1,9 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.FileReader;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,16 +18,13 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
 public class CSVToIdM {
 	
-
 	private static final Logger LOG = LoggerFactory.getLogger(CSVToIdM.class);
 	
-	private String pathToFile;
-	private IdmAttachmentDto attachment;
+	private InputStream attachmentData;
 	private String rolesColumnName;
 	private String descriptionColumnName;
 	private String columnSeparator;
@@ -42,9 +41,8 @@ public class CSVToIdM {
 		this.roleDescriptions = roleDescriptions;
 	}
 
-	public CSVToIdM(String pathToFile, IdmAttachmentDto attachment, String rolesColumnName, String descriptionColumnName, String columnSeparator, String multiValueSeparator, Boolean hasDescription) {
-		this.pathToFile = pathToFile;
-		this.attachment = attachment;
+	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String descriptionColumnName, String columnSeparator, String multiValueSeparator, Boolean hasDescription) {
+		this.attachmentData = attachmentData;
 		this.rolesColumnName = rolesColumnName;
 		this.descriptionColumnName = descriptionColumnName;
 		this.columnSeparator = columnSeparator;
@@ -64,8 +62,9 @@ public class CSVToIdM {
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
 		try {
-//			reader = new CSVReaderBuilder(new FileReader(pathToFile)).withCSVParser(parser).build();
-			reader = new CSVReaderBuilder(new FileReader(attachment.getContentPath())).withCSVParser(parser).build();
+			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
+			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
+			
 			String[] header = reader.readNext();
 			// find number of column with role name
 			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
