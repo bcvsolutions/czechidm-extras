@@ -28,7 +28,6 @@ public enum ExtrasResultCode implements ResultCode {
 	CONNECTOR_OBJECT_CLASS_NOT_FOUND(HttpStatus.BAD_REQUEST, "Connector object class for system %s not found!"),
 	SYSTEM_NAME_NOT_FOUND(HttpStatus.BAD_REQUEST, "System with name [%s] was not found."),
 	SYSTEM_SCHEMA_ATTRIBUTES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No attributes for object class name %s on system %s were found"),
-
 	SET_EAV_TREES_NODE_IS_NULL(HttpStatus.BAD_REQUEST, "nodeCode is null!"),
 	SET_EAV_TREES_SIZE_OF_NODES_IS_ZERO(HttpStatus.BAD_REQUEST, "Size of nodes found should not be 0. Check if code is right."),
 	SET_EAV_TREES_SIZE_OF_NODES_IS_NOT_ONE(HttpStatus.BAD_REQUEST, "Size of nodes found should not be more than 1."),
@@ -42,7 +41,6 @@ public enum ExtrasResultCode implements ResultCode {
 	CONTRACT_EAV_NOT_FOUND(HttpStatus.BAD_REQUEST, "Contract eav [%s] not found!"),
 	WRONG_FILE_FORMAT(HttpStatus.BAD_REQUEST, "Selected file is not in CSV format!"),
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]"),
-
 	IDENTITY_ROLE_CANNOT_BE_MODIFIED(HttpStatus.BAD_REQUEST, "Role [%s] cannot be modified, you are not guarantee of the role!");
 	
 	private final HttpStatus status;
