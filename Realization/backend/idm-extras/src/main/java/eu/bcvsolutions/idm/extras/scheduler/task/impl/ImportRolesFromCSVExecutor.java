@@ -40,6 +40,7 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
@@ -110,6 +111,13 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		if (!attachmentManager.get(attachmentId).getMimetype().contains("text/csv")) {
 			throw new ResultCodeException(ExtrasResultCode.WRONG_FILE_FORMAT);
 		}
+		// zkusit nasetovat id LRT do owner ID
+		IdmAttachmentDto attachment = attachmentManager.get(attachmentId);
+		System.out.println(attachment.getOwnerId());
+		attachment.setOwnerId(this.getScheduledTaskId());
+		attachmentManager.save(attachment);
+		System.out.println(attachment.getOwnerId());
+		
 		InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
 		
 		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, descriptionColumnName, columnSeparator, multiValueSeparator, hasDescription);
