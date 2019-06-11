@@ -1,30 +1,39 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.FileReader;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+
 import org.joda.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
+import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
 import eu.bcvsolutions.idm.core.api.domain.CoreResultCode;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
@@ -56,34 +65,31 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  */
 @Component
 @Description("Parses input CSV (path as parameter) and assigns roles to user contracts. Only role assignment is allowed.")
-public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecutor<OperationResult> {
+public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecutor<OperationResult> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ImportCSVUserRolesContractTask.class);
-	
-	private static final String PARAM_CSV_FILE_NAME = "Path to csv file";
+	private static final Logger LOG = LoggerFactory.getLogger(ImportCSVUserContractRolesTask.class);
+
 	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
 	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
 	private static final String PARAM_USERNAME_COLUMN_NAME = "Column with username";
 	private static final String PARAM_CONTRACT_EAV_COLUMN_NAME = "Column with contract eav";
 	private static final String PARAM_CONTRACT_EAV_NAME = "Name of contract eav attribute";
 	private static final String PARAM_COLUMN_SEPARATOR = "Column separator";
-	private static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
-	
-	private static final String EAV_CICIN = "cicin";
-	private static final String USERNAME_CICIN_KEY_SEPARATOR = ";";
+
+	private static final String USERNAME_CONTRACT_KEY_SEPARATOR = ";"; // separator for double keys
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
 	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
-	
+
 	private UUID attachmentId;
-	private String csvPath;
 	private String rolesColumnName;
 	private String usernameColumnName;
 	private String contractEavColumnName;
 	private String contractEavName;
 	private String columnSeparator;
 	private String multiValueSeparator;
+
 	private List<IdmRoleDto> idmRoles;
 
 	@Autowired private IdmIdentityService identityService;
@@ -93,74 +99,96 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 	@Autowired private IdmConceptRoleRequestService conceptRoleRequestService;
 	@Autowired private IdmIdentityContractService identityContractService;
 	@Autowired private FormService formService;
+	@Autowired private AttachmentManager attachmentManager;
 
 	@Override
 	public OperationResult process() {
-		if (csvPath == null) {
-			throw new IllegalArgumentException("CSV path must be defined.");
-		}
 		//
-		Map<String, List<String>> userContractsToRoles = new TreeMap<>();
-		List<String> allCsvRoles = new ArrayList<>();
-
 		IdmRoleFilter roleFilter = new IdmRoleFilter();
 		idmRoles = roleService.find(roleFilter, null).getContent();
+
+		Map<String, List<String>> userContractEavsToRoles = new TreeMap<>();
+		List<String> allCsvRoles = new ArrayList<>();
 		try {
-			FileReader reader = new FileReader(csvPath);
-			CSVParser csv = getDefaultFormat().parse(reader);
-			LOG.info("---rolebulk Headers map: [{}]", csv.getHeaderMap());
-			for (CSVRecord record : csv.getRecords()) {
-				LOG.info("---rolebulk Processing record: [{}]", record.toMap());
-				String csvUsername = record.get(usernameColumnName);
-				String csvRole = record.get(rolesColumnName);
-				String csvCicin = record.get(contractEavColumnName);
-				String usernameCicinKey = csvUsername + USERNAME_CICIN_KEY_SEPARATOR + csvCicin;
-				if (csvRole.length() == 0 || csvUsername.length() == 0) {
-					continue;
-				}
-				if (!userContractsToRoles.containsKey(usernameCicinKey)) {
-					userContractsToRoles.put(usernameCicinKey, new ArrayList<>());
-				}
-				if(!allCsvRoles.contains(csvRole)) {
-					allCsvRoles.add(csvRole);
-				}
-				userContractsToRoles.get(usernameCicinKey).add(csvRole);
-			}
-		} catch (IOException e) {
-			LOG.error("An error occurred while reading input CSV file [{}], error: [{}].", csvPath, e);
-			throw new ResultCodeException(CoreResultCode.NOT_FOUND, "File '" + csvPath + "' not found.", e);
-		}
-		
-		// map roleName - IdmRoleDto for every assignment, also cleans role names that are not in IdM from the list
-		Map<String, IdmRoleDto> namesAndRoles = getRolesToMap(allCsvRoles);
-		
-		//
-		this.count = (long) userContractsToRoles.size();
-		this.counter = 0L;
-		
-		for (String usernameCicin : userContractsToRoles.keySet()) {
-			String[] usernameCicinSplit = usernameCicin.split(USERNAME_CICIN_KEY_SEPARATOR);
-			String username = usernameCicinSplit[0];
-			String cicin = null;
-			if (usernameCicinSplit.length > 1) {
-				cicin = usernameCicinSplit[1];				
+			// Parse CSV
+			CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
+					.withSeparator(columnSeparator.charAt(0)).build();
+			CSVReader reader = null;
+			// Check attachment id			
+			if (attachmentId != null) {
+				InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
+				BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
+				reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
+			} else {
+				throw new ResultCodeException(ExtrasResultCode.EMPTY_ATTACHMENT_ID);
 			}
 			
-			LOG.info("---rolebulk username: [{}], roles: [{}]", username, userContractsToRoles.get(usernameCicin));
+			String[] header = reader.readNext();
+			// find number of column with users
+			int usernameColumnNumber = findColumnNumber(header, usernameColumnName);
+			if (usernameColumnNumber == -1) {
+				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", usernameColumnName));
+			}
+			// find number of column with roles
+			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
+			if (roleColumnNumber == -1) {
+				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", rolesColumnName));
+			}
+			// find number of column with contract eav
+			int contractEavColumnNumber = findColumnNumber(header, contractEavColumnName);
+			if (contractEavColumnNumber == -1) {
+				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", contractEavColumnName));
+			}
+			
+			for (String[] line : reader) {
+				String username = line[usernameColumnNumber];
+				String contractEav = line[contractEavColumnNumber];
+				String roleName = line[roleColumnNumber];
+				String usernameContractEavKey = username + USERNAME_CONTRACT_KEY_SEPARATOR + contractEav;
+				if (!StringUtils.isEmpty(roleName) && !StringUtils.isEmpty(username)) {
+					if(!allCsvRoles.contains(roleName)) {
+						allCsvRoles.add(roleName);
+					}
+					if (!userContractEavsToRoles.containsKey(usernameContractEavKey)) {
+						userContractEavsToRoles.put(usernameContractEavKey, new ArrayList<>());
+					}
+					userContractEavsToRoles.get(usernameContractEavKey).add(roleName);
+				}
+			}
+		} catch (IOException e) {
+			IdmAttachmentDto attachment = attachmentManager.get(attachmentId);
+			LOG.error("An error occurred while reading input CSV file [{}], error: [{}].", attachment.getName(), e);
+			throw new ResultCodeException(CoreResultCode.NOT_FOUND, "File '" + attachment.getName() + "' not found.", e);
+		}
+		// map roleName - IdmRoleDto for every assignment, also cleans role names that are not in IdM from the list
+		Map<String, IdmRoleDto> namesAndRoles = getRolesToMap(allCsvRoles);
+		//
+		this.count = (long) userContractEavsToRoles.size();
+		this.counter = 0L;
+		
+		for (String usernameContractEav : userContractEavsToRoles.keySet()) {
+			String[] usernameContractEavSplit = usernameContractEav.split(USERNAME_CONTRACT_KEY_SEPARATOR);
+			String username = usernameContractEavSplit[0];
+			String contractEavCsvValue = null;
+			if (usernameContractEavSplit.length > 1) {
+				contractEavCsvValue = usernameContractEavSplit[1];
+			}
+			
+			LOG.info("---rolebulk username: [{}], roles: [{}]", username, userContractEavsToRoles.get(usernameContractEav));
 			IdmIdentityDto identity = getIdentityByUsername(username);
 			if (identity == null) {
 				LOG.warn("---rolebulk identity for username [{}] does not exist.", username);
 				continue;
 			}
 			
-			List<String> roleNames = userContractsToRoles.get(usernameCicin);
+			List<String> roleNames = userContractEavsToRoles.get(usernameContractEav);
 			
 			if (roleNames.isEmpty()) {
-				this.logItemProcessed(identity, taskNotCompleted("There are no roles to assign for user: " + username + ", cicin: " + cicin + " in CSV file!"));
-				LOG.warn("---rolebulk roles are empty for user [{}], cicin [{}] check your input CSV.", username, cicin);
+				this.logItemProcessed(identity, taskNotCompleted("There are no roles to assign for user: " + username + ", contract eav: " + contractEavCsvValue + " in CSV file!"));
+				LOG.warn("---rolebulk roles are empty for user [{}], contract eav [{}] check your input CSV.", username, contractEavCsvValue);
 				continue;
 			}
-			// find contract to add roles by eav cicin. If cicin is null, find all contracts..
+			// find contract to add roles by contract eav. If contract eav is null, find all contracts..
 			List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identity.getId(), LocalDate.now(), null);
 			if (contracts == null) {
 				this.logItemProcessed(identity, taskNotCompleted("User " + username + " does not have any valid contract."));
@@ -168,14 +196,14 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 				continue;
 			}
 			
-			// will get role DTO's that exists in IdM from namesAndRoles list			
+			// will get role DTO's that exists in IdM from namesAndRoles list
 			List<IdmRoleDto> roles = getContractRoles(namesAndRoles, roleNames);
 			
-			if (cicin != null) {
-				IdmIdentityContractDto contract = getContractByCicin(contracts, cicin);
+			if (contractEavCsvValue != null) {
+				IdmIdentityContractDto contract = getContractByEav(contracts, contractEavCsvValue);
 				if (contract == null) {
-					LOG.warn("---rolebulk There is no contract with cicin [{}] for user [{}]", cicin, username);
-					this.logItemProcessed(identity, taskNotCompleted("There is no contract with cicin " + cicin + " for user "+ username +" in IdM!"));
+					LOG.warn("---rolebulk There is no contract with contract eav [{}] for user [{}]", contractEavCsvValue, username);
+					this.logItemProcessed(identity, taskNotCompleted("There is no contract with contract eav " + contractEavCsvValue + " for user "+ username +" in IdM!"));
 					continue;
 				}
 				// filter already assigned roles
@@ -212,12 +240,6 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 		}
 		return new OperationResult.Builder(OperationState.CREATED).build();
 	}
-
-	private final CSVFormat getDefaultFormat() {
-		return CSVFormat.DEFAULT
-					   .withFirstRecordAsHeader()
-					   .withDelimiter(',');
-	}
 	
 	private Map<String, IdmRoleDto> getRolesToMap(List<String> roles) {
 		Map<String, IdmRoleDto> namesAndRoles = new HashMap<>();
@@ -233,12 +255,12 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 		return namesAndRoles;
 	}
 	
-	private IdmIdentityContractDto getContractByCicin(List<IdmIdentityContractDto> contracts, String cicin) {
+	private IdmIdentityContractDto getContractByEav(List<IdmIdentityContractDto> contracts, String contractEavCsvValue) {
 		for (IdmIdentityContractDto contract : contracts) {
-//			get cicin from eav of contract
-			if (getEavValueForContract(contract.getId(), EAV_CICIN) != null) {
-				String contractEavCicin = getEavValueForContract(contract.getId(), EAV_CICIN).toString();
-				if (contractEavCicin != null && contractEavCicin.equals(cicin)) {
+//			get contract eav from contract
+			if (getEavValueForContract(contract.getId(), contractEavName) != null) {
+				String contractEavValue = getEavValueForContract(contract.getId(), contractEavName).toString();
+				if (contractEavValue != null && contractEavValue.equals(contractEavCsvValue)) {
 					return contract;
 				}
 			}
@@ -319,19 +341,42 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 	public Object getEavValueForContract(UUID contractId, String attributeCode) {
 		return getOneValue(formService.getValues(contractId, IdmIdentityContractDto.class, attributeCode).stream().findFirst());
 	}
+	
+	public static Object getOneValue(Optional<IdmFormValueDto> value) {
+		if (value.isPresent()) {
+			return value.get().getValue();
+		}
+		return null;
+	}
+	
+	/**
+	 * finds number of column
+	 * 
+	 * @param header
+	 * @param columnName
+	 * @return
+	 */
+	private int findColumnNumber(String[] header, String columnName) {
+		int counterHeader = 0;
+		for (String item : header){
+			if(item.equals(columnName)){
+				return counterHeader;
+			}
+			counterHeader++;
+		}
+		return -1;
+	}
 
 	@Override
 	public void init(Map<String, Object> properties) {
 		LOG.debug("Start init");
 		super.init(properties);
 		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
-		csvPath = getParameterConverter().toString(properties, PARAM_CSV_FILE_NAME);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
 		usernameColumnName = getParameterConverter().toString(properties, PARAM_USERNAME_COLUMN_NAME);
 		contractEavColumnName = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_COLUMN_NAME);
 		contractEavName = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_NAME);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
-		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
 		// if not filled, init multiValueSeparator and check if csv has description
 		if (multiValueSeparator == null) {
 			multiValueSeparator = MULTI_VALUE_SEPARATOR;
@@ -342,14 +387,12 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 	public Map<String, Object> getProperties() {
 		LOG.debug("Start getProperties");
 		Map<String, Object> props = super.getProperties();
-		props.put(PARAM_CSV_FILE_NAME, csvPath);
 		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
 		props.put(PARAM_USERNAME_COLUMN_NAME, usernameColumnName);
 		props.put(PARAM_CONTRACT_EAV_COLUMN_NAME, contractEavColumnName);
 		props.put(PARAM_CONTRACT_EAV_NAME, contractEavName);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
-		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
 		return props;
 	}
 
@@ -359,9 +402,6 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 		IdmFormAttributeDto csvAttachment = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT, PARAM_CSV_ATTACHMENT,
 				PersistentType.ATTACHMENT);
 		csvAttachment.setRequired(true);
-		IdmFormAttributeDto csvFileNameAttribute = new IdmFormAttributeDto(PARAM_CSV_FILE_NAME, PARAM_CSV_FILE_NAME,
-				PersistentType.SHORTTEXT);
-		csvFileNameAttribute.setRequired(true);
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
@@ -378,12 +418,8 @@ public class ImportCSVUserRolesContractTask extends AbstractSchedulableTaskExecu
 				PersistentType.CHAR);
 		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
 		columnSeparatorAttribute.setRequired(true);
-		IdmFormAttributeDto multiValueSeparatorAttribute = new IdmFormAttributeDto(PARAM_MULTI_VALUE_SEPARATOR, PARAM_MULTI_VALUE_SEPARATOR,
-				PersistentType.CHAR);
-		multiValueSeparatorAttribute.setRequired(false);
-		multiValueSeparatorAttribute.setPlaceholder("default is new line");
 		//
-		return Lists.newArrayList(csvAttachment, csvFileNameAttribute, rolesColumnNameAttribute, usernameColumnNameAttribute, contractEavColumnNameAttribute, contractEavNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute);
+		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, usernameColumnNameAttribute, contractEavColumnNameAttribute, contractEavNameAttribute, columnSeparatorAttribute);
 	}
 	
 	private OperationResult taskCompleted(String message) {

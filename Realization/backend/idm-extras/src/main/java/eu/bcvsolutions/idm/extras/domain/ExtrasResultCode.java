@@ -41,7 +41,8 @@ public enum ExtrasResultCode implements ResultCode {
 	CONTRACT_EAV_NOT_FOUND(HttpStatus.BAD_REQUEST, "Contract eav [%s] not found!"),
 	WRONG_FILE_FORMAT(HttpStatus.BAD_REQUEST, "Selected file is not in CSV format!"),
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]"),
-	IDENTITY_ROLE_CANNOT_BE_MODIFIED(HttpStatus.BAD_REQUEST, "Role [%s] cannot be modified, you are not guarantee of the role!");
+	IDENTITY_ROLE_CANNOT_BE_MODIFIED(HttpStatus.BAD_REQUEST, "Role [%s] cannot be modified, you are not guarantee of the role!"),
+	EMPTY_ATTACHMENT_ID(HttpStatus.BAD_REQUEST, "Choose file to import!");
 	
 	private final HttpStatus status;
 	private final String message;
