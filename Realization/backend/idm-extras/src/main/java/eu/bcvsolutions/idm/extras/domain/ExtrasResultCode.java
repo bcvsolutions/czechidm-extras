@@ -26,8 +26,8 @@ public enum ExtrasResultCode implements ResultCode {
 	CONNECTOR_OBJECT_CLASS_NOT_FOUND(HttpStatus.BAD_REQUEST, "Connector object class for system %s not found!"),
 	SYSTEM_NAME_NOT_FOUND(HttpStatus.BAD_REQUEST, "System with name [%s] was not found."),
 	SYSTEM_SCHEMA_ATTRIBUTES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No attributes for object class name %s on system %s were found"),
-	COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "Column %s not found!"),
-	ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Role %s found!"),
+	COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "Column [%s] not found!"),
+	ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Role[%s] not found!"),
 	ROLES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No roles found!"),
 	CONTRACT_EAV_NOT_FOUND(HttpStatus.BAD_REQUEST, "Contract eav [%s] not found!"),
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]");

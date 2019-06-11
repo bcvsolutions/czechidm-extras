@@ -1,12 +1,14 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.File;
-import java.io.FileReader;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,7 @@ import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
@@ -54,20 +57,20 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleAttributesFromCSVExecutor.class);
 	
-	private static final String PARAM_CSV_FILE_PATH = "Path to file";
+	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
 	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
 	private static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	private static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
 	private static final String PARAM_COLUMN_FIRST_ATTRIBUTE = "Column with first attribute";
-	private static final String PARAM_FIRST_CONTRACT_EAV_NAME = "First contract eav name";
+	private static final String PARAM_FIRST_CONTRACT_EAV_NAME = "First contract eav code";
 	private static final String PARAM_COLUMN_SECOND_ATTRIBUTE = "Column with second attribute";
-	private static final String PARAM_SECOND_CONTRACT_EAV_NAME = "Second contract eav name";
+	private static final String PARAM_SECOND_CONTRACT_EAV_NAME = "Second contract eav code";
 	
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
 	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
 
-	private String pathToFile;
+	private UUID attachmentId;
 	private String rolesColumnName;
 	private String columnSeparator;
 	private String multiValueSeparator;
@@ -81,6 +84,8 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	private IdmFormAttributeDto secondFormAttribute;
 	
 	@Autowired
+	private AttachmentManager attachmentManager;
+	@Autowired
 	private IdmRoleService roleService;
 	@Autowired
 	private IdmAutomaticRoleAttributeService automaticRoleAttributeService;
@@ -92,7 +97,6 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	@Override
 	public OperationResult process() {
 		LOG.debug("Start process");
-		validatePathToFile();
 		// Find and validate contract eav form attributes
 		firstFormAttribute = findFormAttribute(firstContractEavAttributeName);
 		if (hasSecondAttribute) {
@@ -130,10 +134,13 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 					IdmAutomaticRoleAttributeDto automaticRoleAttribute = createAutomaticRoleAttribute(role, firstContractEavAttributeName, attributeValues);
 					createAutomaticRoleAttributeRule(automaticRoleAttribute, firstFormAttribute, firstAttributeValue);
 					createAutomaticRoleAttributeRule(automaticRoleAttribute, secondFormAttribute, secondAttributeValue);
+					// It's important to confirm concept after setting all parameters of automaticRoleAttribute					
+					automaticRoleAttribute.setConcept(false);
+					automaticRoleAttributeService.save(automaticRoleAttribute);
 					// task completed
 					this.logItemProcessed(role, taskCompleted("Automatic role: " + automaticRoleAttribute.getName() + " created"));
 				} else {
-					throw new ResultCodeException(ExtrasResultCode.ROLE_NOT_FOUND, ImmutableMap.of("role name", roleName));
+					LOG.debug("Role [" + roleName + "] not found.");
 				}
 				
 				++this.counter;
@@ -164,7 +171,6 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 			automaticRoleAttribute.setName(role.getName() + " | " + attributeValues.get(0));
 		}
 		automaticRoleAttribute.setRole(role.getId());
-		automaticRoleAttribute.setConcept(false);
 		return automaticRoleAttributeService.save(automaticRoleAttribute);
 	}
 
@@ -245,7 +251,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
 		try {
-			reader = new CSVReaderBuilder(new FileReader(pathToFile)).withCSVParser(parser).build();
+			InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
+			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
+			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
 			String[] header = reader.readNext();
 			
 			// find number of column with role name
@@ -302,17 +310,6 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	}
 	
 	/**
-	 * Check if path to CSV file is valid
-	 */
-	private void validatePathToFile() {
-		File fl = new File(pathToFile);
-		if (!fl.canRead()) {
-			throw new ResultCodeException(ExtrasResultCode.IMPORT_CANT_READ_FILE_PATH,
-					ImmutableMap.of("path", pathToFile));
-		}
-	}
-	
-	/**
 	 * finds number of column we need for name and code of role
 	 * 
 	 * @param header
@@ -344,7 +341,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	public void init(Map<String, Object> properties) {
 		LOG.debug("Start init");
 		super.init(properties);
-		pathToFile = getParameterConverter().toString(properties, PARAM_CSV_FILE_PATH);
+		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
@@ -367,7 +364,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	public Map<String, Object> getProperties() {
 		LOG.debug("Start getProperties");
 		Map<String, Object> props = super.getProperties();
-		props.put(PARAM_CSV_FILE_PATH, pathToFile);
+		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
@@ -380,9 +377,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 
 	@Override
 	public List<IdmFormAttributeDto> getFormAttributes() {
-		IdmFormAttributeDto pathToFileAttribute = new IdmFormAttributeDto(PARAM_CSV_FILE_PATH, PARAM_CSV_FILE_PATH,
-				PersistentType.SHORTTEXT);
-		pathToFileAttribute.setRequired(true);
+		IdmFormAttributeDto csvAttachment = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT, PARAM_CSV_ATTACHMENT,
+				PersistentType.ATTACHMENT);
+		csvAttachment.setRequired(true);
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
@@ -407,7 +404,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 				PersistentType.SHORTTEXT);
 		columnSecondContractEavAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(pathToFileAttribute, rolesColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, columnFirstAttrAttribute, columnFirstContractEavAttribute, columnSecondAttrAttribute, columnSecondContractEavAttribute);
+		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, columnFirstAttrAttribute, columnFirstContractEavAttribute, columnSecondAttrAttribute, columnSecondContractEavAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {
