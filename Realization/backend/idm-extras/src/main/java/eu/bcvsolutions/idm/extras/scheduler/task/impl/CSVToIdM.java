@@ -68,16 +68,10 @@ public class CSVToIdM {
 			String[] header = reader.readNext();
 			// find number of column with role name
 			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
-			if (roleColumnNumber == -1) {
-				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", rolesColumnName));
-			}
 			//	find number of column with description name
 			int descriptionColumnNumber = -1;
 			if (hasDescription) {
 				descriptionColumnNumber = findColumnNumber(header, descriptionColumnName);
-				if (descriptionColumnNumber == -1) {
-					throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", descriptionColumnName));
-				}
 			}
 
 			Map<String, String> roleDescriptions = new HashMap<>();
@@ -124,6 +118,6 @@ public class CSVToIdM {
 			}
 			counterHeader++;
 		}
-		return -1;
+		throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", columnName));
 	}
 }
