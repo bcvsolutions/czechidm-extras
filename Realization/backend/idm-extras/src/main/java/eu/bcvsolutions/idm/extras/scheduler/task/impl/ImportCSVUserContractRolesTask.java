@@ -124,21 +124,10 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 			}
 			
 			String[] header = reader.readNext();
-			// find number of column with users
+			// find numbers of columns			
 			int usernameColumnNumber = findColumnNumber(header, usernameColumnName);
-			if (usernameColumnNumber == -1) {
-				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", usernameColumnName));
-			}
-			// find number of column with roles
 			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
-			if (roleColumnNumber == -1) {
-				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", rolesColumnName));
-			}
-			// find number of column with contract eav
 			int contractEavColumnNumber = findColumnNumber(header, contractEavColumnName);
-			if (contractEavColumnNumber == -1) {
-				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", contractEavColumnName));
-			}
 			
 			for (String[] line : reader) {
 				String username = line[usernameColumnNumber];
@@ -364,7 +353,7 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 			}
 			counterHeader++;
 		}
-		return -1;
+		throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", columnName));
 	}
 
 	@Override
