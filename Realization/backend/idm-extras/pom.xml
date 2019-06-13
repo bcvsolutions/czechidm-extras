@@ -18,7 +18,7 @@
 	<description>CzechIdM Module Extras.</description>
 
 	<properties>
-		<czechidm-version>9.2.2</czechidm-version>
+		<czechidm-version>9.6.3</czechidm-version>
 	</properties>
 
 	<repositories>
