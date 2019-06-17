@@ -3,6 +3,7 @@ package eu.bcvsolutions.idm.extras.domain;
 import org.springframework.http.HttpStatus;
 
 import eu.bcvsolutions.idm.core.api.domain.ResultCode;
+import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 
 /**
  * Enum class for formatting response messages (mainly errors). 
@@ -25,7 +26,9 @@ public enum ExtrasResultCode implements ResultCode {
 	CONNECTOR_INSTANCE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Connector instance for system %s not found!"),
 	CONNECTOR_OBJECT_CLASS_NOT_FOUND(HttpStatus.BAD_REQUEST, "Connector object class for system %s not found!"),
 	SYSTEM_NAME_NOT_FOUND(HttpStatus.BAD_REQUEST, "System with name [%s] was not found."),
-	SYSTEM_SCHEMA_ATTRIBUTES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No attributes for object class name %s on system %s were found");
+	SYSTEM_SCHEMA_ATTRIBUTES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No attributes for object class name %s on system %s were found"),
+
+	IDENTITY_ROLE_CANNOT_BE_MODIFIED(HttpStatus.BAD_REQUEST, "Role [%s] cannot be modified, you are not guarantee of the role!");
 	
 	private final HttpStatus status;
 	private final String message;
@@ -40,7 +43,7 @@ public enum ExtrasResultCode implements ResultCode {
 	}
 	
 	public String getModule() {
-		return "extras";
+		return ExtrasModuleDescriptor.MODULE_ID;
 	}
 	
 	public HttpStatus getStatus() {
