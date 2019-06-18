@@ -12,7 +12,6 @@ import javax.persistence.criteria.Root;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
@@ -27,6 +26,7 @@ import eu.bcvsolutions.idm.core.security.api.domain.AuthorizationPolicy;
 import eu.bcvsolutions.idm.core.security.api.domain.BasePermission;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.core.security.evaluator.AbstractAuthorizationEvaluator;
+import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 
 /**
  * Evaluator prida moznost zobrazeni vsech IdmIdentityRole identite, ktera je garantem
@@ -44,10 +44,12 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 
 	private final SecurityService securityService;
 	private final IdmRoleGuaranteeService roleGuaranteeService;
-	
+	private final ExtrasUtils extrasUtils;
+
 	@Autowired
 	public IdentityRoleAccessForRoleGuaranteeEvaluator(IdmRoleGuaranteeService roleGuaranteeService,
-													   SecurityService securityService) {
+													   SecurityService securityService, ExtrasUtils extrasUtils) {
+		this.extrasUtils = extrasUtils;
 		Assert.notNull(roleGuaranteeService);
 		Assert.notNull(securityService);
 		//
@@ -77,18 +79,6 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 	@Override
 	public Set<String> getPermissions(IdmIdentityRole entity, AuthorizationPolicy policy) {
 		Set<String> permissions = super.getPermissions(entity, policy);
-		IdmIdentityDto currentIdentity = securityService.getAuthentication().getCurrentIdentity();
-		IdmRoleGuaranteeFilter filter = new IdmRoleGuaranteeFilter();
-		filter.setGuarantee(currentIdentity.getId());
-		// for check guaratee we need only one record
-		List<IdmRoleGuaranteeDto> roleGuarantees = roleGuaranteeService.find(filter, new PageRequest(0, 1)).getContent();
-		if (!roleGuarantees.isEmpty()) {
-			permissions.addAll(policy.getPermissions());
-			// set permission via FE
-			return permissions;
-		} else {
-			// return permission from super class.
-			return permissions;
-		}
+		return extrasUtils.getIdentityPermissions(permissions, policy);
 	}
 }
