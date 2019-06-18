@@ -61,14 +61,14 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportRolesFromCSVExecutor.class);
 
-	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
-	private static final String PARAM_SYSTEM_NAME = "System name";
-	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	private static final String PARAM_DESCRIPTION_COLUMN_NAME = "Column with description";
-	private static final String PARAM_COLUMN_SEPARATOR = "Column separator";
-	private static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
-	private static final String PARAM_MEMBER_OF_ATTRIBUTE = "MemberOf attribute name";
-	private static final String PARAM_CAN_BE_REQUESTED = "Can be requested";	
+	public static final String PARAM_CSV_ATTACHMENT = "Import csv file";
+	public static final String PARAM_SYSTEM_NAME = "System name";
+	public static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
+	public static final String PARAM_DESCRIPTION_COLUMN_NAME = "Column with description";
+	public static final String PARAM_COLUMN_SEPARATOR = "Column separator";
+	public static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
+	public static final String PARAM_MEMBER_OF_ATTRIBUTE = "MemberOf attribute name";
+	public static final String PARAM_CAN_BE_REQUESTED = "Can be requested";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
@@ -247,6 +247,10 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 */
 	private SysSystemMappingDto getSystemMapping(SysSystemDto system) {
 		List<SysSystemMappingDto> systemMappings = mappingService.findBySystem(system, SystemOperationType.PROVISIONING, SystemEntityType.IDENTITY);
+		if(systemMappings.size()==0){
+			// TODO improve exception - result code
+			throw new IllegalArgumentException("Size of system mapping should not be 0.");
+		}
 		return systemMappings.get(0);
 	}
 
