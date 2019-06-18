@@ -17,6 +17,7 @@ import org.springframework.util.Assert;
 
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.entity.AbstractEntity_;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
@@ -49,12 +50,12 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 	@Autowired
 	public IdentityRoleAccessForRoleGuaranteeEvaluator(IdmRoleGuaranteeService roleGuaranteeService,
 													   SecurityService securityService, ExtrasUtils extrasUtils) {
-		this.extrasUtils = extrasUtils;
 		Assert.notNull(roleGuaranteeService);
 		Assert.notNull(securityService);
 		//
 		this.roleGuaranteeService = roleGuaranteeService;
 		this.securityService = securityService;
+		this.extrasUtils = extrasUtils;
 	}
 	
 	@Override
@@ -68,7 +69,9 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 		filter.setGuarantee(currentIdentity.getId());
 		// for check identity role we want all role guarantee
 		List<IdmRoleGuaranteeDto> roleGuarantees = roleGuaranteeService.find(filter, null).getContent();
-		if (!roleGuarantees.isEmpty()) {
+		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteeRole(currentIdentity);
+
+		if (!roleGuarantees.isEmpty() || !roleGuaranteeRole.isEmpty()) {
 			Set<UUID> roleIds = roleGuarantees.stream().map(IdmRoleGuaranteeDto::getRole).collect(Collectors.toSet());
 			return root.get(IdmIdentityRole_.role).get(AbstractEntity_.id).in(roleIds);
 		} else {
