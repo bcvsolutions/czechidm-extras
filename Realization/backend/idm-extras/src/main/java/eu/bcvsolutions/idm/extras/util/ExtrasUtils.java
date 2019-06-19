@@ -3,6 +3,7 @@ package eu.bcvsolutions.idm.extras.util;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.Predicate;
@@ -40,10 +41,10 @@ public class ExtrasUtils implements ScriptEnabled {
 	@Autowired
 	private IdmIdentityRoleService identityRoleService;
 
-	public Predicate getIdentityPredicate(CriteriaBuilder builder) {
+	public Predicate getGuaranteePredicate(CriteriaBuilder builder) {
 		IdmIdentityDto currentIdentity = securityService.getAuthentication().getCurrentIdentity();
-		List<IdmRoleGuaranteeDto> roleGuarantees = getRoleGuaranteeIdentity(currentIdentity);
-		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = getRoleGuaranteeRole(currentIdentity);
+		List<IdmRoleGuaranteeDto> roleGuarantees = getDirectRoleGuarantees(currentIdentity);
+		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = getRoleGuaranteesByRole(currentIdentity.getId());
 
 		if (!roleGuarantees.isEmpty() || !roleGuaranteeRole.isEmpty()) {
 			return builder.conjunction();
@@ -52,10 +53,10 @@ public class ExtrasUtils implements ScriptEnabled {
 		}
 	}
 
-	public Set<String> getIdentityPermissions(Set<String> permissions, AuthorizationPolicy policy) {
+	public Set<String> getGuaranteePermissions(Set<String> permissions, AuthorizationPolicy policy) {
 		IdmIdentityDto currentIdentity = securityService.getAuthentication().getCurrentIdentity();
-		List<IdmRoleGuaranteeDto> roleGuarantees = getRoleGuaranteeIdentity(currentIdentity);
-		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = getRoleGuaranteeRole(currentIdentity);
+		List<IdmRoleGuaranteeDto> roleGuarantees = getDirectRoleGuarantees(currentIdentity);
+		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = getRoleGuaranteesByRole(currentIdentity.getId());
 
 		if (!roleGuarantees.isEmpty() || !roleGuaranteeRole.isEmpty()) {
 			permissions.addAll(policy.getPermissions());
@@ -67,9 +68,9 @@ public class ExtrasUtils implements ScriptEnabled {
 		}
 	}
 
-	public List<IdmRoleGuaranteeRoleDto> getRoleGuaranteeRole(IdmIdentityDto currentIdentity) {
+	public List<IdmRoleGuaranteeRoleDto> getRoleGuaranteesByRole(UUID currentId) {
 		// we need to check if user is guarantee based on some role
-		List<IdmIdentityRoleDto> roles = identityRoleService.findAllByIdentity(currentIdentity.getId());
+		List<IdmIdentityRoleDto> roles = identityRoleService.findAllByIdentity(currentId);
 		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = new ArrayList<>();
 		roles.forEach(idmIdentityRoleDto -> {
 			IdmRoleGuaranteeRoleFilter roleGuaranteeRoleFilter = new IdmRoleGuaranteeRoleFilter();
@@ -79,8 +80,8 @@ public class ExtrasUtils implements ScriptEnabled {
 		return roleGuaranteeRole;
 	}
 
-	public List<IdmRoleGuaranteeDto> getRoleGuaranteeIdentity(IdmIdentityDto currentIdentity) {
-		// for check guaratee we need only one record
+	public List<IdmRoleGuaranteeDto> getDirectRoleGuarantees(IdmIdentityDto currentIdentity) {
+		// for check guarantee we need only one record
 		IdmRoleGuaranteeFilter filter = new IdmRoleGuaranteeFilter();
 		filter.setGuarantee(currentIdentity.getId());
 		return roleGuaranteeService.find(filter, new PageRequest(0, 1)).getContent();

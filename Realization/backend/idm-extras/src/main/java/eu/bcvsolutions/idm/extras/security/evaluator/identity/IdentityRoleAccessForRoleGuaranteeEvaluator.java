@@ -30,12 +30,10 @@ import eu.bcvsolutions.idm.core.security.evaluator.AbstractAuthorizationEvaluato
 import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 
 /**
- * Evaluator prida moznost zobrazeni vsech IdmIdentityRole identite, ktera je garantem
- * alespon u jedne role
- * 
- * + update IdmIdentity to IdmIdentityRole
- * 
+ * Evaluator will add the option to display all IdmIdentityRole to user who is guarantee at least for one role
+ *
  * @author Ondrej Kopr <kopr@xyxy.cz>
+ * @author Roman Kucera
  *
  */
 
@@ -69,10 +67,12 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 		filter.setGuarantee(currentIdentity.getId());
 		// for check identity role we want all role guarantee
 		List<IdmRoleGuaranteeDto> roleGuarantees = roleGuaranteeService.find(filter, null).getContent();
-		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteeRole(currentIdentity);
+		// Get role guarantees by role
+		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteesByRole(currentIdentity.getId());
 
 		if (!roleGuarantees.isEmpty() || !roleGuaranteeRole.isEmpty()) {
 			Set<UUID> roleIds = roleGuarantees.stream().map(IdmRoleGuaranteeDto::getRole).collect(Collectors.toSet());
+			roleIds.addAll(roleGuaranteeRole.stream().map(IdmRoleGuaranteeRoleDto::getRole).collect(Collectors.toSet()));
 			return root.get(IdmIdentityRole_.role).get(AbstractEntity_.id).in(roleIds);
 		} else {
 			return null;
@@ -82,6 +82,6 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 	@Override
 	public Set<String> getPermissions(IdmIdentityRole entity, AuthorizationPolicy policy) {
 		Set<String> permissions = super.getPermissions(entity, policy);
-		return extrasUtils.getIdentityPermissions(permissions, policy);
+		return extrasUtils.getGuaranteePermissions(permissions, policy);
 	}
 }

@@ -20,12 +20,10 @@ import eu.bcvsolutions.idm.core.security.evaluator.AbstractAuthorizationEvaluato
 import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 
 /**
- * Evaluator prida moznost zobrazeni vsech IdmRoleRequest identite, ktera je garantem
- * alespon u jedne role
- * 
- * + update IdmIdentity to IdmRoleRequest
+ * Evaluator will add the option to display all IdmRoleRequest for user who is guarantee at least for one role
  * 
  * @author Ondrej Kopr <kopr@xyxy.cz>
+ * @author Roman Kucera
  *
  */
 
@@ -50,12 +48,12 @@ public class RoleRequestAccessForRoleGuaranteeEvaluator extends AbstractAuthoriz
 		if (!hasAuthority(securityService.getCurrentId(), policy, permission)) {
 			return null;
 		}
-		return extrasUtils.getIdentityPredicate(builder);
+		return extrasUtils.getGuaranteePredicate(builder);
 	}
 	
 	@Override
 	public Set<String> getPermissions(IdmRoleRequest entity, AuthorizationPolicy policy) {
 		Set<String> permissions = super.getPermissions(entity, policy);
-		return extrasUtils.getIdentityPermissions(permissions, policy);
+		return extrasUtils.getGuaranteePermissions(permissions, policy);
 	}
 }

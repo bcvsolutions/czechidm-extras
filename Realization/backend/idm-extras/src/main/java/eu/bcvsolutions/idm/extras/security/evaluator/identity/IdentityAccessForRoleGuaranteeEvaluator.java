@@ -20,10 +20,10 @@ import eu.bcvsolutions.idm.core.security.evaluator.AbstractAuthorizationEvaluato
 import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 
 /**
- * Evaluator prida moznost zobrazeni vsech uzivatelu identite, ktera je garantem
- * alespon u jedne role
+ * Evaluator will add the option to see all users if user is guarantee at least for one role
  * 
  * @author Ondrej Kopr <kopr@xyxy.cz>
+ * @author Roman Kucera
  *
  */
 
@@ -48,12 +48,12 @@ public class IdentityAccessForRoleGuaranteeEvaluator extends AbstractAuthorizati
 		if (!hasAuthority(securityService.getCurrentId(), policy, permission)) {
 			return null;
 		}
-		return extrasUtils.getIdentityPredicate(builder);
+		return extrasUtils.getGuaranteePredicate(builder);
 	}
 	
 	@Override
 	public Set<String> getPermissions(IdmIdentity entity, AuthorizationPolicy policy) {
 		Set<String> permissions = super.getPermissions(entity, policy);
-		return extrasUtils.getIdentityPermissions(permissions, policy);
+		return extrasUtils.getGuaranteePermissions(permissions, policy);
 	}
 }

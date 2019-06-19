@@ -16,6 +16,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
@@ -34,12 +35,14 @@ import eu.bcvsolutions.idm.core.security.api.domain.BasePermission;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.core.workflow.service.WorkflowProcessInstanceService;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 
 /**
  * Overridden service for concept role request.
  * Throw error when currently logged user try to save concept with roles for which is not guarantee
  *
  * @author Ondrej Kopr <kopr@xyxy.cz>
+ * @author Roman Kucera
  *
  */
 @Primary
@@ -51,15 +54,16 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 	private final IdmRoleService roleService;
 	private final IdmIdentityService identityService;
 	private final IdmIdentityRoleService identityRoleService;
+	private final ExtrasUtils extrasUtils;
 
 	private final String UNDEFINED_ROLE_NAME = "undefined";
-	
+
 	@Autowired
 	public ExtrasIdmConceptRoleRequestService(IdmConceptRoleRequestRepository repository,
 											  WorkflowProcessInstanceService workflowProcessInstanceService, LookupService lookupService,
 											  IdmAutomaticRoleRepository automaticRoleRepository,
 											  IdmRoleGuaranteeService roleGuaranteeService,
-											  SecurityService securityService, IdmRoleService roleService, IdmIdentityService identityService, IdmIdentityRoleService identityRoleService) {
+											  SecurityService securityService, IdmRoleService roleService, IdmIdentityService identityService, IdmIdentityRoleService identityRoleService, ExtrasUtils extrasUtils) {
 		super(repository, workflowProcessInstanceService, lookupService, automaticRoleRepository);
 		//
 		this.roleGuaranteeService = roleGuaranteeService;
@@ -67,6 +71,7 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 		this.roleService = roleService;
 		this.identityService = identityService;
 		this.identityRoleService = identityRoleService;
+		this.extrasUtils = extrasUtils;
 	}
 
 	@Override
@@ -80,37 +85,39 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 		UUID currentId = securityService.getCurrentId();
 		// this isn't probably possible, but for sure
 		if (currentId != null) {
+			if (dto.getIdentityRole() != null) {
+				IdmIdentityRoleDto identityRole = DtoUtils.getEmbedded(dto, IdmConceptRoleRequest_.identityRole, IdmIdentityRoleDto.class, null);
+				if (identityRole == null) {
+					identityRole = identityRoleService.get(dto.getIdentityRole());
+				}
 
-			IdmIdentityRoleDto identityRole = DtoUtils.getEmbedded(dto, IdmConceptRoleRequest_.identityRole, IdmIdentityRoleDto.class, null);
-			if (identityRole == null) {
-				identityRole = identityRoleService.get(dto.getIdentityRole());
-			}
+				IdmIdentityContractDto identityContract = DtoUtils.getEmbedded(identityRole, IdmIdentityRole_.identityContract, IdmIdentityContractDto.class);
+				IdmIdentityDto identity = DtoUtils.getEmbedded(identityContract, IdmIdentityContract_.identity, IdmIdentityDto.class);
 
-			IdmIdentityContractDto identityContract = DtoUtils.getEmbedded(identityRole, IdmIdentityRole_.identityContract, IdmIdentityContractDto.class);
-			IdmIdentityDto identity = DtoUtils.getEmbedded(identityContract, IdmIdentityContract_.identity, IdmIdentityDto.class);
+				List<IdmIdentityDto> managers = identityService.findAllManagers(identity.getId());
 
-			List<IdmIdentityDto> managers = identityService.findAllManagers(identity.getId());
-
-			if (managers.stream().anyMatch(identityDto -> identityDto.getId().toString().equals(currentId.toString()))) {
-				return super.save(dto, permission);
+				if (managers.stream().anyMatch(identityDto -> identityDto.getId().toString().equals(currentId.toString()))) {
+					return super.save(dto, permission);
+				}
 			}
 
 			IdmRoleGuaranteeFilter filter = new IdmRoleGuaranteeFilter();
 			filter.setGuarantee(currentId);
 			List<IdmRoleGuaranteeDto> roleGuaranteeList = roleGuaranteeService.find(filter, null).getContent();
 
+			List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteesByRole(currentId);
+
 			// if user isn't guarantee, throw error directly
-			if (roleGuaranteeList.isEmpty()) {
+			if (roleGuaranteeList.isEmpty() && roleGuaranteeRole.isEmpty()) {
 				IdmRoleDto roleDto = roleService.get(dto.getRole());
 				throw new ResultCodeException(ExtrasResultCode.IDENTITY_ROLE_CANNOT_BE_MODIFIED,
 						ImmutableMap.of("role", roleDto != null ? roleDto.getName() : UNDEFINED_ROLE_NAME));
 			}
 
-			Optional<IdmRoleGuaranteeDto> any = roleGuaranteeList.stream().filter(guarant -> {
-				return guarant.getRole().equals(dto.getRole());
-			}).findAny();
+			Optional<IdmRoleGuaranteeDto> any = roleGuaranteeList.stream().filter(guarantee -> guarantee.getRole().equals(dto.getRole())).findAny();
+			Optional<IdmRoleGuaranteeRoleDto> anyRole = roleGuaranteeRole.stream().filter(guaranteeRole -> guaranteeRole.getRole().equals(dto.getRole())).findAny();
 
-			if (any.isPresent()) {
+			if (any.isPresent() || anyRole.isPresent()) {
 				return super.save(dto, permission);
 			} else {
 				IdmRoleDto roleDto = roleService.get(dto.getRole());
