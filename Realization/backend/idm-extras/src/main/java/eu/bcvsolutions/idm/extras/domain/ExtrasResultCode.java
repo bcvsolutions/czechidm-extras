@@ -31,7 +31,6 @@ public enum ExtrasResultCode implements ResultCode {
 	ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Role[%s] not found!"),
 	ROLES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No roles found!"),
 	CONTRACT_EAV_NOT_FOUND(HttpStatus.BAD_REQUEST, "Contract eav [%s] not found!"),
-	ROLES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No roles found!"),
 	WRONG_FILE_FORMAT(HttpStatus.BAD_REQUEST, "Selected file is not in CSV format!"),
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]");
 

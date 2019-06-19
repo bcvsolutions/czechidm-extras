@@ -57,14 +57,14 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleAttributesFromCSVExecutor.class);
 	
-	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
-	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	private static final String PARAM_COLUMN_SEPARATOR = "Column separator";
-	private static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
-	private static final String PARAM_COLUMN_FIRST_ATTRIBUTE = "Column with first attribute";
-	private static final String PARAM_FIRST_CONTRACT_EAV_NAME = "First contract eav code";
-	private static final String PARAM_COLUMN_SECOND_ATTRIBUTE = "Column with second attribute";
-	private static final String PARAM_SECOND_CONTRACT_EAV_NAME = "Second contract eav code";
+	static final String PARAM_CSV_ATTACHMENT = "Import csv file";
+	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
+	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
+	static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
+	static final String PARAM_COLUMN_FIRST_ATTRIBUTE = "Column with first attribute";
+	static final String PARAM_FIRST_CONTRACT_EAV_NAME = "First contract eav code";
+	static final String PARAM_COLUMN_SECOND_ATTRIBUTE = "Column with second attribute";
+	static final String PARAM_SECOND_CONTRACT_EAV_NAME = "Second contract eav code";
 	
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
