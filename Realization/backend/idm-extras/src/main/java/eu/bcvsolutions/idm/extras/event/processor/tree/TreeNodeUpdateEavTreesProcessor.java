@@ -17,6 +17,7 @@ import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.extras.event.processor.contract.IdentityContractSetEavTreesProcessor;
 import eu.bcvsolutions.idm.extras.scheduler.task.impl.SaveAllNodesForSubtreeExecutor;
 
 /**
@@ -41,7 +42,7 @@ public class TreeNodeUpdateEavTreesProcessor extends CoreEventProcessor<IdmTreeN
 		IdmTreeNodeDto nodeChanged = event.getContent();
 		SaveAllNodesForSubtreeExecutor lrt = new SaveAllNodesForSubtreeExecutor();
 		Map<String, Object> configOfLRT = new HashMap<>();
-		configOfLRT.put(SaveAllNodesForSubtreeExecutor.PARAM_NODE_CODE, nodeChanged.getCode());
+		configOfLRT.put(SaveAllNodesForSubtreeExecutor.PARAM_NODE_ID, nodeChanged.getId());
 		lrt.init(configOfLRT);
 		Boolean obj = longRunningTaskManager.executeSync(lrt);
 		if (obj == null || !obj) {

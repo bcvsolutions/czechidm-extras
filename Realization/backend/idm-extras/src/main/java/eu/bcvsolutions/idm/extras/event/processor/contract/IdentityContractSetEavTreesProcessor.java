@@ -2,7 +2,6 @@ package eu.bcvsolutions.idm.extras.event.processor.contract;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +10,7 @@ import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
 import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.api.event.processor.IdentityContractProcessor;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
+import eu.bcvsolutions.idm.core.model.event.IdentityContractEvent.IdentityContractEventType;
 
 /**
  * Class for setting tree structure or node to eav of contract - identity contract
@@ -29,8 +28,9 @@ public class IdentityContractSetEavTreesProcessor extends AbstractContractSetEav
 	public static final String PROCESSOR_NAME = "identity-contract-set-eavs-processor";
 	private static final Logger LOG = LoggerFactory.getLogger(IdentityContractSetEavTreesProcessor.class);
 
-	@Autowired
-	IdmIdentityContractService identityContractService;
+	public IdentityContractSetEavTreesProcessor() {
+		super(IdentityContractEventType.UPDATE, IdentityContractEventType.CREATE, IdentityContractEventType.EAV_SAVE);
+	}
 
 	@Override
 	public EventResult<IdmIdentityContractDto> process(EntityEvent<IdmIdentityContractDto> event) {

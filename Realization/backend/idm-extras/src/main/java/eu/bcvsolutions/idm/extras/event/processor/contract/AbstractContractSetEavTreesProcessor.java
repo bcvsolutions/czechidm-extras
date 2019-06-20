@@ -1,6 +1,5 @@
 package eu.bcvsolutions.idm.extras.event.processor.contract;
 
-import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -9,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.collect.Lists;
 
+import eu.bcvsolutions.idm.core.api.dto.AbstractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmContractPositionDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
@@ -32,7 +32,7 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  *
  * @author Marek Klement
  */
-public abstract class AbstractContractSetEavTreesProcessor<E extends Serializable> extends CoreEventProcessor<E> {
+public abstract class AbstractContractSetEavTreesProcessor<E extends AbstractDto> extends CoreEventProcessor<E> {
 
 	public static final String EAV_CONFIG_NODE_NAME = "module.extras.processor.set-node-to-eav";
 	public static final String EAV_CONFIG_TREE_NAME = "module.extras.processor.set-structure-to-eav";

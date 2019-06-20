@@ -1,7 +1,5 @@
 package eu.bcvsolutions.idm.extras.event.processor.contract;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,14 +8,12 @@ import org.springframework.stereotype.Component;
 
 import eu.bcvsolutions.idm.core.api.dto.IdmContractPositionDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityContractFilter;
 import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
 import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.api.event.processor.ContractPositionProcessor;
-import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.core.model.event.ContractPositionEvent.ContractPositionEventType;
 
 /**
  * Class for setting tree structure or node to eav of contract - contract position
@@ -36,6 +32,10 @@ public class ContractPositionSetEavTreesProcessor
 	public static final String PROCESSOR_NAME = "contract-position-set-eav-processor";
 	private static final Logger LOG = LoggerFactory.getLogger(ContractPositionSetEavTreesProcessor.class);
 
+	public ContractPositionSetEavTreesProcessor() {
+		super(ContractPositionEventType.UPDATE, ContractPositionEventType.CREATE, ContractPositionEventType.DELETE);
+	}
+
 	@Autowired
 	private IdmIdentityContractService contractService;
 
@@ -48,15 +48,7 @@ public class ContractPositionSetEavTreesProcessor
 	@Override
 	public EventResult<IdmContractPositionDto> process(EntityEvent<IdmContractPositionDto> event) {
 		IdmContractPositionDto contractPositionDto = event.getContent();
-		IdmIdentityContractFilter filter = new IdmIdentityContractFilter();
-		filter.setId(contractPositionDto.getIdentityContract());
-		List<IdmIdentityContractDto> contracts = contractService.find(filter, null).getContent();
-		if (contracts.size() == 0) {
-			throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_CONTRACT_IS_NULL);
-		} else if (contracts.size() > 1) {
-			throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_MULTIPLE_CONTRACTS_FOUND);
-		}
-		IdmIdentityContractDto contract = contracts.get(0);
+		IdmIdentityContractDto contract = contractService.get(contractPositionDto.getIdentityContract());
 		actualProcess(contract);
 		LOG.info("Attributes added successfully!");
 		return new DefaultEventResult<>(event, this);
