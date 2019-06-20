@@ -16,7 +16,6 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
 import eu.bcvsolutions.idm.core.model.domain.CoreGroupPermission;
@@ -31,8 +30,6 @@ import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 public class RoleRequestAccessForRoleGuaranteeEvaluatorTest extends AbstractIntegrationTest {
 
 	@Autowired
-	private IdmIdentityService identityService;
-	@Autowired
 	private IdmIdentityContractService contractService;
 	@Autowired
 	private IdmRoleGuaranteeService roleGuaranteeService;
@@ -45,9 +42,11 @@ public class RoleRequestAccessForRoleGuaranteeEvaluatorTest extends AbstractInte
 		IdmIdentityDto identity = getHelper().createIdentity();
 		IdmIdentityContractDto primeValidContract = contractService.getPrimeValidContract(identity.getId());
 
+		IdmIdentityDto creator = getHelper().createIdentity();
+
 		//create request
 		IdmRoleRequestDto requestDto = new IdmRoleRequestDto();
-		requestDto.setApplicant(identity.getId());
+		requestDto.setApplicant(creator.getId());
 		requestDto.setRequestedByType(RoleRequestedByType.MANUALLY);
 		requestDto.setExecuteImmediately(true);
 		requestDto = roleRequestService.save(requestDto);
@@ -78,12 +77,12 @@ public class RoleRequestAccessForRoleGuaranteeEvaluatorTest extends AbstractInte
 		roleGuarantee.setGuarantee(identity.getId());
 		roleGuaranteeService.save(roleGuarantee);
 
-		// now wth permissions I will see all requests
+		// now with permissions I will see all requests
 		try {
 			long count = roleRequestService.count(null);
 			getHelper().login(identity);
 			List<IdmRoleRequestDto> requests = roleRequestService.find(null, IdmBasePermission.READ).getContent();
-			assertEquals(1, requests.size());
+			assertEquals(count, requests.size());
 		} finally {
 			getHelper().logout();
 		}
