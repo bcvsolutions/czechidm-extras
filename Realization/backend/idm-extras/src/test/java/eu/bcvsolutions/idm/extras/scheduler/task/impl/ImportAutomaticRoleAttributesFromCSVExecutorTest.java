@@ -25,9 +25,11 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
-import javafx.util.Pair;
+import eu.bcvsolutions.idm.extras.utils.Pair;
 
 public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRoleExecutorTest {
+
+	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile01.csv";
 
 	@Autowired
 	private FormService formService;
@@ -40,9 +42,10 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 
 	@Test
 	public void importAutomaticRoles() {
+		setPath(path, "importRolesTestFile01.csv");
 		Pair<SysSystemDto, Map<String, Object>> pair = createData();
-		SysSystemDto system = pair.getKey();
-		Map<String, Object> configOfLRT = pair.getValue();
+		SysSystemDto system = pair.getFirst();
+		Map<String, Object> configOfLRT = pair.getSecond();
 
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
 		lrt.init(configOfLRT);
