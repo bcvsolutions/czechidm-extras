@@ -70,9 +70,10 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 		longRunningTaskManager.executeSync(automaticRolesLRT);
 		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(automaticRolesLRT);
 		Long count = task.getCount();
-		Long total = 7L;
-		Assert.assertEquals(task.getCounter(), count);
-		Assert.assertEquals(total, count);
+		Long total = 8L;
+		Long counterTotal = 9L;
+		Assert.assertEquals(total, task.getCounter());
+		Assert.assertEquals(counterTotal, count);
 		// check automatic roles settings
 		List<IdmRoleDto> roles = roleService.find(new IdmRoleFilter(), null).getContent();
 		List<IdmRoleDto> idmRoleDtoStream = roles.stream().filter(r -> r.getName().equals(CHECK_NAME)).collect(Collectors.toList());

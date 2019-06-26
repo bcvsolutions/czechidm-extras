@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,8 +43,10 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
+import eu.bcvsolutions.idm.core.model.entity.IdmAutomaticRoleAttribute;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.extras.utils.Pair;
 
 /**
  * This LRT imports all roles definitions from CSV to IdM
@@ -102,31 +104,34 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		if (hasSecondAttribute) {
 			secondFormAttribute = findFormAttribute(secondContractEavAttributeName);
 		}
-		
-		Map<String, List<String>> roleAttributeValues = parseCSV();
+
+		List<Pair<String, List<String>>> roleAttributeValues = parseCSV();
 
 		if (!roleAttributeValues.isEmpty()) {
 			this.count = (long) roleAttributeValues.size();
 			this.counter = 0L;
 
-			for (String roleName : roleAttributeValues.keySet()) {
+			for (Pair<String, List<String>> rolePair : roleAttributeValues) {
+				String roleName = rolePair.getFirst();
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				
 				if (role != null) {
-					List<String> attributeValues = roleAttributeValues.get(roleName);
+					List<String> attributeValues = rolePair.getSecond();
 					// Handle first attribute
 					String firstAttributeValue = attributeValues.get(0);
 					IdmAutomaticRoleAttributeRuleDto firstAutomaticRoleAttributeRule = findAutomaticAttributeRule(role, firstContractEavAttributeName, firstAttributeValue);
-					if (firstAutomaticRoleAttributeRule != null) {
-						this.logItemProcessed(role, taskNotCompleted("Role [" + role.getName() + "] already has rule [" + firstAutomaticRoleAttributeRule.getAttributeName() + "]"));
-						continue;
+					if (!hasSecondAttribute) {
+						if (firstAutomaticRoleAttributeRule != null) {
+							this.logItemProcessed(role, taskNotCompleted("Automatic role [" + role.getName() + "] already has rule [" + firstAttributeValue + "]"));
+							continue;
+						}
 					}
 					// Handle second attribute
 					String secondAttributeValue = attributeValues.get(1);
 					if (hasSecondAttribute) {
 						IdmAutomaticRoleAttributeRuleDto secondAutomaticRoleAttributeRule = findAutomaticAttributeRule(role, secondContractEavAttributeName, secondAttributeValue);
-						if (secondAutomaticRoleAttributeRule != null) {
-							this.logItemProcessed(role, taskNotCompleted("Automatic role [" + role.getName() + "] already has rule [" + secondAutomaticRoleAttributeRule.getAttributeName() + "]"));
+						if (firstAutomaticRoleAttributeRule != null && secondAutomaticRoleAttributeRule != null) {
+							this.logItemProcessed(role, taskNotCompleted("Automatic role [" + role.getName() + "] already has first rule [" + firstAttributeValue + "] and second rule [" + secondAttributeValue + "]"));
 							continue;
 						}
 					}
@@ -141,6 +146,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 					this.logItemProcessed(role, taskCompleted("Automatic role: " + automaticRoleAttribute.getName() + " created"));
 				} else {
 					LOG.debug("Role [" + roleName + "] not found.");
+					--this.count;
 				}
 				
 				++this.counter;
@@ -225,16 +231,17 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		roleFilter.setHasRules(true);
 		List<IdmAutomaticRoleAttributeDto> result = automaticRoleAttributeService.find(roleFilter, null).getContent();
 		if (result.size() > 0) {
-			IdmAutomaticRoleAttributeDto automaticRoleAttribute = result.get(0);
 			IdmAutomaticRoleAttributeRuleFilter ruleFilter = new IdmAutomaticRoleAttributeRuleFilter();
-			ruleFilter.setAutomaticRoleAttributeId(automaticRoleAttribute.getId());
 			ruleFilter.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
 			ruleFilter.setValue(attributeValue);
 			ruleFilter.setAttributeName(attributeName);
 			ruleFilter.setType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
-			Page<IdmAutomaticRoleAttributeRuleDto> rules = automaticRoleAttributeRuleService.find(ruleFilter, null);
-			if (rules.getContent().size() > 0) {
-				return rules.getContent().get(0);
+			for (IdmAutomaticRoleAttributeDto automaticRoleAttribute : result) {
+				ruleFilter.setAutomaticRoleAttributeId(automaticRoleAttribute.getId());
+				Page<IdmAutomaticRoleAttributeRuleDto> rules = automaticRoleAttributeRuleService.find(ruleFilter, null);
+				if (rules.getContent().size() > 0) {
+					return rules.getContent().get(0);
+				}
 			}
 		}
 		
@@ -246,7 +253,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	 * 
 	 * @return
 	 */
-	private Map<String, List<String>> parseCSV() {
+	private List<Pair<String, List<String>>> parseCSV() {
 		CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
@@ -275,7 +282,8 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 				}
 			}
 
-			Map<String, List<String>> roleAttributeValues = new HashMap<>();
+			List<Pair<String, List<String>>> roleAttributeValues = new LinkedList<>();
+			//Map<String, List<String>> roleAttributeValues = new HashMap<>();
 			for (String[] line : reader) {
 				String[] roles = line[roleColumnNumber].split(multiValueSeparator);
 				String firstAttributeValue = line[firstAttributeColumnNumber];
@@ -284,13 +292,13 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 					String secondAttributeValue = line[secondAttributeColumnNumber];
 					for (String role : roles) {
 						if (role.length() > 0) {
-							roleAttributeValues.put(role, Arrays.asList(firstAttributeValue, secondAttributeValue));
+							roleAttributeValues.add(new Pair<>(role, Arrays.asList(firstAttributeValue, secondAttributeValue)));
 						}
 					}
 				} else {
 					for (String role : roles) {
 						if (role.length() > 0) {
-							roleAttributeValues.put(role, Arrays.asList(firstAttributeValue, ""));
+							roleAttributeValues.add(new Pair<>(role, Arrays.asList(firstAttributeValue, "")));
 						}
 					}
 				}
