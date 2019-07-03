@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>eu.bcvsolutions.idm</groupId>
 		<artifactId>idm-parent</artifactId>
-		<version>9.6.6</version>
+		<version>9.5.1</version>
 	</parent>
 
 	<artifactId>czechidm-extras</artifactId>
@@ -18,7 +18,7 @@
 	<description>CzechIdM Module Extras.</description>
 
 	<properties>
-		<czechidm-version>9.6.6</czechidm-version>
+		<czechidm-version>9.5.1</czechidm-version>
 	</properties>
 
 	<repositories>
