@@ -17,21 +17,32 @@ import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
-import javafx.util.Pair;
+import eu.bcvsolutions.idm.extras.utils.Pair;
 
 public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
+	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile02.csv";
+
 	@Test
 	public void importRolesTest() {
+		setPath(path, "importRolesTestFile02.csv");
+		CHECK_NAME = "CORE-CLOSE";
 		// create system
 		Pair<SysSystemDto, Map<String, Object>> pair = createData();
-		SysSystemDto system = pair.getKey();
-		Map<String, Object> configOfLRT = pair.getValue();
+		SysSystemDto system = pair.getFirst();
+		Map<String, Object> configOfLRT = pair.getSecond();
 		//
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
 		lrt.init(configOfLRT);
 		longRunningTaskManager.executeSync(lrt);
 		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(lrt);
+		while (task.isRunning()) {
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		Long count = task.getCount();
 		Long total = 7L;
 		Assert.assertEquals(task.getCounter(), count);
@@ -40,6 +51,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		filter.setSystemId(system.getId());
 		List<SysRoleSystemDto> content = roleSystemService.find(filter, null).getContent();
 		Assert.assertEquals(7, content.size());
+		//SysSystemDto something = systemService.get(content.get(0).getSystem());
 		LinkedList<IdmRoleDto> roles = new LinkedList<>();
 		content.forEach(r -> roles.add(roleService.get(r.getRole())));
 		boolean contains = false;

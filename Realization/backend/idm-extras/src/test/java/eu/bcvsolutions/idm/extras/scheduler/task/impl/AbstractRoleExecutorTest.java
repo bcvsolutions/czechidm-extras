@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.RandomStringUtils;
 import org.junit.Assert;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -35,14 +36,15 @@ import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
 import eu.bcvsolutions.idm.extras.TestHelper;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
-import javafx.util.Pair;
+import eu.bcvsolutions.idm.extras.utils.Pair;
 
 public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 
-	static final String FILE_PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile.csv";
+	private String FILE_PATH;
+	private String pathName;
 	static final String ROLE_ROW = "roles";
 	static final String MEMBER_OF_NAME = "rights";
-	static final String CHECK_NAME = "ACC-CLOSE";
+	public String CHECK_NAME = "ACC-CLOSE";
 	@Autowired
 	protected TestHelper helper;
 	@Autowired
@@ -75,7 +77,8 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 	SysSystemDto initSystem() {
 
 		// create test system
-		SysSystemDto system = helper.createTestResourceSystem(true, "TestSystemNameCSVRoles");
+		String generatedString = RandomStringUtils.random(10, true, true);
+		SysSystemDto system = helper.createTestResourceSystem(true, "TestSystemNameCSVRoles" + generatedString);
 		Assert.assertNotNull(system);
 		List<SysSchemaObjectClassDto> schema = systemService.generateSchema(system);
 		SysSchemaAttributeDto rights = new SysSchemaAttributeDto();
@@ -113,7 +116,7 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 		assertNotNull(stream);
 		IdmAttachmentDto attachment = new IdmAttachmentDto();
 		attachment.setInputData(stream);
-		attachment.setName("importRolesTestFile.csv");
+		attachment.setName(pathName);
 		attachment.setMimetype("text/csv");
 		//
 		IdmIdentityDto identity = getHelper().createIdentity();
@@ -137,5 +140,10 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 		attachment = createAttachment();
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CSV_ATTACHMENT, attachment.getId());
 		return new Pair<>(system, configOfLRT);
+	}
+
+	public void setPath(String path, String pathName){
+		this.FILE_PATH = path;
+		this.pathName = pathName;
 	}
 }
