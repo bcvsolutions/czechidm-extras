@@ -19,6 +19,7 @@ import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmContractPositionService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
+import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
@@ -127,7 +128,7 @@ public class SaveAllNodesForSubtreeExecutor extends AbstractSchedulableTaskExecu
 		List<IdmFormAttributeDto> attributes = super.getFormAttributes();
 		for (IdmFormAttributeDto attribute : attributes) {
 			if (attribute.getCode().equals(this.PARAM_NODE_ID)) {
-//				attribute.setFaceType(BaseFaceType.TREE_NODE_SELECT); // TODO: after upgrade
+				attribute.setFaceType(BaseFaceType.TREE_NODE_SELECT);
 				attribute.setPersistentType(PersistentType.UUID);
 			}
 		}

@@ -2,10 +2,13 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 import java.io.InputStream;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.hibernate.mapping.Array;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,27 +34,37 @@ import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueRoleFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormInstanceDto;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
+
 /**
- * This LRT imports all roles from CSV to IdM
+ * This LRT imports all roles from CSV to IdM and sets/updates their attributes if they have any in the CSV
  * Creates catalog with name of the connected system
  * Adds role system mapped attribute for merge
  * Fills / updates description
  * Updates can be requested
  *
+ * @author Tomas Doischer
  * @author Marek Klement
  * @author Petr Hanák
  */
@@ -65,11 +78,13 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public static final String PARAM_SYSTEM_NAME = "System name";
 	public static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
 	public static final String PARAM_DESCRIPTION_COLUMN_NAME = "Column with description";
+	public static final String PARAM_ATTRIBUTES_COLUMN_NAME = "Column with attributes";
+	public static final String PARAM_FORM_DEFINITION_CODE = "Form definition code";
 	public static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	public static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
 	public static final String PARAM_MEMBER_OF_ATTRIBUTE = "MemberOf attribute name";
 	public static final String PARAM_CAN_BE_REQUESTED = "Can be requested";
-
+	
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
 	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
@@ -81,12 +96,15 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private String systemName;
 	private String rolesColumnName;
 	private String descriptionColumnName;
+	private String attributesColumnName;
+	private String formDefinitionCode;
 	private String columnSeparator;
 	private String multiValueSeparator;
 	private String memberOfAttribute;
 	private Boolean canBeRequested;
 	private Boolean hasDescription;
-	
+	private Boolean hasAttribute;
+		
 	@Autowired
 	private AttachmentManager attachmentManager;
 	@Autowired
@@ -103,6 +121,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private SysRoleSystemAttributeService roleSystemAttributeService;
 	@Autowired
 	private SysSystemMappingService mappingService;
+	@Autowired
+    private FormService formService;
+	@Autowired
+	private IdmRoleFormAttributeService roleFormAttributeService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
 
 	@Override
 	public OperationResult process() {
@@ -120,10 +144,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		
 		InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
 		
-		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, descriptionColumnName, columnSeparator, multiValueSeparator, hasDescription);
+		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, descriptionColumnName, attributesColumnName, columnSeparator, multiValueSeparator, hasDescription, hasAttribute);
 		Map<String, String> roleDescriptions = myParser.getRoleDescriptions();
+		Map<String, List<String>> roleAttributes = myParser.getRoleAttributes();
 
-		if (!roleDescriptions.isEmpty()) {
+		if ((!roleDescriptions.isEmpty()) || (!roleAttributes.isEmpty())) {
 			this.count = (long) roleDescriptions.size();
 			this.counter = 0L;
 
@@ -131,9 +156,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			for (String roleName : roleDescriptions.keySet()) {
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				if (role == null) {
-					role = createRole(roleName, system, roleDescriptions.get(roleName));
+					role = createRole(roleName, system, roleDescriptions.get(roleName), roleAttributes.get(roleName));
 				} else {
-					updateRole(role, roleDescriptions.get(roleName));
+					updateRole(role, roleDescriptions.get(roleName), roleAttributes.get(roleName));
 				}
 				if (!roleIsInCatalogue(role.getId(), catalogueId)) {
 					addRoleToCatalogue(role, catalogueId);
@@ -176,17 +201,26 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param description
 	 * @return
 	 */
-	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description) {
+	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description, List<String> roleAttributes) {
 		// Create role
 		IdmRoleDto role = new IdmRoleDto();
 		role.setCode(roleNameToCode(roleName));
 		role.setName(roleName);
 		role.setPriority(0);
+		
 		role.setCanBeRequested(canBeRequested);
 		if (hasDescription) {
 			role.setDescription(description);
 		}
+		
 		role = roleService.save(role);
+		
+		// Create the attributes
+		if(hasAttribute) {
+			if(!roleAttributes.isEmpty()) {
+				createAttribute(roleAttributes, role);
+			} 	       
+		}
 
 		// Create role system
 		SysSystemMappingDto systemMapping = getSystemMapping(system);
@@ -202,6 +236,93 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 		this.logItemProcessed(role, taskCompleted("Role " + roleName + " created"));
 		return role;
+	}
+
+	private Boolean createAttribute(List<String> roleAttributes, IdmRoleDto role) {
+		Boolean updated = false;
+		IdmFormDefinitionDto def = formService.getDefinition(IdmIdentityRole.class, formDefinitionCode);
+		for(String roleAttribute : roleAttributes) {
+			if((roleAttribute.trim().length() == 0) || (roleAttribute == null)) {
+				continue;
+			}
+			// Creates the IdmFormAttributeDto
+			IdmFormAttributeDto roleIdEav = new IdmFormAttributeDto();
+		    roleIdEav.setName(roleAttribute);
+		    String roleAttributeCode = roleNameToCode(roleAttribute);
+		    roleIdEav.setCode(roleAttributeCode);
+		    roleIdEav.setPersistentType(PersistentType.SHORTTEXT);
+		    
+		    if(def == null) {
+		    	// If the role definition doesn't exist, we'll create it
+		    	List<IdmFormAttributeDto> attrList = new ArrayList<>();
+		        attrList.add(roleIdEav);
+		    	def = formService.createDefinition(IdmIdentityRole.class, formDefinitionCode, attrList);
+		    	
+		    	
+		    } else {
+		    	// If the role definition exists, we'll check if it has the roleIdEav, if not, we'll add it
+		    	List<IdmFormAttributeDto> oldFormAttributes = def.getFormAttributes();
+		    	List<IdmFormAttributeDto> newFormAttributes = new ArrayList<>();
+		    	List<String> oldFormAttributesNames = new ArrayList<>();
+			    for(IdmFormAttributeDto attr : oldFormAttributes) {
+			    	// gets names of all of the old attributes
+			    	oldFormAttributesNames.add(attr.getName());
+			    }
+			    
+			    if(!oldFormAttributesNames.contains(roleAttribute)) {
+			    	newFormAttributes.add(roleIdEav);
+			    }
+			    	    
+			    for(IdmFormAttributeDto attr : newFormAttributes) {
+			    	// If the definition doesn't have the roleIdEav, we'll add it
+			    	attr.setFormDefinition(def.getId());
+			    	attr = formAttributeService.save(attr); 
+			    	def = formService.saveDefinition(def);
+			    }
+			    
+		    }
+		}
+		
+		role.setIdentityRoleAttributeDefinition(def.getId());
+		roleService.save(role);
+			
+		// check which attributes of the definition the role is supposed to have and add them to it
+		List<IdmFormAttributeDto> tmp = def.getFormAttributes();
+		
+		IdmRoleFormAttributeFilter roleFormAttributeFilter = new IdmRoleFormAttributeFilter();
+		roleFormAttributeFilter.setRole(role.getId());
+		roleFormAttributeFilter.setFormDefinition(def.getId());
+		List<IdmRoleFormAttributeDto> allRolesParams = roleFormAttributeService.find(roleFormAttributeFilter, null).getContent();
+
+		for(IdmFormAttributeDto a : tmp) {
+			if(roleAttributes.contains(a.getName())) {
+				IdmRoleFormAttributeDto relatedRoleFormAttribute = allRolesParams.stream().filter(p -> {
+					IdmFormAttributeDto formAttributeDto = formAttributeService.get(p.getFormAttribute());
+					return formAttributeDto.getCode().equals(a.getName());
+				}).findFirst().orElse(null);
+				
+				if(relatedRoleFormAttribute == null) {
+					// if the role doesn't have the attribute set already, set it
+					roleFormAttributeService.addAttributeToSubdefintion(role, a);
+					updated = true;
+				}
+			}
+			// TODO the code bellow deletes those attributes that the roles don't have in the source csv, 
+			// uncomment if desired
+//			else {
+//				// if the role is not supposed to have an attribute, we check if it does have it, if so, we delete it
+//				IdmRoleFormAttributeDto relatedRoleFormAttribute = allRolesParams.stream().filter(p -> {
+//					IdmFormAttributeDto formAttributeDto = formAttributeService.get(p.getFormAttribute());
+//					return formAttributeDto.getCode().equals(a.getName());
+//				}).findFirst().orElse(null);
+//				
+//				if(relatedRoleFormAttribute != null) {
+//					roleFormAttributeService.delete(relatedRoleFormAttribute);
+//					updated = true;
+//				}
+//			}
+		}
+		return updated;
 	}
 
 	/**
@@ -221,17 +342,25 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param role
 	 * @param description
 	 */
-	private void updateRole(IdmRoleDto role, String description) {
+	private void updateRole(IdmRoleDto role, String description, List<String> roleAttributes) {
 		Boolean canBeReqUpdated = false, descriptionUpdated = false;
 		if (role.isCanBeRequested() != canBeRequested) {
 			role.setCanBeRequested(canBeRequested);
 			canBeReqUpdated = true;
 		}
-		if (role.getDescription() != null && !role.getDescription().equals(description)) {
+		if (role.getDescription() != null && !role.getDescription().equals(description)) { 
 			role.setDescription(description);
 			descriptionUpdated = true;
 		}
-		if (canBeReqUpdated || descriptionUpdated) {
+		
+		Boolean updated = false;
+		if(hasAttribute) {
+			updated = createAttribute(roleAttributes, role);
+		}
+		
+		roleService.save(role);
+
+		if (canBeReqUpdated || descriptionUpdated || updated) {
 			role = roleService.save(role);
 			this.logItemProcessed(role, taskCompleted("Role " + role.getName() + " updated"));			
 		} else {
@@ -331,6 +460,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
 		descriptionColumnName = getParameterConverter().toString(properties, PARAM_DESCRIPTION_COLUMN_NAME);
+		attributesColumnName = getParameterConverter().toString(properties, PARAM_ATTRIBUTES_COLUMN_NAME);
+		formDefinitionCode = getParameterConverter().toString(properties, PARAM_FORM_DEFINITION_CODE);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
 		systemName = getParameterConverter().toString(properties, PARAM_SYSTEM_NAME);
@@ -345,6 +476,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		} else {
 			hasDescription = false;
 		}
+		
+		if (attributesColumnName != null) {
+			hasAttribute = true;
+		} else {
+			hasAttribute = false;
+		}
 	}
 
 	@Override
@@ -354,6 +491,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
 		props.put(PARAM_DESCRIPTION_COLUMN_NAME, descriptionColumnName);
+		props.put(PARAM_ATTRIBUTES_COLUMN_NAME, attributesColumnName);
+		props.put(PARAM_FORM_DEFINITION_CODE, formDefinitionCode);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
 		props.put(PARAM_SYSTEM_NAME, systemName);
@@ -375,9 +514,18 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
+		
 		IdmFormAttributeDto descriptionColumnNameAttribute = new IdmFormAttributeDto(PARAM_DESCRIPTION_COLUMN_NAME, PARAM_DESCRIPTION_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		descriptionColumnNameAttribute.setRequired(false);
+	
+		IdmFormAttributeDto attributesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ATTRIBUTES_COLUMN_NAME, PARAM_ATTRIBUTES_COLUMN_NAME,
+				PersistentType.SHORTTEXT);
+		descriptionColumnNameAttribute.setRequired(false);
+		IdmFormAttributeDto formDefinitionAttribute = new IdmFormAttributeDto(PARAM_FORM_DEFINITION_CODE, PARAM_FORM_DEFINITION_CODE,
+				PersistentType.SHORTTEXT);
+		descriptionColumnNameAttribute.setRequired(false);
+		
 		IdmFormAttributeDto columnSeparatorAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SEPARATOR, PARAM_COLUMN_SEPARATOR,
 				PersistentType.CHAR);
 		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
@@ -398,7 +546,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		canBeRequestedAttribute.setDefaultValue(String.valueOf(CAN_BE_REQUESTED));
 		canBeRequestedAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, descriptionColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, systemNameAttribute, memberOfAttribute, canBeRequestedAttribute);
+		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, descriptionColumnNameAttribute, attributesColumnNameAttribute, formDefinitionAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, systemNameAttribute, memberOfAttribute, canBeRequestedAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {

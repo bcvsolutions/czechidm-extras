@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -27,11 +29,17 @@ public class CSVToIdM {
 	private InputStream attachmentData;
 	private String rolesColumnName;
 	private String descriptionColumnName;
+	private String attributeColumnName;
 	private String columnSeparator;
 	private String multiValueSeparator;
 	private Boolean hasDescription;
+	private Boolean hasAttribute;
 	
+	private Maps maps;
 	private Map<String, String> roleDescriptions;
+	private Map<String, List<String>> roleAttributes;
+	
+	String[] header = new String[0];
 	
 	public Map<String, String> getRoleDescriptions() {
 		return roleDescriptions;
@@ -40,15 +48,28 @@ public class CSVToIdM {
 	public void setRoleDescriptions(Map<String, String> roleDescriptions) {
 		this.roleDescriptions = roleDescriptions;
 	}
+	
+	public Map<String, List<String>> getRoleAttributes() {
+		return roleAttributes;
+	}
 
-	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String descriptionColumnName, String columnSeparator, String multiValueSeparator, Boolean hasDescription) {
+	public void setRoleAttributes(Map<String, List<String>> roleAttributes) {
+		this.roleAttributes = roleAttributes;
+	}
+
+	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String descriptionColumnName, String attributeColumnName, String columnSeparator, 
+			String multiValueSeparator, Boolean hasDescription, Boolean hasAttribute) {
 		this.attachmentData = attachmentData;
 		this.rolesColumnName = rolesColumnName;
 		this.descriptionColumnName = descriptionColumnName;
+		this.attributeColumnName = attributeColumnName;
 		this.columnSeparator = columnSeparator;
 		this.multiValueSeparator = multiValueSeparator;
 		this.hasDescription = hasDescription;
-		this.roleDescriptions = parseCSV();
+		this.hasAttribute = hasAttribute;
+		this.maps = parseCSV();
+		this.roleDescriptions = maps.getRoleDescriptions();
+		this.roleAttributes = maps.getRoleAttributes();
 	}
 	
 	/**
@@ -57,7 +78,7 @@ public class CSVToIdM {
 	 * 
 	 * @return
 	 */
-	private Map<String, String> parseCSV() {
+	private Maps parseCSV() {
 		CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
@@ -65,31 +86,54 @@ public class CSVToIdM {
 			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
 			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
 			
-			String[] header = reader.readNext();
+			header = reader.readNext();
 			// find number of column with role name
 			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
 			//	find number of column with description name
 			int descriptionColumnNumber = -1;
+			int attributeColumnNumber = -1;
 			if (hasDescription) {
 				descriptionColumnNumber = findColumnNumber(header, descriptionColumnName);
 			}
+			if (hasAttribute) {
+				attributeColumnNumber = findColumnNumber(header, attributeColumnName);
+			}
 
 			Map<String, String> roleDescriptions = new HashMap<>();
+			Map<String, List<String>> roleAttributes = new HashMap<>();
+			
 			for (String[] line : reader) {
 				String[] roleNames = line[roleColumnNumber].split(multiValueSeparator);
+				
 				String description;
 				if (hasDescription) {
 					description = line[descriptionColumnNumber];
 				} else {
 					description = "";
 				}
+				
+				String[] attributes;
+				
+				if (hasAttribute) {
+					attributes = line[attributeColumnNumber].split(multiValueSeparator);
+				} else {
+					attributes = new String[0];
+				}
+				
 				for (String roleName : roleNames) {
 					if (!StringUtils.isEmpty(roleName)) {
 						roleDescriptions.put(roleName, description);
+						List<String> attr = new ArrayList<>();
+						for(String attribute : attributes) {
+							attr.add(attribute);
+						}
+						roleAttributes.put(roleName, attr);
 					}
 				}
 			}
-			return roleDescriptions;
+			
+			Maps maps = new Maps(roleDescriptions, roleAttributes);
+			return maps;
 		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
 		} finally {
@@ -102,6 +146,8 @@ public class CSVToIdM {
 			}
 		}
 	}
+	
+
 	
 	/**
 	 * finds number of column
@@ -120,4 +166,35 @@ public class CSVToIdM {
 		}
 		throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", columnName));
 	}
+
+
 }
+
+ class Maps {
+	private Map<String, String> roleDescriptions;
+	private Map<String, List<String>> roleAttributes;
+	
+	public Maps(Map<String, String> roleDescriptions, Map<String, List<String>> roleAttributes) {
+		super();
+		this.roleDescriptions = roleDescriptions;
+		this.roleAttributes = roleAttributes;
+	}
+
+	public Map<String, String> getRoleDescriptions() {
+		return roleDescriptions;
+	}
+
+	public void setRoleDescriptions(Map<String, String> roleDescriptions) {
+		this.roleDescriptions = roleDescriptions;
+	}
+
+	public Map<String, List<String>> getRoleAttributes() {
+		return roleAttributes;
+	}
+
+	public void setRoleAttributes(Map<String, List<String>> roleAttributes) {
+		this.roleAttributes = roleAttributes;
+	}
+	
+ }
+
