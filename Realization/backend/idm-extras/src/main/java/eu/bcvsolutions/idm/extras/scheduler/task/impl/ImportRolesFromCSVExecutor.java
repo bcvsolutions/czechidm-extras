@@ -217,9 +217,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		
 		// Create the attributes
 		if(hasAttribute) {
-			if(!roleAttributes.isEmpty()) {
+			if((roleAttributes.get(0).trim().equals("")) && (roleAttributes.size()<2)) {
+				
+			} else {
 				createAttribute(roleAttributes, role);
-			} 	       
+			}
 		}
 
 		// Create role system
@@ -257,7 +259,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		    	List<IdmFormAttributeDto> attrList = new ArrayList<>();
 		        attrList.add(roleIdEav);
 		    	def = formService.createDefinition(IdmIdentityRole.class, formDefinitionCode, attrList);
-		    	
 		    	
 		    } else {
 		    	// If the role definition exists, we'll check if it has the roleIdEav, if not, we'll add it
@@ -353,14 +354,20 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			descriptionUpdated = true;
 		}
 		
-		Boolean updated = false;
+		// update attributes
+		Boolean attributesUpdated = false;
 		if(hasAttribute) {
-			updated = createAttribute(roleAttributes, role);
+			if((roleAttributes.get(0).trim().equals("")) && (roleAttributes.size()<2)) {
+				
+			} else {
+				attributesUpdated = createAttribute(roleAttributes, role);
+			}
 		}
+
 		
 		roleService.save(role);
 
-		if (canBeReqUpdated || descriptionUpdated || updated) {
+		if (canBeReqUpdated || descriptionUpdated || attributesUpdated) {
 			role = roleService.save(role);
 			this.logItemProcessed(role, taskCompleted("Role " + role.getName() + " updated"));			
 		} else {

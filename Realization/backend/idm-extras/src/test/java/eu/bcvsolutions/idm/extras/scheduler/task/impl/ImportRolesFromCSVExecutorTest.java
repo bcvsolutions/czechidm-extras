@@ -10,22 +10,34 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 import eu.bcvsolutions.idm.extras.utils.Pair;
 
 public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
-	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile02.csv";
+	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile03.csv";
 
+	private static final String ATTRIBUTE = "attr1";
+	@Autowired
+	private IdmRoleFormAttributeService roleFormAttributeService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
+	
 	@Test
 	public void importRolesTest() {
-		setPath(path, "importRolesTestFile02.csv");
+		setPath(path, "importRolesTestFile03.csv");
 		CHECK_NAME = "CORE-CLOSE";
 		// create system
 		Pair<SysSystemDto, Map<String, Object>> pair = createData();
@@ -44,13 +56,13 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 			}
 		}
 		Long count = task.getCount();
-		Long total = 7L;
+		Long total = 4L;
 		Assert.assertEquals(task.getCounter(), count);
 		Assert.assertEquals(total, count);
 		SysRoleSystemFilter filter = new SysRoleSystemFilter();
 		filter.setSystemId(system.getId());
 		List<SysRoleSystemDto> content = roleSystemService.find(filter, null).getContent();
-		Assert.assertEquals(7, content.size());
+		Assert.assertEquals(4, content.size());
 		//SysSystemDto something = systemService.get(content.get(0).getSystem());
 		LinkedList<IdmRoleDto> roles = new LinkedList<>();
 		content.forEach(r -> roles.add(roleService.get(r.getRole())));
@@ -69,5 +81,17 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		List<IdmRoleCatalogueDto> allByRole = roleCatalogueService.findAllByRole(ourRole.getId());
 		assertEquals(1, allByRole.size());
 		assertEquals(ROLE_ROW, allByRole.get(0).getName());
+		
+		// test for adding attributes
+		IdmRoleFormAttributeFilter roleFormAttributeFilter = new IdmRoleFormAttributeFilter();
+		roleFormAttributeFilter.setRole(ourRole.getId());
+		List<IdmRoleFormAttributeDto> allRolesParams = roleFormAttributeService.find(roleFormAttributeFilter, null).getContent();
+		
+		IdmFormAttributeDto formAttributeDto = new IdmFormAttributeDto();
+		for(IdmRoleFormAttributeDto p : allRolesParams) {
+			formAttributeDto = formAttributeService.get(p.getFormAttribute());
+		}
+		
+		Assert.assertEquals(ATTRIBUTE, formAttributeDto.getName());
 	}
 }
