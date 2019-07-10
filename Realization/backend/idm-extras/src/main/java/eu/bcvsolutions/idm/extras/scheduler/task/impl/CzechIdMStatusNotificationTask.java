@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +42,9 @@ import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmEntityEventFilter;
 import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
 import eu.bcvsolutions.idm.core.api.service.IdmEntityEventService;
+import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
+import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity_;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
@@ -63,13 +67,16 @@ import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
  * TODO: refactor this class, this class used global paramters and only textField as parameters. And this isn't nice
  *
  * @author Ondrej Kopr
- *
  */
 @Service
 @DisallowConcurrentExecution
 @Description("Send status notification")
 public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecutor<Boolean> {
 
+	private static final org.slf4j.Logger LOG =
+			org.slf4j.LoggerFactory.getLogger(CzechIdMStatusNotificationTask.class);
+	// TODO: add to configuration and change core!!
+	public static String LAST_RUN_DATE_TIME = "idm.sec.core.status.lastRun";
 	//	private static String SYSTEM_ID_PARAM = "systemIdParam";
 	private static String SEND_PROVISIONING_STATUS_PARAM = "sendProvisioningStatusParam";
 	private static String SEND_SYNC_STATUS_PARAM = "sendSyncStatusParam";
@@ -79,12 +86,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	private static String RECIPIENTS_PARAM = "recipients";
 	private static String RECIPIENTS_EMAIL_PARAM = "emailRecipients";
 	private static String REGEX = ",";
-
-	// TODO: add to configuration and change core!!
-	public static String LAST_RUN_DATE_TIME = "idm.sec.core.status.lastRun";
-
-	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CzechIdMStatusNotificationTask.class);
-
 	@Autowired
 	private SysProvisioningOperationService provisioningOperationService;
 	@Autowired
@@ -138,11 +139,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		}
 		lastRun = new DateTime(lastRunAsString);
 		//
-		sendProvisioningStatus = getBoolean(properties.get(SEND_PROVISIONING_STATUS_PARAM));
-		sendSyncStatus = getBoolean(properties.get(SEND_SYNC_STATUS_PARAM));
-		sendLrtStatus = getBoolean(properties.get(SEND_LRT_STATUS_PARAM));
-		sendEventStatus = getBoolean(properties.get(SEND_EVENT_STATUS_PARAM));
-		sendContractsStatus = getBoolean(properties.get(SEND_CONTRACTS_STATUS_PARAM));
+		sendProvisioningStatus = getParameterConverter().toBoolean(properties, SEND_PROVISIONING_STATUS_PARAM);
+		sendSyncStatus = getParameterConverter().toBoolean(properties, SEND_SYNC_STATUS_PARAM);
+		sendLrtStatus = getParameterConverter().toBoolean(properties, SEND_LRT_STATUS_PARAM);
+		sendEventStatus = getParameterConverter().toBoolean(properties, SEND_EVENT_STATUS_PARAM);
+		sendContractsStatus = getParameterConverter().toBoolean(properties, SEND_CONTRACTS_STATUS_PARAM);
 
 		Object emailRecipientsAsObject = properties.get(RECIPIENTS_EMAIL_PARAM);
 		if (emailRecipientsAsObject != null && !emailRecipientsAsObject.toString().isEmpty()) {
@@ -151,7 +152,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				emailRecipients.add(email.trim());
 			}
 		}
-
 		recipients = getRecipients(properties.get(RECIPIENTS_PARAM));
 		//
 //		Object systemIdsAsObject = properties.get(SYSTEM_ID_PARAM);
@@ -179,17 +179,52 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	}
 
 	@Override
-	public List<String> getPropertyNames() {
-		List<String> names = super.getPropertyNames();
-		// names.add(SYSTEM_ID_PARAM);
-		names.add(SEND_PROVISIONING_STATUS_PARAM);
-		names.add(SEND_SYNC_STATUS_PARAM);
-		names.add(SEND_LRT_STATUS_PARAM);
-		names.add(SEND_EVENT_STATUS_PARAM);
-		names.add(SEND_CONTRACTS_STATUS_PARAM);
-		names.add(RECIPIENTS_PARAM);
-		names.add(RECIPIENTS_EMAIL_PARAM);
-		return names;
+	public Map<String, Object> getProperties() {
+		LOG.debug("Start getProperties");
+		Map<String, Object> props = super.getProperties();
+		props.put(SEND_PROVISIONING_STATUS_PARAM, sendProvisioningStatus);
+		props.put(SEND_SYNC_STATUS_PARAM, sendSyncStatus);
+		props.put(SEND_LRT_STATUS_PARAM, sendLrtStatus);
+		props.put(SEND_EVENT_STATUS_PARAM, sendEventStatus);
+		props.put(SEND_CONTRACTS_STATUS_PARAM, sendContractsStatus);
+		props.put(RECIPIENTS_EMAIL_PARAM, emailRecipients);
+		props.put(RECIPIENTS_PARAM, recipients);
+		return props;
+	}
+
+	@Override
+	public List<IdmFormAttributeDto> getFormAttributes() {
+		List<IdmFormAttributeDto> attributes = new LinkedList<>();
+		attributes.add(createBooleanAttribute(SEND_PROVISIONING_STATUS_PARAM, "Send provisioning status"));
+		attributes.add(createBooleanAttribute(SEND_CONTRACTS_STATUS_PARAM, "Send contract status"));
+		attributes.add(createBooleanAttribute(SEND_EVENT_STATUS_PARAM, "Send event status"));
+		attributes.add(createBooleanAttribute(SEND_LRT_STATUS_PARAM, "Send LRT status"));
+		attributes.add(createBooleanAttribute(SEND_SYNC_STATUS_PARAM, "Send sync status"));
+		//
+		IdmFormAttributeDto recipients = new IdmFormAttributeDto(
+				RECIPIENTS_PARAM,
+				"Recipient identities",
+				PersistentType.SHORTTEXT);
+		recipients.setPlaceholder("For multiple recipients add coma between...");
+		attributes.add(recipients);
+		IdmFormAttributeDto emails = new IdmFormAttributeDto(
+				RECIPIENTS_EMAIL_PARAM,
+				"Recipient emails",
+				PersistentType.SHORTTEXT);
+		emails.setPlaceholder("For multiple recipients add coma between...");
+		attributes.add(emails);
+		return attributes;
+	}
+
+	private IdmFormAttributeDto createBooleanAttribute(String face, String name) {
+		IdmFormAttributeDto attribute = new IdmFormAttributeDto(
+				face,
+				name,
+				PersistentType.BOOLEAN);
+		attribute.setFaceType(BaseFaceType.BOOLEAN_SELECT);
+		attribute.setRequired(true);
+		attribute.setDefaultValue("true");
+		return attribute;
 	}
 
 	@Override
@@ -223,7 +258,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 			}
 
 			RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
-			status.uptime = String.valueOf((runtimeMXBean.getUptime() / (1000*60*60*24)));
+			status.uptime = String.valueOf((runtimeMXBean.getUptime() / (1000 * 60 * 60 * 24)));
 		} catch (Exception e) {
 			LOG.error("Error during send CzechIdM status.", e);
 			status.errorDuringSend = e.getMessage();
@@ -249,7 +284,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		}
 		return Boolean.TRUE;
 	}
-
 
 
 	private boolean getBoolean(Object object) {
@@ -297,7 +331,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				status.notExecutedNiceLabels = getIdentityNiceLabelForOperations(list);
 			}
 
-			if (status.blocked != null || status.error != null || status.notExecuted != null ) {
+			if (status.blocked != null || status.error != null || status.notExecuted != null) {
 				systems.add(status);
 			}
 		}
@@ -501,7 +535,8 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 				SysSyncLogFilter filter = new SysSyncLogFilter();
 				filter.setSynchronizationConfigId(sync.getId());
-				List<SysSyncLogDto> logs = syncLongService.find(filter, new PageRequest(0, 1, new Sort(Direction.DESC, SysSyncLog_.created.getName()))).getContent();
+				List<SysSyncLogDto> logs = syncLongService.find(filter, new PageRequest(0, 1, new Sort(Direction.DESC,
+						SysSyncLog_.created.getName()))).getContent();
 
 				// must be only one
 				SysSyncLogDto logDto = logs.get(0);
