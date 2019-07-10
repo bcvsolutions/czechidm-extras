@@ -8,7 +8,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.BooleanUtils;
 import org.joda.time.DateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +48,6 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity_;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
-import eu.bcvsolutions.idm.core.notification.api.service.EmailNotificationSender;
 import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
 import eu.bcvsolutions.idm.core.rest.lookup.IdmIdentityDtoLookup;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
@@ -64,7 +62,7 @@ import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
  * LRT send status about state of CzechIdM
  * TODO: select specific system
  * TODO: now exists to much inner classes, please add these classes to each file.
- * TODO: refactor this class, this class used global paramters and only textField as parameters. And this isn't nice
+ * TODO: remake recipient fields
  *
  * @author Ondrej Kopr
  */
@@ -84,7 +82,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	private static String SEND_EVENT_STATUS_PARAM = "sendEventStatusParam";
 	private static String SEND_CONTRACTS_STATUS_PARAM = "sendContractsStatusParam";
 	private static String RECIPIENTS_PARAM = "recipients";
-	private static String RECIPIENTS_EMAIL_PARAM = "emailRecipients";
 	private static String REGEX = ",";
 	@Autowired
 	private SysProvisioningOperationService provisioningOperationService;
@@ -98,8 +95,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	private ConfigurationService configurationService;
 	@Autowired
 	private NotificationManager notificationManager;
-	@Autowired
-	private EmailNotificationSender emailNotificationSender;
 	@Autowired
 	private SysSystemService systemService;
 	@Autowired
@@ -121,7 +116,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	private DateTime lastRun = null;
 	private DateTime started = null;
 	private List<IdmIdentityDto> recipients = null;
-	private List<String> emailRecipients = new ArrayList<>();
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -144,14 +138,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		sendLrtStatus = getParameterConverter().toBoolean(properties, SEND_LRT_STATUS_PARAM);
 		sendEventStatus = getParameterConverter().toBoolean(properties, SEND_EVENT_STATUS_PARAM);
 		sendContractsStatus = getParameterConverter().toBoolean(properties, SEND_CONTRACTS_STATUS_PARAM);
-
-		Object emailRecipientsAsObject = properties.get(RECIPIENTS_EMAIL_PARAM);
-		if (emailRecipientsAsObject != null && !emailRecipientsAsObject.toString().isEmpty()) {
-			String emailRecipientAsString = emailRecipientsAsObject.toString();
-			for (String email : emailRecipientAsString.split(REGEX)) {
-				emailRecipients.add(email.trim());
-			}
-		}
 		recipients = getRecipients(properties.get(RECIPIENTS_PARAM));
 		//
 //		Object systemIdsAsObject = properties.get(SYSTEM_ID_PARAM);
@@ -187,7 +173,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		props.put(SEND_LRT_STATUS_PARAM, sendLrtStatus);
 		props.put(SEND_EVENT_STATUS_PARAM, sendEventStatus);
 		props.put(SEND_CONTRACTS_STATUS_PARAM, sendContractsStatus);
-		props.put(RECIPIENTS_EMAIL_PARAM, emailRecipients);
 		props.put(RECIPIENTS_PARAM, recipients);
 		return props;
 	}
@@ -207,12 +192,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				PersistentType.SHORTTEXT);
 		recipients.setPlaceholder("For multiple recipients add coma between...");
 		attributes.add(recipients);
-		IdmFormAttributeDto emails = new IdmFormAttributeDto(
-				RECIPIENTS_EMAIL_PARAM,
-				"Recipient emails",
-				PersistentType.SHORTTEXT);
-		emails.setPlaceholder("For multiple recipients add coma between...");
-		attributes.add(emails);
 		return attributes;
 	}
 
@@ -230,27 +209,36 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	@Override
 	public Boolean process() {
 		CompleteStatus status = new CompleteStatus();
+		status.containsError = false;
 
 		try {
 
 			if (sendProvisioningStatus) {
 				status.provisioning = getProvisioningStatus();
-				status.containsError = true;
+				if (status.provisioning.size() != 0) {
+					status.containsError = true;
+				}
 			}
 
 			if (sendLrtStatus) {
 				status.lrts = getLrtStatus();
-				status.containsError = true;
+				if (status.lrts.size() != 0) {
+					status.containsError = true;
+				}
 			}
 
 			if (sendEventStatus) {
 				status.events = getEventStatus();
-				status.containsError = true;
+				if (status.events != null) {
+					status.containsError = true;
+				}
 			}
 
 			if (sendSyncStatus) {
 				status.syncs = getSyncStatus();
-				status.containsError = true;
+				if (status.syncs.size() != 0) {
+					status.containsError = true;
+				}
 			}
 
 			if (sendContractsStatus) {
@@ -269,28 +257,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 							.addParameter("status", status)
 							.build(),
 					recipients);
-			if (!emailRecipients.isEmpty()) {
-				// send notification as simple email
-				emailNotificationSender.send(
-						new IdmMessageDto.Builder()
-								.setLevel(NotificationLevel.INFO)
-								.addParameter("status", status)
-								.build(),
-						emailRecipients.toArray(new String[0]));
-			}
 		}
 		if (status.errorDuringSend != null) {
 			return Boolean.FALSE;
 		}
 		return Boolean.TRUE;
-	}
-
-
-	private boolean getBoolean(Object object) {
-		if (object != null && !object.toString().isEmpty()) {
-			return BooleanUtils.toBoolean(object.toString());
-		}
-		return false;
 	}
 
 	/**
