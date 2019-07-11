@@ -1,0 +1,5 @@
+roles;description;attribute;guarantees;guarantee role;criticality
+Manager-A;Leader;;;;
+LAY-SP;Manager;attr1;;;
+"CORE-CLOSE
+AB-role";desc;attr1;uzivatel1;role1;3

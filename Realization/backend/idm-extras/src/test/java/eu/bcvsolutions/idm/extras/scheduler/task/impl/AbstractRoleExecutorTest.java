@@ -47,8 +47,11 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 	public String CHECK_NAME = "ACC-CLOSE";
 	static final String DESCRIPTION = "description";
 	static final String ROLE_ATTRIBUTE = "attribute";
+	static final String GUARANTEE_COLUMN = "guarantees";
+	static final String GUARANTEE_ROLE_COLUMN = "guarantee role";
+	static final String CRITICALITY_COLUMN = "criticality";
 	static final String DEFINITION = "defin";
-	
+		
 	@Autowired
 	protected TestHelper helper;
 	@Autowired
@@ -143,6 +146,9 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ATTRIBUTES_COLUMN_NAME, ROLE_ATTRIBUTE);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_FORM_DEFINITION_CODE, DEFINITION);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_DESCRIPTION_COLUMN_NAME, DESCRIPTION);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_COLUMN_NAME, GUARANTEE_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_ROLE_COLUMN_NAME, GUARANTEE_ROLE_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CRITICALITY_COLUMN_NAME, CRITICALITY_COLUMN);
 		//attachment
 		attachment = createAttachment();
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CSV_ATTACHMENT, attachment.getId());

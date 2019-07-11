@@ -31,18 +31,25 @@ import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueRoleFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
@@ -52,9 +59,13 @@ import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
+import eu.bcvsolutions.idm.core.model.entity.IdmRoleGuarantee;
+import eu.bcvsolutions.idm.core.model.entity.IdmRoleGuaranteeRole;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 
 
 /**
@@ -64,9 +75,9 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  * Fills / updates description
  * Updates can be requested
  *
- * @author Tomas Doischer
  * @author Marek Klement
  * @author Petr Hanák
+ * @author Tomáš Doischer
  */
 @Component
 @Description("Get all roles on mapping - system and import from CSV to IDM")
@@ -79,6 +90,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
 	public static final String PARAM_DESCRIPTION_COLUMN_NAME = "Column with description";
 	public static final String PARAM_ATTRIBUTES_COLUMN_NAME = "Column with attributes";
+	public static final String PARAM_CRITICALITY_COLUMN_NAME = "Column with criticality";
+	public static final String PARAM_GUARANTEE_COLUMN_NAME = "Column with guarantee";
+	public static final String PARAM_GUARANTEE_ROLE_COLUMN_NAME = "Column with guarantee role";
 	public static final String PARAM_FORM_DEFINITION_CODE = "Form definition code";
 	public static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	public static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
@@ -97,6 +111,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private String rolesColumnName;
 	private String descriptionColumnName;
 	private String attributesColumnName;
+	private String criticalityColumnName;
+	private String guaranteeColumnName;
+	private String guaranteeRoleColumnName;
 	private String formDefinitionCode;
 	private String columnSeparator;
 	private String multiValueSeparator;
@@ -104,6 +121,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private Boolean canBeRequested;
 	private Boolean hasDescription;
 	private Boolean hasAttribute;
+	private Boolean hasCriticality;
+	private Boolean hasGuarantees;
+	private Boolean hasGuaranteeRoles;
 		
 	@Autowired
 	private AttachmentManager attachmentManager;
@@ -127,6 +147,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private IdmRoleFormAttributeService roleFormAttributeService;
 	@Autowired
 	private IdmFormAttributeService formAttributeService;
+	@Autowired
+	private IdmIdentityService identityService;
+	@Autowired
+	private IdmRoleGuaranteeService roleGuaranteeService;
+	@Autowired
+	private IdmRoleGuaranteeRoleService roleGuaranteeRoleService;
 
 	@Override
 	public OperationResult process() {
@@ -144,9 +170,15 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		
 		InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
 		
-		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, descriptionColumnName, attributesColumnName, columnSeparator, multiValueSeparator, hasDescription, hasAttribute);
+		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, descriptionColumnName, 
+				attributesColumnName, criticalityColumnName, guaranteeColumnName, 
+				guaranteeRoleColumnName, columnSeparator, multiValueSeparator, hasDescription, 
+				hasAttribute, hasCriticality, hasGuarantees, hasGuaranteeRoles);
 		Map<String, String> roleDescriptions = myParser.getRoleDescriptions();
 		Map<String, List<String>> roleAttributes = myParser.getRoleAttributes();
+		Map<String, String> criticalities = myParser.getCriticalities();
+		Map<String, List<String>> guarantees = myParser.getGuarantees();
+		Map<String, List<String>> guaranteeRoles = myParser.getGuaranteeRoles();
 
 		if ((!roleDescriptions.isEmpty()) || (!roleAttributes.isEmpty())) {
 			this.count = (long) roleDescriptions.size();
@@ -156,9 +188,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			for (String roleName : roleDescriptions.keySet()) {
 				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
 				if (role == null) {
-					role = createRole(roleName, system, roleDescriptions.get(roleName), roleAttributes.get(roleName));
+					role = createRole(roleName, system, roleDescriptions.get(roleName), roleAttributes.get(roleName), 
+							criticalities.get(roleName), guarantees.get(roleName), guaranteeRoles.get(roleName));
 				} else {
-					updateRole(role, roleDescriptions.get(roleName), roleAttributes.get(roleName));
+					updateRole(role, roleDescriptions.get(roleName), roleAttributes.get(roleName), criticalities.get(roleName),
+							guarantees.get(roleName), guaranteeRoles.get(roleName));
 				}
 				if (!roleIsInCatalogue(role.getId(), catalogueId)) {
 					addRoleToCatalogue(role, catalogueId);
@@ -201,14 +235,17 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param description
 	 * @return
 	 */
-	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description, List<String> roleAttributes) {
+	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description, List<String> roleAttributes, 
+			String criticality, List<String> guarantees, List<String> guaranteesRoles) {
 		// Create role
 		IdmRoleDto role = new IdmRoleDto();
 		role.setCode(roleNameToCode(roleName));
 		role.setName(roleName);
-		role.setPriority(0);
+		
+		setCriticality(criticality, role);
 		
 		role.setCanBeRequested(canBeRequested);
+		
 		if (hasDescription) {
 			role.setDescription(description);
 		}
@@ -223,7 +260,17 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				createAttribute(roleAttributes, role);
 			}
 		}
-
+		
+		// Set the guarantee
+		if(hasGuarantees) {
+			setGuarantees(guarantees, role);
+		}
+		
+		// Set the guarantee by role
+		if(hasGuaranteeRoles) {
+			setGuaranteeRoles(guaranteesRoles, role);
+		}
+		
 		// Create role system
 		SysSystemMappingDto systemMapping = getSystemMapping(system);
 		SysRoleSystemDto roleSystem = new SysRoleSystemDto();
@@ -238,6 +285,88 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 		this.logItemProcessed(role, taskCompleted("Role " + roleName + " created"));
 		return role;
+	}
+
+	private boolean setGuarantees(List<String> guarantees, IdmRoleDto role) {
+		// Set the guarantee by identity
+		// Find current guarantees
+		boolean updated = false;
+		List<String> currentGuaranteesLogin = new ArrayList<>();
+		IdmRoleGuaranteeFilter filterGuaranteeRole = new IdmRoleGuaranteeFilter();
+		filterGuaranteeRole.setRole(role.getId());
+		List<IdmRoleGuaranteeDto> currentGarantsLinks = roleGuaranteeService.find(filterGuaranteeRole, null, null).getContent();
+		for(IdmRoleGuaranteeDto garantLink : currentGarantsLinks) {
+			IdmIdentityDto garant = identityService.get(garantLink.getGuarantee());
+			currentGuaranteesLogin.add(garant.getUsername());
+		}
+		for(String guarantee : guarantees) {
+			if(!guarantee.equals("")) {
+				if(!currentGuaranteesLogin.contains(guarantee)) {
+					// Finds the identity of the guarantee, only if the role doesn't yet have the guarantee set
+					IdmIdentityDto identityGuarantee = identityService.getByUsername(guarantee);
+					
+					// Creates a guarantee and sets it to the role
+					if(identityGuarantee != null) { 
+						IdmRoleGuaranteeDto guar = new IdmRoleGuaranteeDto();
+						guar.setGuarantee(identityGuarantee.getId());
+						guar.setRole(role.getId());
+						
+						roleGuaranteeService.save(guar);
+						updated = true;
+					}
+				}
+			}
+		}
+		return updated;
+	}
+
+	private Boolean setGuaranteeRoles(List<String> guaranteesRoles, IdmRoleDto role) {
+		// Set the guarantee by role
+		// Find current role guarantees
+		boolean updated = false;
+		List<String> currentGuaranteesRoleCodes = new ArrayList<>();
+		IdmRoleGuaranteeRoleFilter filterRoleGuaranteeRole = new IdmRoleGuaranteeRoleFilter();
+		filterRoleGuaranteeRole.setRole(role.getId());
+		List<IdmRoleGuaranteeRoleDto> currentGarantsRoleLinks = roleGuaranteeRoleService.find(filterRoleGuaranteeRole, null, null).getContent();
+		for(IdmRoleGuaranteeRoleDto garantRoleLink : currentGarantsRoleLinks) {
+			IdmRoleDto garantRole = roleService.get(garantRoleLink.getGuaranteeRole());
+			currentGuaranteesRoleCodes.add(garantRole.getCode());
+		}
+		
+		for(String guaranteeRole : guaranteesRoles) {
+			if(!guaranteeRole.equals("")) {
+				if(!currentGuaranteesRoleCodes.contains(guaranteeRole)) {
+					// Finds the role if the role doesn't have this guarantee role yet
+					IdmRoleDto roleGuarantee = roleService.getByCode(guaranteeRole);
+					
+					// Creates a guarantee and sets it to the role
+					if(roleGuarantee != null) {
+						IdmRoleGuaranteeRoleDto guar = new IdmRoleGuaranteeRoleDto();
+						guar.setGuaranteeRole(roleGuarantee.getId());
+						guar.setRole(role.getId());
+						
+						roleGuaranteeRoleService.save(guar);
+						updated = true;
+					}
+				}
+			}
+		}
+		return updated;
+	}
+
+	private Boolean setCriticality(String criticality, IdmRoleDto role) {
+		// set criticality, default 0 (set in the parser)
+		Boolean updated = false;
+		int current = role.getPriority();
+		if(current != Integer.valueOf(criticality)) {
+			updated = true;
+		}
+		if(hasCriticality) {
+			role.setPriority(Integer.valueOf(criticality)); 
+		} else {
+			role.setPriority(0);
+		}
+		return updated;
 	}
 
 	private Boolean createAttribute(List<String> roleAttributes, IdmRoleDto role) {
@@ -343,7 +472,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param role
 	 * @param description
 	 */
-	private void updateRole(IdmRoleDto role, String description, List<String> roleAttributes) {
+	private void updateRole(IdmRoleDto role, String description, List<String> roleAttributes, String criticality,
+			List<String> guarantees, List<String> guaranteesRoles) {
 		Boolean canBeReqUpdated = false, descriptionUpdated = false;
 		if (role.isCanBeRequested() != canBeRequested) {
 			role.setCanBeRequested(canBeRequested);
@@ -352,6 +482,22 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		if (role.getDescription() != null && !role.getDescription().equals(description)) { 
 			role.setDescription(description);
 			descriptionUpdated = true;
+		}
+		
+		// update the criticality
+		Boolean criticalityUpdated = false;
+		criticalityUpdated = setCriticality(criticality, role);
+		
+		// update the guarantee
+		Boolean guaranteeUpdated = false;
+		if(hasGuarantees) {
+			guaranteeUpdated = setGuarantees(guarantees, role);
+		}
+		
+		// update the guarantee by role
+		Boolean guaranteeRoleUpdated = false;
+		if(hasGuaranteeRoles) {
+			guaranteeRoleUpdated = setGuaranteeRoles(guaranteesRoles, role);
 		}
 		
 		// update attributes
@@ -367,7 +513,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		
 		roleService.save(role);
 
-		if (canBeReqUpdated || descriptionUpdated || attributesUpdated) {
+		if (canBeReqUpdated || descriptionUpdated || attributesUpdated || criticalityUpdated || 
+				guaranteeUpdated || guaranteeRoleUpdated) {
 			role = roleService.save(role);
 			this.logItemProcessed(role, taskCompleted("Role " + role.getName() + " updated"));			
 		} else {
@@ -468,6 +615,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
 		descriptionColumnName = getParameterConverter().toString(properties, PARAM_DESCRIPTION_COLUMN_NAME);
 		attributesColumnName = getParameterConverter().toString(properties, PARAM_ATTRIBUTES_COLUMN_NAME);
+		criticalityColumnName = getParameterConverter().toString(properties, PARAM_CRITICALITY_COLUMN_NAME);
+		guaranteeColumnName = getParameterConverter().toString(properties, PARAM_GUARANTEE_COLUMN_NAME);
+		guaranteeRoleColumnName = getParameterConverter().toString(properties, PARAM_GUARANTEE_ROLE_COLUMN_NAME);
 		formDefinitionCode = getParameterConverter().toString(properties, PARAM_FORM_DEFINITION_CODE);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
@@ -483,11 +633,25 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		} else {
 			hasDescription = false;
 		}
-		
 		if (attributesColumnName != null) {
 			hasAttribute = true;
 		} else {
 			hasAttribute = false;
+		}
+		if (criticalityColumnName != null) {
+			hasCriticality = true;
+		} else {
+			hasCriticality = false;
+		}
+		if (guaranteeColumnName != null) {
+			hasGuarantees = true;
+		} else {
+			hasGuarantees = false;
+		}
+		if (guaranteeRoleColumnName != null) {
+			hasGuaranteeRoles = true;
+		} else {
+			hasGuaranteeRoles = false;
 		}
 	}
 
@@ -499,6 +663,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
 		props.put(PARAM_DESCRIPTION_COLUMN_NAME, descriptionColumnName);
 		props.put(PARAM_ATTRIBUTES_COLUMN_NAME, attributesColumnName);
+		props.put(PARAM_CRITICALITY_COLUMN_NAME, criticalityColumnName);
+		props.put(PARAM_GUARANTEE_COLUMN_NAME, guaranteeColumnName);
+		props.put(PARAM_GUARANTEE_ROLE_COLUMN_NAME, guaranteeRoleColumnName);
 		props.put(PARAM_FORM_DEFINITION_CODE, formDefinitionCode);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
@@ -529,6 +696,23 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		IdmFormAttributeDto attributesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ATTRIBUTES_COLUMN_NAME, PARAM_ATTRIBUTES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		descriptionColumnNameAttribute.setRequired(false);
+		
+		
+		
+		IdmFormAttributeDto criticalityColumnNameAttribute = new IdmFormAttributeDto(PARAM_CRITICALITY_COLUMN_NAME, PARAM_CRITICALITY_COLUMN_NAME,
+				PersistentType.SHORTTEXT);
+		descriptionColumnNameAttribute.setRequired(false);
+		
+		IdmFormAttributeDto guaranteeColumnNameAttribute = new IdmFormAttributeDto(PARAM_GUARANTEE_COLUMN_NAME, PARAM_GUARANTEE_COLUMN_NAME,
+				PersistentType.SHORTTEXT);
+		descriptionColumnNameAttribute.setRequired(false);
+		
+		IdmFormAttributeDto guaranteeRolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_GUARANTEE_ROLE_COLUMN_NAME, PARAM_GUARANTEE_ROLE_COLUMN_NAME,
+				PersistentType.SHORTTEXT);
+		descriptionColumnNameAttribute.setRequired(false);
+		
+		
+		
 		IdmFormAttributeDto formDefinitionAttribute = new IdmFormAttributeDto(PARAM_FORM_DEFINITION_CODE, PARAM_FORM_DEFINITION_CODE,
 				PersistentType.SHORTTEXT);
 		descriptionColumnNameAttribute.setRequired(false);
@@ -537,23 +721,30 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				PersistentType.CHAR);
 		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
 		columnSeparatorAttribute.setRequired(true);
+		
 		IdmFormAttributeDto multiValueSeparatorAttribute = new IdmFormAttributeDto(PARAM_MULTI_VALUE_SEPARATOR, PARAM_MULTI_VALUE_SEPARATOR,
 				PersistentType.CHAR);
 		multiValueSeparatorAttribute.setRequired(false);
 		multiValueSeparatorAttribute.setPlaceholder("default is new line");
+		
 		IdmFormAttributeDto systemNameAttribute = new IdmFormAttributeDto(PARAM_SYSTEM_NAME, PARAM_SYSTEM_NAME,
 				PersistentType.SHORTTEXT);
 		systemNameAttribute.setRequired(true);
+		
 		IdmFormAttributeDto memberOfAttribute = new IdmFormAttributeDto(PARAM_MEMBER_OF_ATTRIBUTE, PARAM_MEMBER_OF_ATTRIBUTE,
 				PersistentType.SHORTTEXT);
 		memberOfAttribute.setDefaultValue(MEMBER_OF_ATTRIBUTE);
 		memberOfAttribute.setRequired(true);
+		
 		IdmFormAttributeDto canBeRequestedAttribute = new IdmFormAttributeDto(PARAM_CAN_BE_REQUESTED, PARAM_CAN_BE_REQUESTED,
 				PersistentType.BOOLEAN);
 		canBeRequestedAttribute.setDefaultValue(String.valueOf(CAN_BE_REQUESTED));
 		canBeRequestedAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, descriptionColumnNameAttribute, attributesColumnNameAttribute, formDefinitionAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, systemNameAttribute, memberOfAttribute, canBeRequestedAttribute);
+		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, descriptionColumnNameAttribute, 
+				attributesColumnNameAttribute, criticalityColumnNameAttribute, guaranteeColumnNameAttribute, guaranteeRolesColumnNameAttribute,
+				formDefinitionAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, 
+				systemNameAttribute, memberOfAttribute, canBeRequestedAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {
