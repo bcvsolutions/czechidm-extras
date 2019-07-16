@@ -25,10 +25,12 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
@@ -62,6 +64,8 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private IdmIdentityService identityService;
 	@Autowired
 	private IdmRoleService roleService;
+	@Autowired
+	private IdmRoleCatalogueService roleCatalogueService;
 	
 	@Test
 	public void importRolesTest() {
@@ -102,7 +106,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		filter.setSystemId(system.getId());
 		List<SysRoleSystemDto> content = roleSystemService.find(filter, null).getContent();
 		Assert.assertEquals(4, content.size());
-		//SysSystemDto something = systemService.get(content.get(0).getSystem());
+		
 		LinkedList<IdmRoleDto> roles = new LinkedList<>();
 		content.forEach(r -> roles.add(roleService.get(r.getRole())));
 		boolean contains = false;
@@ -116,10 +120,11 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		}
 		assertTrue(contains);
 		assertNotNull(ourRole);
-		//
+		// test for adding catalogues
 		List<IdmRoleCatalogueDto> allByRole = roleCatalogueService.findAllByRole(ourRole.getId());
-		assertEquals(1, allByRole.size());
-		assertEquals(ROLE_ROW, allByRole.get(0).getName());
+		assertEquals(2, allByRole.size());
+		assertEquals("cat1", allByRole.get(0).getName());
+		assertEquals("cat3", allByRole.get(1).getName());
 		
 		// test for adding attributes
 		IdmRoleFormAttributeFilter roleFormAttributeFilter = new IdmRoleFormAttributeFilter();
@@ -153,6 +158,8 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		IdmRoleDto garantRole = roleService.get(garantRoleLink.getGuaranteeRole());
 		
 		Assert.assertEquals(GUARANTEE_ROLE, garantRole.getCode());
+
+		
 		
 	}
 }
