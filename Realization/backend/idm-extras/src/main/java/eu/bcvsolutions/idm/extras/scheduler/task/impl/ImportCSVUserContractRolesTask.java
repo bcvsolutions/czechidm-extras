@@ -5,11 +5,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
@@ -226,8 +228,8 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 		roleRequest.setExecuteImmediately(true);
 		roleRequest = roleRequestService.save(roleRequest);
 		
-		// TODO check if roles are not already assigned to contract
 		for (UUID roleId : roleIds) {
+			// TODO check if roles are not already assigned to contract
 			IdmConceptRoleRequestDto conceptRoleRequest = new IdmConceptRoleRequestDto();
 			conceptRoleRequest.setRoleRequest(roleRequest.getId());
 			conceptRoleRequest.setIdentityContract(contract.getId());
@@ -240,13 +242,19 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 			conceptRoleRequestService.save(conceptRoleRequest);
 		}
 		roleRequestService.startRequestInternal(roleRequest.getId(), true);
-		List<IdmRoleDto> assignedRoles = roleService.getRolesByIds(roleIds.toString());
-		this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(assignedRoles)));
+		
+		this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
 	}
 
-	private String getAssignedRolesToString(List<IdmRoleDto> roles) {
+	private String getAssignedRolesToString(List<UUID> roleIds) {
+//		List<IdmRoleDto> assignedRoleDtos = roleService.getRolesByIds(roleIds.toString());
+		List<IdmRoleDto> assignedRoleDtos = new ArrayList<>();
+		for (UUID roleId : roleIds) {
+			assignedRoleDtos.add(roleService.get(roleId));
+		}
 		List<String> assignedRolesList = new ArrayList<>();
-		for (IdmRoleDto role : roles) {
+		for (IdmRoleDto role : assignedRoleDtos) {
+			System.out.println(role.getName());
 			assignedRolesList.add(role.getCode());
 		}
 		return String.join(", ", assignedRolesList);
