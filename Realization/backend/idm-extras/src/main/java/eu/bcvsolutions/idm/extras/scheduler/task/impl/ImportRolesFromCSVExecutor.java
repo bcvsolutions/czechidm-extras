@@ -562,7 +562,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		
 		// update description if 1) the description is in CSV and 2) if it is different from the current description
 		if (hasDescription && description.trim().length() != 0) {
-			if (role.getDescription() != null && !role.getDescription().equals(description)) {
+			if (role.getDescription() == null || !role.getDescription().equals(description)) {
 				role.setDescription(description);
 				descriptionUpdated = true;
 			}
@@ -839,7 +839,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		IdmFormAttributeDto systemNameAttribute = new IdmFormAttributeDto(PARAM_SYSTEM_NAME, PARAM_SYSTEM_NAME,
 				PersistentType.SHORTTEXT);
 		systemNameAttribute.setRequired(false);
-		systemNameAttribute.setPlaceholder("The name of your system, leave empty if you don't want to set a set a system");
+		systemNameAttribute.setPlaceholder("The name of your system, leave empty if you don't want to set a system");
 		
 		IdmFormAttributeDto memberOfAttribute = new IdmFormAttributeDto(PARAM_MEMBER_OF_ATTRIBUTE, PARAM_MEMBER_OF_ATTRIBUTE,
 				PersistentType.SHORTTEXT);
