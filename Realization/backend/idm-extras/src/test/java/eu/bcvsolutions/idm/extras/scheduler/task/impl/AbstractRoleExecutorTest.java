@@ -144,13 +144,13 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ROLES_COLUMN_NAME, ROLE_ROW);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_MEMBER_OF_ATTRIBUTE, MEMBER_OF_NAME);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CAN_BE_REQUESTED, true);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ATTRIBUTES_COLUMN_NAME, ROLE_ATTRIBUTE);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_FORM_DEFINITION_CODE, DEFINITION);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_DESCRIPTION_COLUMN_NAME, DESCRIPTION);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_COLUMN_NAME, GUARANTEE_COLUMN);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_ROLE_COLUMN_NAME, GUARANTEE_ROLE_COLUMN);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CRITICALITY_COLUMN_NAME, CRITICALITY_COLUMN);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CATALOGUES_COLUMN_NAME, CATALOGUES_COLUMN);
+		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ATTRIBUTES_COLUMN_NAME, ROLE_ATTRIBUTE);
+		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_FORM_DEFINITION_CODE, DEFINITION);
+		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_DESCRIPTION_COLUMN_NAME, DESCRIPTION);
+		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_COLUMN_NAME, GUARANTEE_COLUMN);
+		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_ROLE_COLUMN_NAME, GUARANTEE_ROLE_COLUMN);
+		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CRITICALITY_COLUMN_NAME, CRITICALITY_COLUMN);
+		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CATALOGUES_COLUMN_NAME, CATALOGUES_COLUMN);
 
 		//attachment
 		attachment = createAttachment();

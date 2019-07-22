@@ -86,7 +86,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		
 		roleToAssing = roleService.save(roleToAssing);
 		//
-		Map<String, Object> configOfLRT = pair.getSecond();
+		Map<String, Object> configOfLRT = addToCongig(pair.getSecond());
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
 		lrt.init(configOfLRT);
 		longRunningTaskManager.executeSync(lrt);
@@ -161,5 +161,16 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
 		
 		
+	}
+
+	private Map<String, Object> addToCongig(Map<String, Object> configOfLRT){
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ATTRIBUTES_COLUMN_NAME, ROLE_ATTRIBUTE);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_FORM_DEFINITION_CODE, DEFINITION);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_DESCRIPTION_COLUMN_NAME, DESCRIPTION);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_COLUMN_NAME, GUARANTEE_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_ROLE_COLUMN_NAME, GUARANTEE_ROLE_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CRITICALITY_COLUMN_NAME, CRITICALITY_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CATALOGUES_COLUMN_NAME, CATALOGUES_COLUMN);
+		return configOfLRT;
 	}
 }
