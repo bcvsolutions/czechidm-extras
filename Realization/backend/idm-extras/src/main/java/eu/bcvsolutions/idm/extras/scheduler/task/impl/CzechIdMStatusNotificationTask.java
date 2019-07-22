@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.joda.time.DateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +42,6 @@ import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmEntityEventFilter;
 import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
 import eu.bcvsolutions.idm.core.api.service.IdmEntityEventService;
-import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
@@ -133,11 +133,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		}
 		lastRun = new DateTime(lastRunAsString);
 		//
-		sendProvisioningStatus = getParameterConverter().toBoolean(properties, SEND_PROVISIONING_STATUS_PARAM);
-		sendSyncStatus = getParameterConverter().toBoolean(properties, SEND_SYNC_STATUS_PARAM);
-		sendLrtStatus = getParameterConverter().toBoolean(properties, SEND_LRT_STATUS_PARAM);
-		sendEventStatus = getParameterConverter().toBoolean(properties, SEND_EVENT_STATUS_PARAM);
-		sendContractsStatus = getParameterConverter().toBoolean(properties, SEND_CONTRACTS_STATUS_PARAM);
+		sendProvisioningStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_PROVISIONING_STATUS_PARAM));
+		sendSyncStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_SYNC_STATUS_PARAM));
+		sendLrtStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_LRT_STATUS_PARAM));
+		sendEventStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_EVENT_STATUS_PARAM));
+		sendContractsStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_CONTRACTS_STATUS_PARAM));
 		recipients = getRecipients(properties.get(RECIPIENTS_PARAM));
 		//
 //		Object systemIdsAsObject = properties.get(SYSTEM_ID_PARAM);
@@ -200,9 +200,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				face,
 				name,
 				PersistentType.BOOLEAN);
-		attribute.setFaceType(BaseFaceType.BOOLEAN_SELECT);
-		attribute.setRequired(true);
-		attribute.setDefaultValue("true");
+		attribute.setFaceType(null);
 		return attribute;
 	}
 
