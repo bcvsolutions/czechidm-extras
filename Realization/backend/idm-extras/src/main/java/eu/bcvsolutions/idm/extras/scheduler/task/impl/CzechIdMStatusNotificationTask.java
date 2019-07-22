@@ -57,14 +57,20 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.IdmLongRunningTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateExecutor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.CompleteStatus;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.EventStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.LrtStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.ProvisioningStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SyncStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SystemSyncStatusPojo;
 
 /**
  * LRT send status about state of CzechIdM
  * TODO: select specific system
- * TODO: now exists to much inner classes, please add these classes to each file.
- * TODO: remake recipient fields
+ * TODO: add selectbox for identities
  *
  * @author Ondrej Kopr
+ * @author Marek Klement
  */
 @Service
 @DisallowConcurrentExecution
@@ -209,47 +215,47 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	@Override
 	public Boolean process() {
 		CompleteStatus status = new CompleteStatus();
-		status.containsError = false;
+		status.setContainsError(false);
 
 		try {
 
 			if (sendProvisioningStatus) {
-				status.provisioning = getProvisioningStatus();
-				if (status.provisioning.size() != 0) {
-					status.containsError = true;
+				status.setProvisioning(getProvisioningStatus());
+				if (status.getProvisioning().isEmpty()) {
+					status.setContainsError(true);
 				}
 			}
 
 			if (sendLrtStatus) {
-				status.lrts = getLrtStatus();
-				if (status.lrts.size() != 0) {
-					status.containsError = true;
+				status.setLrts(getLrtStatus());
+				if (status.getLrts().isEmpty()) {
+					status.setContainsError(true);
 				}
 			}
 
 			if (sendEventStatus) {
-				status.events = getEventStatus();
-				if (status.events != null) {
-					status.containsError = true;
+				status.setEvents(getEventStatus());
+				if (status.getEvents() != null) {
+					status.setContainsError(true);
 				}
 			}
 
 			if (sendSyncStatus) {
-				status.syncs = getSyncStatus();
-				if (status.syncs.size() != 0) {
-					status.containsError = true;
+				status.setSyncs(getSyncStatus());
+				if (status.getSyncs().isEmpty()) {
+					status.setContainsError(true);
 				}
 			}
 
 			if (sendContractsStatus) {
-				status.contracts = getContractsStatus();
+				status.setContracts(getContractsStatus());
 			}
 
 			RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
-			status.uptime = String.valueOf((runtimeMXBean.getUptime() / (1000 * 60 * 60 * 24)));
+			status.setUptime(String.valueOf((runtimeMXBean.getUptime() / (1000 * 60 * 60 * 24))));
 		} catch (Exception e) {
 			LOG.error("Error during send CzechIdM status.", e);
-			status.errorDuringSend = e.getMessage();
+			status.setErrorDuringSend(e.getMessage());
 		} finally {
 			notificationManager.send(ExtrasModuleDescriptor.TOPIC_STATUS,
 					new IdmMessageDto.Builder()
@@ -258,7 +264,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 							.build(),
 					recipients);
 		}
-		if (status.errorDuringSend != null) {
+		if (status.getErrorDuringSend() != null) {
 			return Boolean.FALSE;
 		}
 		return Boolean.TRUE;
@@ -275,7 +281,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 		for (SysSystemDto system : systemService.find(null)) {
 			ProvisioningStatusPojo status = new ProvisioningStatusPojo();
-			status.systemName = system.getName();
+			status.setSystemName(system.getName());
 
 			SysProvisioningOperationFilter filter = new SysProvisioningOperationFilter();
 			filter.setSystemId(system.getId());
@@ -284,25 +290,25 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 			List<SysProvisioningOperationDto> list = provisioningOperationService.find(filter, null).getContent();
 
 			if (!list.isEmpty()) {
-				status.error = (long) list.size();
-				status.errorNiceLabels = getIdentityNiceLabelForOperations(list);
+				status.setError((long) list.size());
+				status.setErrorNiceLabels(getIdentityNiceLabelForOperations(list));
 			}
 
 			filter.setResultState(OperationState.BLOCKED);
 			list = provisioningOperationService.find(filter, null).getContent();
 			if (!list.isEmpty()) {
-				status.blocked = (long) list.size();
-				status.blockedNiceLabels = getIdentityNiceLabelForOperations(list);
+				status.setBlocked((long) list.size());
+				status.setBlockedNiceLabels(getIdentityNiceLabelForOperations(list));
 			}
 
 			filter.setResultState(OperationState.NOT_EXECUTED);
 			list = provisioningOperationService.find(filter, null).getContent();
 			if (!list.isEmpty()) {
-				status.notExecuted = (long) list.size();
-				status.notExecutedNiceLabels = getIdentityNiceLabelForOperations(list);
+				status.setNotExecuted((long) list.size());
+				status.setNotExecutedNiceLabels(getIdentityNiceLabelForOperations(list));
 			}
 
-			if (status.blocked != null || status.error != null || status.notExecuted != null) {
+			if (status.getBlocked() != null || status.getError() != null || status.getNotExecuted() != null) {
 				systems.add(status);
 			}
 		}
@@ -360,28 +366,28 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 		for (IdmLongRunningTaskDto task : longRunningTaskService.find(filter, null).getContent()) {
 			LrtStatusPojo status = new LrtStatusPojo();
-			status.type = task.getTaskType();
+			status.setType(task.getTaskType());
 			// dry run skip
 			if (task.isDryRun()) {
 				continue;
 			}
 
 			if (task.getResultState() == OperationState.EXCEPTION) {
-				status.result = OperationState.EXCEPTION.name();
+				status.setResult(OperationState.EXCEPTION.name());
 			} else if (task.getResultState() == OperationState.CANCELED) {
-				status.result = OperationState.CANCELED.name();
+				status.setResult(OperationState.CANCELED.name());
 			} else if (task.getResultState() == OperationState.NOT_EXECUTED) {
-				status.result = OperationState.NOT_EXECUTED.name();
+				status.setResult(OperationState.NOT_EXECUTED.name());
 			}
 
-			if (status.result == null) {
+			if (status.getResult() == null) {
 				continue;
 			}
 
-			status.failedCount = task.getFailedItemCount();
-			status.warningCount = task.getWarningItemCount();
+			status.setFailedCount(task.getFailedItemCount());
+			status.setWarningCount(task.getWarningItemCount());
 
-			if (status.result != null || status.failedCount != null || status.warningCount != null) {
+			if (status.getResult() != null || status.getFailedCount() != null || status.getWarningCount() != null) {
 				statuses.add(status);
 			}
 		}
@@ -398,25 +404,25 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		filter.setStates(Lists.newArrayList(OperationState.EXCEPTION));
 		List<IdmEntityEventDto> list = entityEventService.find(filter, null).getContent();
 		if (!list.isEmpty()) {
-			status.exceptions = (long) list.size();
-			status.exceptionsNiceLabels = getIdentityNiceLabelForEvents(list);
+			status.setExceptions((long) list.size());
+			status.setExceptionsNiceLabels(getIdentityNiceLabelForEvents(list));
 		}
 
 		filter.setStates(Lists.newArrayList(OperationState.NOT_EXECUTED));
 		list = entityEventService.find(filter, null).getContent();
 		if (!list.isEmpty()) {
-			status.notExecuted = (long) list.size();
-			status.notExecutedNiceLabels = getIdentityNiceLabelForEvents(list);
+			status.setNotExecuted((long) list.size());
+			status.setNotExecutedNiceLabels(getIdentityNiceLabelForEvents(list));
 		}
 
 		filter.setStates(Lists.newArrayList(OperationState.BLOCKED));
 		list = entityEventService.find(filter, null).getContent();
 		if (!list.isEmpty()) {
-			status.blocked = (long) list.size();
-			status.blockedNiceLabels = getIdentityNiceLabelForEvents(list);
+			status.setBlocked((long) list.size());
+			status.setBlockedNiceLabels(getIdentityNiceLabelForEvents(list));
 		}
 
-		if (status.blocked != null || status.exceptions != null || status.notExecuted != null) {
+		if (status.getBlocked() != null || status.getExceptions() != null || status.getNotExecuted() != null) {
 			return status;
 		}
 		return null;
@@ -487,7 +493,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 		for (SysSystemDto system : systemService.find(null)) {
 			SyncStatusPojo status = new SyncStatusPojo();
-			status.systemName = system.getName();
+			status.setSystemName(system.getName());
 
 			SysSyncConfigFilter filterSync = new SysSyncConfigFilter();
 			filterSync.setSystemId(system.getId());
@@ -499,7 +505,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					continue;
 				}
 				SystemSyncStatusPojo syncStatus = new SystemSyncStatusPojo();
-				syncStatus.syncName = sync.getName();
+				syncStatus.setSyncName(sync.getName());
 
 				// BEWARE syncLog filter hasn't filter from
 				// for everytime we must load all
@@ -513,19 +519,19 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				SysSyncLogDto logDto = logs.get(0);
 
 				if (logDto.isContainsError()) {
-					syncStatus.containsError = true;
+					syncStatus.setContainsError(true);
 				}
 
-				if (syncStatus.containsError) {
+				if (syncStatus.isContainsError()) {
 					systemSyncStatus.add(syncStatus);
 				}
 			}
 
 			if (!systemSyncStatus.isEmpty()) {
-				status.syncs = systemSyncStatus;
+				status.setSyncs(systemSyncStatus);
 			}
 
-			if (status.syncs != null) {
+			if (status.getSyncs() != null) {
 				statuses.add(status);
 			}
 		}
@@ -549,288 +555,5 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		return recipients;
 	}
 
-	public class ProvisioningStatusPojo {
-		public String systemName = null;
-		public Long error = null;
-		public List<String> errorNiceLabels = null;
-		public Long blocked = null;
-		public List<String> blockedNiceLabels = null;
-		public Long notExecuted = null;
-		public List<String> notExecutedNiceLabels = null;
-
-		public String getSystemName() {
-			return systemName;
-		}
-
-		public void setSystemName(String systemName) {
-			this.systemName = systemName;
-		}
-
-		public Long getError() {
-			return error;
-		}
-
-		public void setError(Long error) {
-			this.error = error;
-		}
-
-		public Long getBlocked() {
-			return blocked;
-		}
-
-		public void setBlocked(Long blocked) {
-			this.blocked = blocked;
-		}
-
-		public Long getNotExecuted() {
-			return notExecuted;
-		}
-
-		public void setNotExecuted(Long notExecuted) {
-			this.notExecuted = notExecuted;
-		}
-
-		public List<String> getErrorNiceLabels() {
-			return errorNiceLabels;
-		}
-
-		public void setErrorNiceLabels(List<String> errorNiceLabels) {
-			this.errorNiceLabels = errorNiceLabels;
-		}
-
-		public List<String> getBlockedNiceLabels() {
-			return blockedNiceLabels;
-		}
-
-		public void setBlockedNiceLabels(List<String> blockedNiceLabels) {
-			this.blockedNiceLabels = blockedNiceLabels;
-		}
-
-		public List<String> getNotExecutedNiceLabels() {
-			return notExecutedNiceLabels;
-		}
-
-		public void setNotExecutedNiceLabels(List<String> notExecutedNiceLabels) {
-			this.notExecutedNiceLabels = notExecutedNiceLabels;
-		}
-	}
-
-	public class LrtStatusPojo {
-		public String type = null;
-		public String result = null;
-		public Long warningCount = null;
-		public Long failedCount = null;
-
-		public String getType() {
-			return type;
-		}
-
-		public void setType(String type) {
-			this.type = type;
-		}
-
-		public String getResult() {
-			return result;
-		}
-
-		public void setResult(String result) {
-			this.result = result;
-		}
-
-		public Long getWarningCount() {
-			return warningCount;
-		}
-
-		public void setWarningCount(Long warningCount) {
-			this.warningCount = warningCount;
-		}
-
-		public Long getFailedCount() {
-			return failedCount;
-		}
-
-		public void setFailedCount(Long failedCount) {
-			this.failedCount = failedCount;
-		}
-
-	}
-
-	public class EventStatusPojo {
-		public Long exceptions = null;
-		public List<String> exceptionsNiceLabels = null;
-		public Long notExecuted = null;
-		public List<String> notExecutedNiceLabels = null;
-		public Long blocked = null;
-		public List<String> blockedNiceLabels = null;
-
-		public Long getExceptions() {
-			return exceptions;
-		}
-
-		public void setExceptions(Long exceptions) {
-			this.exceptions = exceptions;
-		}
-
-		public Long getNotExecuted() {
-			return notExecuted;
-		}
-
-		public void setNotExecuted(Long notExecuted) {
-			this.notExecuted = notExecuted;
-		}
-
-		public Long getBlocked() {
-			return blocked;
-		}
-
-		public void setBlocked(Long blocked) {
-			this.blocked = blocked;
-		}
-
-		public List<String> getExceptionsNiceLabels() {
-			return exceptionsNiceLabels;
-		}
-
-		public void setExceptionsNiceLabels(List<String> exceptionsNiceLabels) {
-			this.exceptionsNiceLabels = exceptionsNiceLabels;
-		}
-
-		public List<String> getNotExecutedNiceLabels() {
-			return notExecutedNiceLabels;
-		}
-
-		public void setNotExecutedNiceLabels(List<String> notExecutedNiceLabels) {
-			this.notExecutedNiceLabels = notExecutedNiceLabels;
-		}
-
-		public List<String> getBlockedNiceLabels() {
-			return blockedNiceLabels;
-		}
-
-		public void setBlockedNiceLabels(List<String> blockedNiceLabels) {
-			this.blockedNiceLabels = blockedNiceLabels;
-		}
-
-	}
-
-	public class SyncStatusPojo {
-		public String systemName = null;
-		public List<SystemSyncStatusPojo> syncs = null;
-
-		public String getSystemName() {
-			return systemName;
-		}
-
-		public void setSystemName(String systemName) {
-			this.systemName = systemName;
-		}
-
-		public List<SystemSyncStatusPojo> getSyncs() {
-			return syncs;
-		}
-
-		public void setSyncs(List<SystemSyncStatusPojo> syncs) {
-			this.syncs = syncs;
-		}
-
-	}
-
-	public class SystemSyncStatusPojo {
-		public String syncName = null;
-		public boolean containsError = false;
-
-		public String getSyncName() {
-			return syncName;
-		}
-
-		public void setSyncName(String syncName) {
-			this.syncName = syncName;
-		}
-
-		public boolean isContainsError() {
-			return containsError;
-		}
-
-		public void setContainsError(boolean containsError) {
-			this.containsError = containsError;
-		}
-
-	}
-
-	public class CompleteStatus {
-		public List<ProvisioningStatusPojo> provisioning = null;
-		public List<LrtStatusPojo> lrts = null;
-		public EventStatusPojo events = null;
-		public List<SyncStatusPojo> syncs = null;
-		public String uptime = null;
-		public boolean containsError = false;
-		public String errorDuringSend = null;
-		public List<IdentityStateReportDto> contracts = null;
-
-		public List<ProvisioningStatusPojo> getProvisioning() {
-			return provisioning;
-		}
-
-		public void setProvisioning(List<ProvisioningStatusPojo> provisioning) {
-			this.provisioning = provisioning;
-		}
-
-		public List<LrtStatusPojo> getLrts() {
-			return lrts;
-		}
-
-		public void setLrts(List<LrtStatusPojo> lrts) {
-			this.lrts = lrts;
-		}
-
-		public EventStatusPojo getEvents() {
-			return events;
-		}
-
-		public void setEvents(EventStatusPojo events) {
-			this.events = events;
-		}
-
-		public List<SyncStatusPojo> getSyncs() {
-			return syncs;
-		}
-
-		public void setSyncs(List<SyncStatusPojo> syncs) {
-			this.syncs = syncs;
-		}
-
-		public String getUptime() {
-			return uptime;
-		}
-
-		public void setUptime(String uptime) {
-			this.uptime = uptime;
-		}
-
-		public boolean isContainsError() {
-			return containsError;
-		}
-
-		public void setContainsError(boolean containsError) {
-			this.containsError = containsError;
-		}
-
-		public String getErrorDuringSend() {
-			return errorDuringSend;
-		}
-
-		public void setErrorDuringSend(String errorDuringSend) {
-			this.errorDuringSend = errorDuringSend;
-		}
-
-		public List<IdentityStateReportDto> getContracts() {
-			return contracts;
-		}
-
-		public void setContracts(List<IdentityStateReportDto> contracts) {
-			this.contracts = contracts;
-		}
-
-	}
 }
 
