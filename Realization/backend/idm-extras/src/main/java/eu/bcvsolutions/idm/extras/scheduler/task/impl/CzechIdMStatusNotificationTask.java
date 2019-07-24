@@ -219,14 +219,14 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 			if (sendProvisioningStatus) {
 				status.setProvisioning(getProvisioningStatus());
-				if (status.getProvisioning().isEmpty()) {
+				if (!status.getProvisioning().isEmpty()) {
 					status.setContainsError(true);
 				}
 			}
 
 			if (sendLrtStatus) {
 				status.setLrts(getLrtStatus());
-				if (status.getLrts().isEmpty()) {
+				if (!status.getLrts().isEmpty()) {
 					status.setContainsError(true);
 				}
 			}
@@ -240,7 +240,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 			if (sendSyncStatus) {
 				status.setSyncs(getSyncStatus());
-				if (status.getSyncs().isEmpty()) {
+				if (!status.getSyncs().isEmpty()) {
 					status.setContainsError(true);
 				}
 			}
