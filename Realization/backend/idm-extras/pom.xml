@@ -68,6 +68,18 @@
 		</dependency>
 		<dependency>
 			<groupId>eu.bcvsolutions.idm</groupId>
+			<artifactId>idm-rpt</artifactId>
+			<version>${czechidm-version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>eu.bcvsolutions.idm</groupId>
+			<artifactId>idm-rpt-impl</artifactId>
+			<version>${czechidm-version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>eu.bcvsolutions.idm</groupId>
 			<artifactId>idm-core-test-api</artifactId>
 			<version>${czechidm-version}</version>
 			<scope>test</scope>
