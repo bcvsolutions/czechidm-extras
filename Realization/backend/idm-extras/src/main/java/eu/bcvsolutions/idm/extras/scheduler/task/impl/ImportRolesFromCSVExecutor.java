@@ -108,9 +108,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public OperationResult process() {
 		LOG.debug("Start process");
 		SysSystemDto system = findSystem();
-		if (!attachmentManager.get(attachmentId).getMimetype().contains("text/csv")) {
-			throw new ResultCodeException(ExtrasResultCode.WRONG_FILE_FORMAT);
-		}
+
 		// zkusit nasetovat id LRT do owner ID
 		IdmAttachmentDto attachment = attachmentManager.get(attachmentId);
 		System.out.println(attachment.getOwnerId());
