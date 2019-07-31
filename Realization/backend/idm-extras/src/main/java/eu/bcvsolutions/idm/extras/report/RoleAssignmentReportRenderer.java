@@ -23,7 +23,7 @@ import java.io.InputStream;
 import java.text.DateFormat;
 
 @Enabled(ExtrasModuleDescriptor.MODULE_ID)
-@Component("exampleIdentityReportRenderer")
+@Component("roleAssignmentReportRenderer")
 @Description(AbstractXlsxRenderer.RENDERER_EXTENSION) // will be show as format for download
 public class RoleAssignmentReportRenderer
         extends AbstractXlsxRenderer

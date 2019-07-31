@@ -65,12 +65,12 @@
 			<version>${czechidm-version}</version>
 			<scope>provided</scope>
 		</dependency>
-		<dependency>
+		<!--dependency>
 			<groupId>eu.bcvsolutions.idm</groupId>
 			<artifactId>idm-rpt</artifactId>
 			<version>${czechidm-version}</version>
 			<scope>provided</scope>
-		</dependency>
+		</dependency-->
 		<dependency>
 			<groupId>eu.bcvsolutions.idm</groupId>
 			<artifactId>idm-rpt-impl</artifactId>

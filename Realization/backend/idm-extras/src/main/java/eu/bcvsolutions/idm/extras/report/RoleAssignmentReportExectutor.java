@@ -63,7 +63,7 @@ import eu.bcvsolutions.idm.rpt.api.executor.AbstractReportExecutor;
      */
     @Enabled(ExtrasModuleDescriptor.MODULE_ID)
     @Component("extrasRoleAssignmentReportExectutor")
-    @Description("Identities - example")
+    @Description("Identities - role assignments")
     public class RoleAssignmentReportExectutor extends AbstractReportExecutor {
 
         public static final String REPORT_NAME = "extras-role-assignments-report"; // report ~ executor name
