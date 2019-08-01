@@ -158,9 +158,6 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		IdmRoleDto garantRole = roleService.get(garantRoleLink.getGuaranteeRole());
 		
 		Assert.assertEquals(GUARANTEE_ROLE, garantRole.getCode());
-
-		
-		
 	}
 
 	private Map<String, Object> addToCongig(Map<String, Object> configOfLRT){

@@ -64,9 +64,9 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  */
 @Component
 @Description("Parses input CSV (path as parameter) and assigns roles to user contracts. Only role assignment is allowed.")
-public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecutor<OperationResult> {
+public class ImportFromCSVUserContractRolesTaskExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ImportCSVUserContractRolesTask.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ImportFromCSVUserContractRolesTaskExecutorTest.class);
 
 	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
 	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
