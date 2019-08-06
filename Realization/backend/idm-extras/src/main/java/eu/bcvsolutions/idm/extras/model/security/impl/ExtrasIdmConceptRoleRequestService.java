@@ -74,21 +74,22 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 
 		UUID currentId = securityService.getCurrentId();
 
-		IdmIdentityContractDto identityForRoleAssignContract = identityContractService.get(dto.getIdentityContract());
-		if (identityForRoleAssignContract != null) {
-			UUID identityIdForRoleAssign = identityForRoleAssignContract.getIdentity();
-			if (currentId.toString().equals(identityIdForRoleAssign.toString())) {
+		if (dto.getIdentityContract() != null && currentId != null) {
+
+			// requesting for myself is allowed
+			IdmIdentityContractDto identityForRoleAssignContract = identityContractService.get(dto.getIdentityContract());
+			if (identityForRoleAssignContract != null) {
+				UUID identityIdForRoleAssign = identityForRoleAssignContract.getIdentity();
+				if (currentId.toString().equals(identityIdForRoleAssign.toString())) {
+					return super.save(dto, permission);
+				}
+			}
+
+			// for administrator doesnt work the behavior
+			if (securityService.isAdmin()) {
 				return super.save(dto, permission);
 			}
-		}
 
-		// for administrator doesnt work the behavior
-		if (securityService.isAdmin()) {
-			return super.save(dto, permission);
-		}
-
-		// this isn't probably possible, but for sure
-		if (currentId != null) {
 			// if I am manager of the user I can assign roles
 			if (dto.getIdentityRole() != null) {
 				IdmIdentityRoleDto identityRole = DtoUtils.getEmbedded(dto, IdmConceptRoleRequest_.identityRole, IdmIdentityRoleDto.class, null);
