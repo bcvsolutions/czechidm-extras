@@ -1,6 +1,6 @@
-roles;description;attribute;guarantees;guarantee role;criticality;catalogue
-Manager-A;Leader;;;;;
-LAY-SP;Manager;attr1;;;;
+roles;description;attribute;guarantees;guarantee role;criticality;catalogue;subroles
+Manager-A;Leader;;;;;;
+LAY-SP;Manager;attr1;;;;;
 "CORE-CLOSE
 AB-role";desc;attr1;uzivatel1;role1;3;"cat1
-cat3"
+cat3";subrole
