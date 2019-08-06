@@ -71,6 +71,12 @@
 			<version>${czechidm-version}</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>eu.bcvsolutions.idm</groupId>
+			<artifactId>idm-rpt-impl</artifactId>
+			<version>${czechidm-version}</version>
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 
 	<profiles>
@@ -165,5 +171,5 @@
 			<url>https://nexus.bcvsolutions.eu/repository/maven-releases/</url>
 		</repository>
 	</distributionManagement>
-	
+
 </project>
