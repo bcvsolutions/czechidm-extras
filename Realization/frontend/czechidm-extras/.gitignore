@@ -1,0 +1,9 @@
+node_modules
+.tmp
+.idea
+dist
+config.json
+nohup.out
+npm-debug.log
+configUrl.js
+package-lock.json
