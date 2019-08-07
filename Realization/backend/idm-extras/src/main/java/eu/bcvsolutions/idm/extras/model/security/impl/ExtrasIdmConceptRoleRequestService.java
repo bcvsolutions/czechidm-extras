@@ -11,7 +11,6 @@ import com.google.common.collect.ImmutableMap;
 import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
@@ -23,10 +22,6 @@ import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.api.service.LookupService;
-import eu.bcvsolutions.idm.core.api.utils.DtoUtils;
-import eu.bcvsolutions.idm.core.model.entity.IdmConceptRoleRequest_;
-import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract_;
-import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole_;
 import eu.bcvsolutions.idm.core.model.repository.IdmAutomaticRoleRepository;
 import eu.bcvsolutions.idm.core.model.repository.IdmConceptRoleRequestRepository;
 import eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmConceptRoleRequestService;
@@ -71,36 +66,26 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 
 	@Override
 	public IdmConceptRoleRequestDto save(IdmConceptRoleRequestDto dto, BasePermission... permission) {
-
 		UUID currentId = securityService.getCurrentId();
+
+		// for administrator doesnt work the behavior
+		if (securityService.isAdmin()) {
+			return super.save(dto, permission);
+		}
 
 		if (dto.getIdentityContract() != null && currentId != null) {
 
-			// requesting for myself is allowed
 			IdmIdentityContractDto identityForRoleAssignContract = identityContractService.get(dto.getIdentityContract());
 			if (identityForRoleAssignContract != null) {
 				UUID identityIdForRoleAssign = identityForRoleAssignContract.getIdentity();
+
+				// requesting for myself is allowed
 				if (currentId.toString().equals(identityIdForRoleAssign.toString())) {
 					return super.save(dto, permission);
 				}
-			}
 
-			// for administrator doesnt work the behavior
-			if (securityService.isAdmin()) {
-				return super.save(dto, permission);
-			}
-
-			// if I am manager of the user I can assign roles
-			if (dto.getIdentityRole() != null) {
-				IdmIdentityRoleDto identityRole = DtoUtils.getEmbedded(dto, IdmConceptRoleRequest_.identityRole, IdmIdentityRoleDto.class, null);
-				if (identityRole == null) {
-					identityRole = identityRoleService.get(dto.getIdentityRole());
-				}
-
-				IdmIdentityContractDto identityContract = DtoUtils.getEmbedded(identityRole, IdmIdentityRole_.identityContract, IdmIdentityContractDto.class);
-				IdmIdentityDto identity = DtoUtils.getEmbedded(identityContract, IdmIdentityContract_.identity, IdmIdentityDto.class);
-
-				List<IdmIdentityDto> managers = identityService.findAllManagers(identity.getId());
+				// if I am manager of the user I can assign roles
+				List<IdmIdentityDto> managers = identityService.findAllManagers(identityForRoleAssignContract.getIdentity());
 
 				if (managers.stream().anyMatch(identityDto -> identityDto.getId().toString().equals(currentId.toString()))) {
 					return super.save(dto, permission);
@@ -132,7 +117,6 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 						ImmutableMap.of("role", roleDto != null ? roleDto.getName() : UNDEFINED_ROLE_NAME));
 			}
 		}
-
 		return super.save(dto, permission);
 	}
 }
