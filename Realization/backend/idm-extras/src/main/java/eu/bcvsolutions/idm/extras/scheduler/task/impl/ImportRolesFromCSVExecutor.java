@@ -309,7 +309,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				String roleCode) {
 		// Create role
 		IdmRoleDto role = new IdmRoleDto();
-		role.setBaseCode(roleCode);
+		role.setCode(roleCode);
 		
 		role.setName(roleName);
 		
