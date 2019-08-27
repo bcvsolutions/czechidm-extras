@@ -41,7 +41,9 @@ import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
@@ -68,12 +70,12 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportCSVUserContractRolesTask.class);
 
-	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
-	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	private static final String PARAM_USERNAME_COLUMN_NAME = "Column with username";
-	private static final String PARAM_CONTRACT_EAV_COLUMN_NAME = "Column with contract eav";
-	private static final String PARAM_CONTRACT_EAV_NAME = "Name of contract eav attribute";
-	private static final String PARAM_COLUMN_SEPARATOR = "Column separator";
+	static final String PARAM_CSV_ATTACHMENT = "Import csv file";
+	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
+	static final String PARAM_USERNAME_COLUMN_NAME = "Column with username";
+	static final String PARAM_CONTRACT_EAV_COLUMN_NAME = "Column with contract eav";
+	static final String PARAM_CONTRACT_EAV_NAME = "Name of contract eav attribute";
+	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
@@ -142,16 +144,36 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 			String roleName = line[roleColumnNumber];
 			
 			if (!StringUtils.isEmpty(roleName) && !StringUtils.isEmpty(username)) {
-				UUID identityId = identityService.getByUsername(username).getId();
+				IdmIdentityDto identity = identityService.getByUsername(username);
+				UUID identityId;
+				if (identity != null) {
+					identityId = identity.getId();
+				} else {
+					continue;
+				}
 				if (identityId != null) {
 					List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identityId, LocalDate.now(), null);
 					if (!contractEav.isEmpty()) {
-						UUID contractId = getContractByEav(contracts, contractEav).getId();
+						IdmIdentityContractDto contract = getContractByEav(contracts, contractEav);
+						UUID contractId;
+						if (contract != null) {
+							contractId = contract.getId();
+						} else {
+							continue;
+						}
 						if (!contractRoles.containsKey(contractId)) {
 							contractRoles.put(contractId, new ArrayList<>());
 						}
 						// TODO get by name?
-						contractRoles.get(contractId).add(roleService.getByCode(roleName).getId());
+						IdmRoleDto role = roleService.getByCode(roleName);
+						if (role != null) {
+							contractRoles.get(contractId).add(role.getId());
+						} else {
+							this.logItemProcessed(identityContractService.get(contractId), taskNotCompleted("Role does not exist: " + roleName));
+							if (contractRoles.get(contractId).size() == 0) {
+								contractRoles.remove(contractId);
+							}
+						}
 					} else {
 						for (IdmIdentityContractDto contract : contracts) {
 							UUID contractId = contract.getId();
@@ -242,8 +264,9 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 			conceptRoleRequestService.save(conceptRoleRequest);
 		}
 		roleRequestService.startRequestInternal(roleRequest.getId(), true);
-		
-		this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
+		if (roleIds.size() > 0) {
+			this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
+		}
 	}
 
 	private String getAssignedRolesToString(List<UUID> roleIds) {
@@ -356,8 +379,13 @@ public class ImportCSVUserContractRolesTask extends AbstractSchedulableTaskExecu
 				ImmutableMap.of("message", message))).build();
 	}
 	
-	private OperationResult taskNotCompleted(String message) {
+	private OperationResult taskNotExecuted(String message) {
 		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+				ImmutableMap.of("message", message))).build();
+	}
+	
+	private OperationResult taskNotCompleted(String message) {
+		return new OperationResult.Builder(OperationState.EXCEPTION).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
 				ImmutableMap.of("message", message))).build();
 	}
 }
