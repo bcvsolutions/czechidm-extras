@@ -5,13 +5,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
@@ -42,9 +40,11 @@ import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmConceptRoleRequestService;
@@ -64,16 +64,16 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  */
 @Component
 @Description("Parses input CSV (path as parameter) and assigns roles to user contracts. Only role assignment is allowed.")
-public class ImportFromCSVUserContractRolesTaskExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
+public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ImportFromCSVUserContractRolesTaskExecutorTest.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ImportCSVUserContractRolesTaskExecutor.class);
 
-	private static final String PARAM_CSV_ATTACHMENT = "Import csv file";
-	private static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	private static final String PARAM_USERNAME_COLUMN_NAME = "Column with username";
-	private static final String PARAM_CONTRACT_EAV_COLUMN_NAME = "Column with contract eav";
-	private static final String PARAM_CONTRACT_EAV_NAME = "Name of contract eav attribute";
-	private static final String PARAM_COLUMN_SEPARATOR = "Column separator";
+	static final String PARAM_CSV_ATTACHMENT = "Import csv file";
+	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
+	static final String PARAM_USERNAME_COLUMN_NAME = "Column with username";
+	static final String PARAM_CONTRACT_EAV_COLUMN_NAME = "Column with contract eav";
+	static final String PARAM_CONTRACT_EAV_NAME = "Name of contract eav attribute";
+	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
@@ -142,16 +142,36 @@ public class ImportFromCSVUserContractRolesTaskExecutor extends AbstractSchedula
 			String roleName = line[roleColumnNumber];
 			
 			if (!StringUtils.isEmpty(roleName) && !StringUtils.isEmpty(username)) {
-				UUID identityId = identityService.getByUsername(username).getId();
+				IdmIdentityDto identity = identityService.getByUsername(username);
+				UUID identityId;
+				if (identity != null) {
+					identityId = identity.getId();
+				} else {
+					continue;
+				}
 				if (identityId != null) {
 					List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identityId, LocalDate.now(), null);
 					if (!contractEav.isEmpty()) {
-						UUID contractId = getContractByEav(contracts, contractEav).getId();
+						IdmIdentityContractDto contract = getContractByEav(contracts, contractEav);
+						UUID contractId;
+						if (contract != null) {
+							contractId = contract.getId();
+						} else {
+							continue;
+						}
 						if (!contractRoles.containsKey(contractId)) {
 							contractRoles.put(contractId, new ArrayList<>());
 						}
 						// TODO get by name?
-						contractRoles.get(contractId).add(roleService.getByCode(roleName).getId());
+						IdmRoleDto role = roleService.getByCode(roleName);
+						if (role != null) {
+							contractRoles.get(contractId).add(role.getId());
+						} else {
+							this.logItemProcessed(identityContractService.get(contractId), taskNotCompleted("Role does not exist: " + roleName));
+							if (contractRoles.get(contractId).size() == 0) {
+								contractRoles.remove(contractId);
+							}
+						}
 					} else {
 						for (IdmIdentityContractDto contract : contracts) {
 							UUID contractId = contract.getId();
@@ -179,7 +199,7 @@ public class ImportFromCSVUserContractRolesTaskExecutor extends AbstractSchedula
 	
 	private IdmIdentityContractDto getContractByEav(List<IdmIdentityContractDto> contracts, String contractEavCsvValue) {
 		for (IdmIdentityContractDto contract : contracts) {
-//			get contract eav from contract
+//				get contract eav from contract
 			if (getEavValueForContract(contract.getId(), contractEavName) != null) {
 				String contractEavValue = getEavValueForContract(contract.getId(), contractEavName).toString();
 				if (contractEavValue != null && contractEavValue.equals(contractEavCsvValue)) {
@@ -188,32 +208,6 @@ public class ImportFromCSVUserContractRolesTaskExecutor extends AbstractSchedula
 			}
 		}
 		return null;
-	}
-	
-	private List<IdmRoleDto> getContractRoles(Map<String, IdmRoleDto> namesAndRoles, List<String> roleNames) {
-		List<IdmRoleDto> roles = new ArrayList<>();
-		for (String role : roleNames) {
-			if (namesAndRoles.containsKey(role)) {
-				roles.add(namesAndRoles.get(role));
-			}
-		}
-		return roles;
-	}
-
-	private List<IdmRoleDto> getRolesToFilterOut(List<IdmRoleDto> roles, IdmIdentityContractDto contract) {
-		// filter already assigned roles
-		List<IdmRoleDto> filterOut = new ArrayList<>();
-		//	find valid contracts only	
-		List<IdmIdentityRoleDto> rolesByContract = identityRoleService.findAllByContract(contract.getId());
-		for (IdmIdentityRoleDto assignedRole : rolesByContract) {
-			for (IdmRoleDto toBeAssigned : roles) {
-				if (toBeAssigned.getId().equals(assignedRole.getRole())) {
-					filterOut.add(toBeAssigned);
-					break;
-				}
-			}
-		}
-		return filterOut;
 	}
 	
 	private void addRolesToContract(UUID contractId, List<UUID> roleIds) {
@@ -229,32 +223,45 @@ public class ImportFromCSVUserContractRolesTaskExecutor extends AbstractSchedula
 		roleRequest = roleRequestService.save(roleRequest);
 		
 		for (UUID roleId : roleIds) {
-			// TODO check if roles are not already assigned to contract
-			IdmConceptRoleRequestDto conceptRoleRequest = new IdmConceptRoleRequestDto();
-			conceptRoleRequest.setRoleRequest(roleRequest.getId());
-			conceptRoleRequest.setIdentityContract(contract.getId());
-			conceptRoleRequest.setValidFrom(null);
-			// TODO what?!
-			conceptRoleRequest.setIdentityRole(identityRoleId);
-			conceptRoleRequest.setValidTill(null);
-			conceptRoleRequest.setRole(roleId);
-			conceptRoleRequest.setOperation(operation);
-			conceptRoleRequestService.save(conceptRoleRequest);
+			Boolean roleAssigned = false;
+			IdmIdentityRoleFilter filter = new IdmIdentityRoleFilter();
+			filter.setIdentityContractId(contractId);
+			List<IdmIdentityRoleDto> result = identityRoleService.find(filter, null).getContent();
+			if (result.size() > 0) {
+				for (IdmIdentityRoleDto identityRole : result) {
+					if (identityRole.getRole().equals(roleId)) {
+						roleAssigned = true;
+						this.logItemProcessed(identityContractService.get(contractId), taskNotExecuted("Role is already assigned: " + roleService.get(roleId).getCode()));
+						continue;
+					}
+				}
+			}
+			if (!roleAssigned) {
+				IdmConceptRoleRequestDto conceptRoleRequest = new IdmConceptRoleRequestDto();
+				conceptRoleRequest.setRoleRequest(roleRequest.getId());
+				conceptRoleRequest.setIdentityContract(contract.getId());
+				conceptRoleRequest.setValidFrom(null);
+				conceptRoleRequest.setIdentityRole(identityRoleId);
+				conceptRoleRequest.setValidTill(null);
+				conceptRoleRequest.setRole(roleId);
+				conceptRoleRequest.setOperation(operation);
+				conceptRoleRequestService.save(conceptRoleRequest);
+			}
 		}
 		roleRequestService.startRequestInternal(roleRequest.getId(), true);
-		
-		this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
+		if (roleIds.size() > 0) {
+			this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
+		}
 	}
 
 	private String getAssignedRolesToString(List<UUID> roleIds) {
-//		List<IdmRoleDto> assignedRoleDtos = roleService.getRolesByIds(roleIds.toString());
+//			List<IdmRoleDto> assignedRoleDtos = roleService.getRolesByIds(roleIds.toString());
 		List<IdmRoleDto> assignedRoleDtos = new ArrayList<>();
 		for (UUID roleId : roleIds) {
 			assignedRoleDtos.add(roleService.get(roleId));
 		}
 		List<String> assignedRolesList = new ArrayList<>();
 		for (IdmRoleDto role : assignedRoleDtos) {
-			System.out.println(role.getName());
 			assignedRolesList.add(role.getCode());
 		}
 		return String.join(", ", assignedRolesList);
@@ -356,8 +363,13 @@ public class ImportFromCSVUserContractRolesTaskExecutor extends AbstractSchedula
 				ImmutableMap.of("message", message))).build();
 	}
 	
-	private OperationResult taskNotCompleted(String message) {
+	private OperationResult taskNotExecuted(String message) {
 		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+				ImmutableMap.of("message", message))).build();
+	}
+	
+	private OperationResult taskNotCompleted(String message) {
+		return new OperationResult.Builder(OperationState.EXCEPTION).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
 				ImmutableMap.of("message", message))).build();
 	}
 }
