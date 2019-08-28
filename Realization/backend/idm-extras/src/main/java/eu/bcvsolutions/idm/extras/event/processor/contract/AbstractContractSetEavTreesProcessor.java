@@ -36,9 +36,9 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  */
 public abstract class AbstractContractSetEavTreesProcessor<E extends AbstractDto> extends CoreEventProcessor<E> {
 
-	public static final String EAV_CONFIG_NODE_NAME = "idm.sec.module.extras.processor.set-node-to-eav";
-	public static final String EAV_CONFIG_TREE_NAME = "idm.sec.module.extras.processor.set-structure-to-eav";
-	public static final String EAV_CONFIG_FORM_CODE = "idm.sec.module.extras.processor.set-eav-tree.form-code";
+	public static final String EAV_CONFIG_NODE_NAME = "idm.sec.extras.processor.set-node-to-eav";
+	public static final String EAV_CONFIG_TREE_NAME = "idm.sec.extras.processor.set-structure-to-eav";
+	public static final String EAV_CONFIG_FORM_CODE = "idm.sec.extras.processor.set-eav-tree.form-code";
 
 	@Autowired
 	private FormService formService;
