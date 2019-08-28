@@ -71,4 +71,9 @@ public class TreeNodeUpdateEavTreesProcessor extends CoreEventProcessor<IdmTreeN
 	public int getOrder() {
 		return CoreEvent.DEFAULT_ORDER + 1;
 	}
+
+	@Override
+	public String getName() {
+		return PROCESSOR_NAME;
+	}
 }
