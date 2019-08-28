@@ -6,9 +6,11 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 
 import eu.bcvsolutions.idm.core.api.dto.AbstractDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmContractPositionDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
@@ -36,6 +38,7 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends AbstractDto
 
 	public static final String EAV_CONFIG_NODE_NAME = "module.extras.processor.set-node-to-eav";
 	public static final String EAV_CONFIG_TREE_NAME = "module.extras.processor.set-structure-to-eav";
+	public static final String EAV_CONFIG_FORM_CODE = "module.extras.processor.set-eav-tree.form-code";
 
 	@Autowired
 	private FormService formService;
@@ -69,7 +72,15 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends AbstractDto
 		// just for identityContract
 		addValues(contract.getWorkPosition(), valuesTree, valuesNode, doTreeDown);
 		//
-		IdmFormDefinitionDto definition = formService.getDefinition(contract.getClass(), FormService.DEFAULT_DEFINITION_CODE);
+		String formCode = configurationService.getValue(EAV_CONFIG_FORM_CODE);
+		IdmFormDefinitionDto definition;
+		if(formCode==null){
+			definition = getFormDefinition(FormService.DEFAULT_DEFINITION_CODE);
+		} else if (formCode.isEmpty()){
+			definition = getFormDefinition(FormService.DEFAULT_DEFINITION_CODE);
+		} else {
+			definition = getFormDefinition(formCode);
+		}
 		boolean attributeNodepresent = false;
 		boolean attributeTreeepresent = false;
 		for (IdmFormAttributeDto attribute : definition.getFormAttributes()) {
@@ -90,6 +101,15 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends AbstractDto
 			getResult(contract.getId(), definition, eavNameTree, valuesTree);
 		}
 		getResult(contract.getId(), definition, eavNameNode, valuesNode);
+	}
+
+	private IdmFormDefinitionDto getFormDefinition(String formCode){
+		IdmFormDefinitionDto definition = formService.getDefinition(IdmIdentityContractDto.class, formCode);
+		if(definition==null){
+			throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_LRT_FAILED, ImmutableMap.of("code",
+					EAV_CONFIG_FORM_CODE));
+		}
+		return definition;
 	}
 
 	private void createFormAttribute(String code, UUID formDefinition) {
