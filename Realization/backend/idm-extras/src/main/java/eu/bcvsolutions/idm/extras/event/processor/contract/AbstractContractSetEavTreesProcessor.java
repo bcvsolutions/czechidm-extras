@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.collect.ImmutableMap;
@@ -74,9 +75,7 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends AbstractDto
 		//
 		String formCode = configurationService.getValue(EAV_CONFIG_FORM_CODE);
 		IdmFormDefinitionDto definition;
-		if(formCode==null){
-			definition = getFormDefinition(FormService.DEFAULT_DEFINITION_CODE);
-		} else if (formCode.isEmpty()){
+		if(StringUtils.isBlank(formCode)){
 			definition = getFormDefinition(FormService.DEFAULT_DEFINITION_CODE);
 		} else {
 			definition = getFormDefinition(formCode);
