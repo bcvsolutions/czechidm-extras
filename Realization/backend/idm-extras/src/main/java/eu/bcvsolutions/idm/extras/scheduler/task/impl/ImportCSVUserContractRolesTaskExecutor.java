@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -95,13 +96,15 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	@Autowired private IdmIdentityContractService identityContractService;
 	@Autowired private FormService formService;
 	@Autowired private AttachmentManager attachmentManager;
+	
+	private int nonExistingRolesCounter;
 
 	@Override
 	public OperationResult process() {
 		//
 		Map<UUID, List<UUID>> contractRoles = parseCSV();
 		//
-		this.count = (long) contractRoles.size();
+		this.count = (long) contractRoles.size() + nonExistingRolesCounter;
 		this.counter = 0L;
 		
 		for (UUID contractId : contractRoles.keySet()) {
@@ -162,11 +165,11 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 						if (!contractRoles.containsKey(contractId)) {
 							contractRoles.put(contractId, new ArrayList<>());
 						}
-						// TODO get by name?
 						IdmRoleDto role = roleService.getByCode(roleName);
 						if (role != null) {
 							contractRoles.get(contractId).add(role.getId());
 						} else {
+							nonExistingRolesCounter++;
 							this.logItemProcessed(identityContractService.get(contractId), taskNotCompleted("Role does not exist: " + roleName));
 							if (contractRoles.get(contractId).size() == 0) {
 								contractRoles.remove(contractId);
@@ -178,7 +181,6 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 							if (!contractRoles.containsKey(contractId)) {
 								contractRoles.put(contractId, new ArrayList<>());
 							}
-							// TODO get by name?
 							contractRoles.get(contractId).add(roleService.getByCode(roleName).getId());
 						}
 					}
@@ -222,7 +224,9 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		roleRequest.setExecuteImmediately(true);
 		roleRequest = roleRequestService.save(roleRequest);
 		
-		for (UUID roleId : roleIds) {
+		Iterator<UUID> i = roleIds.iterator();
+		while (i.hasNext()) {
+			UUID roleId = i.next();
 			Boolean roleAssigned = false;
 			IdmIdentityRoleFilter filter = new IdmIdentityRoleFilter();
 			filter.setIdentityContractId(contractId);
@@ -231,6 +235,8 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 				for (IdmIdentityRoleDto identityRole : result) {
 					if (identityRole.getRole().equals(roleId)) {
 						roleAssigned = true;
+						i.remove();
+						++this.count;
 						this.logItemProcessed(identityContractService.get(contractId), taskNotExecuted("Role is already assigned: " + roleService.get(roleId).getCode()));
 						continue;
 					}
@@ -251,6 +257,8 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		roleRequestService.startRequestInternal(roleRequest.getId(), true);
 		if (roleIds.size() > 0) {
 			this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
+		} else {
+			--this.count;
 		}
 	}
 
@@ -318,7 +326,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 			multiValueSeparator = MULTI_VALUE_SEPARATOR;
 		}
 	}
-	
+
 	@Override
 	public Map<String, Object> getProperties() {
 		LOG.debug("Start getProperties");
