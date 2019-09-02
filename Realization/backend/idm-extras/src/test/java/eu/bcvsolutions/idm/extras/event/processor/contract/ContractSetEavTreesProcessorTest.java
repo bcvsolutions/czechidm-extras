@@ -5,6 +5,7 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
@@ -54,6 +55,7 @@ public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 
 	@Test
 	public void createAutomaticRoleToStructure() {
+		prepareConfig();
 		// prepare tree
 		String rootNodeName = "rootNode";
 		String childNodeName = "childNode";
@@ -76,6 +78,7 @@ public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 		String eavNameTree = configurationService.getValue(AbstractContractSetEavTreesProcessor.EAV_CONFIG_TREE_NAME);
 		//
 		IdmFormAttributeDto formAttribute = formAttributeService.findAttribute(IdmIdentityContract.class.getName(), FormService.DEFAULT_DEFINITION_CODE, eavNameTree);
+
 		// rule for automatic role
 		IdmAutomaticRoleAttributeRuleDto rule = new IdmAutomaticRoleAttributeRuleDto();
 		rule.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
@@ -98,10 +101,12 @@ public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 		List<IdmRoleDto> roles = roleService.find(filter, null).getContent();
 		Assert.assertEquals("Size of assigned Roles should be 1!", 1, roles.size());
 		Assert.assertEquals("Wrong UUID of role!", role.getId(), roles.get(0).getId());
+		resetConfig();
 	}
 
 	@Test
 	public void changeStructureWhenChanged() {
+		prepareConfig();
 		String rootNode2a = "rootNode2a";
 		String rootNode2b = "rootNode2b";
 		String childNode2 = "childNode2";
@@ -140,6 +145,19 @@ public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 		}
 		Assert.assertEquals("Amount of same records should be 1!", 1, counterSame);
 		Assert.assertEquals("Node name should be this!", childNode2, sameName);
+		resetConfig();
+	}
+
+	private void prepareConfig(){
+		configurationService.setValue("idm.sec.extras.processor.contract-position-set-eav-processor.enabled", "true");
+		configurationService.setValue("idm.sec.extras.processor.identity-contract-set-eavs-processor.enabled", "true");
+		configurationService.setValue("idm.sec.extras.processor.tree-node-update-eav-trees-processor.enabled", "true");
+	}
+
+	private void resetConfig(){
+		configurationService.setValue("idm.sec.extras.processor.contract-position-set-eav-processor.enabled", "false");
+		configurationService.setValue("idm.sec.extras.processor.identity-contract-set-eavs-processor.enabled", "false");
+		configurationService.setValue("idm.sec.extras.processor.tree-node-update-eav-trees-processor.enabled", "false");
 	}
 
 }
