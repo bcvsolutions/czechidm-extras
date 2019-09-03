@@ -11,6 +11,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -156,6 +157,9 @@ public class CompareValueWithSystemReportXlsxRenderer extends AbstractXlsxRender
 				row.setHeightInPoints((short)15);
 				int maximumColumns = cellIndex;
 
+				Set<String> added = new HashSet<>();
+				Set<String> current = new HashSet<>();
+
 				// iterate over rows
 				for (CompareValueRowDto rowData : data.getRows()) {
 					row = sheet.createRow(rowNum++);
@@ -172,7 +176,7 @@ public class CompareValueWithSystemReportXlsxRenderer extends AbstractXlsxRender
 					
 					if (rowData.isFailed()) {
 						cell = row.createCell(2);
-						XSSFRichTextString failedMessage = new XSSFRichTextString();
+						XSSFRichTextString failedMessage = new XSSFRichTextString(rowData.getFailedMessage());
 						failedMessage.applyFont(redFont);
 						cell.setCellValue(failedMessage);
 
@@ -213,11 +217,11 @@ public class CompareValueWithSystemReportXlsxRenderer extends AbstractXlsxRender
 							} else if (cellData.getSystemValue() != null && !(cellData.getSystemValue() instanceof Collection)) { // from system isn't returned collection, but some item
 								systemValues.add(cellData.getSystemValue());
 							}
-							
+
 							// classic merge
-							Set<String> added = new HashSet<>();
-							Set<String> current = new HashSet<>();
-							
+							added.clear();
+							current.clear();
+
 							for (Object idmValue : idmValues) {
 								if (systemValues.contains(idmValue)) {
 									current.add(Objects.toString(idmValue));
@@ -247,7 +251,7 @@ public class CompareValueWithSystemReportXlsxRenderer extends AbstractXlsxRender
 
 							// something changed
 							if (!added.isEmpty() || !systemValues.isEmpty()) {
-								changed = Boolean.TRUE;
+								changed = true;
 							}
 							
 						} else {
@@ -255,7 +259,11 @@ public class CompareValueWithSystemReportXlsxRenderer extends AbstractXlsxRender
 							Object idmValue = cellData.getIdmValue();
 							Object systemValue = cellData.getSystemValue();
 							
-							if (ObjectUtils.notEqual(idmValue, systemValue)) {
+							if (StringUtils.isBlank(String.valueOf(idmValue)) && StringUtils.isBlank(String.valueOf(systemValue))) {
+								resultValue = new XSSFRichTextString();
+								resultValue.append(Objects.toString(idmValue), blueLightFont);
+
+							} else if (ObjectUtils.notEqual(idmValue, systemValue)) {
 								resultValue = new XSSFRichTextString();
 								
 								resultValue.append(IDM_VALUE, greenBoldFont);
@@ -265,7 +273,7 @@ public class CompareValueWithSystemReportXlsxRenderer extends AbstractXlsxRender
 								resultValue.append(SYSTEM_VALUE, redBoldFont);
 								resultValue.append(Objects.toString(systemValue), redFont);
 								
-								changed = Boolean.TRUE;
+								changed = true;
 							} else {
 								resultValue = new XSSFRichTextString();
 								resultValue.append(Objects.toString(idmValue), blueLightFont);

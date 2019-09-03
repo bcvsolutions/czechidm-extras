@@ -76,6 +76,7 @@ import eu.bcvsolutions.idm.ic.api.IcAttribute;
 import eu.bcvsolutions.idm.ic.api.IcConnectorObject;
 import eu.bcvsolutions.idm.ic.api.IcObjectClass;
 import eu.bcvsolutions.idm.ic.api.IcObjectClassInfo;
+import eu.bcvsolutions.idm.ic.impl.IcAttributeImpl;
 import eu.bcvsolutions.idm.ic.impl.IcObjectClassImpl;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.rpt.api.dto.RptReportDto;
@@ -290,7 +291,11 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 
 			// iterate over accounts
 			for (AccAccountDto account : accounts) {
-
+				if (account.isInProtection()) {
+					LOG.info("Account UID: [{}] is in protection. Skip this account.", account.getUid());
+					continue;
+				}
+				LOG.info("Process account UID [{}]. Account id [{}]", account.getUid(), account.getId());
 				CompareValueRowDto row = null;
 				try {
 					// generate row for given account
@@ -389,6 +394,11 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 				}).findFirst().orElse(null);
 				if (attribute != null) {
 					sortedAttributes.add(attribute);
+				} else {
+					// Attribute doesn't exists on system
+					IcAttributeImpl nonExisting = new IcAttributeImpl(schemaAttributeDto.getName(), null);
+					nonExisting.setMultiValue(schemaAttributeDto.isMultivalued());
+					sortedAttributes.add(nonExisting);
 				}
 			}
 
@@ -496,7 +506,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 		}
 		result.append(" (");
 		result.append(account.getUid());
-		result.append(")");
+		result.append(')');
 		return result.toString();
 	}
 
@@ -586,7 +596,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 			String identityId = identityIdAsSerializable.toString();
 			identityId = identityId.trim();
 
-			result.add(UUID.fromString(identityId.toString()));
+			result.add(UUID.fromString(identityId));
 		}
 
 		return result;
