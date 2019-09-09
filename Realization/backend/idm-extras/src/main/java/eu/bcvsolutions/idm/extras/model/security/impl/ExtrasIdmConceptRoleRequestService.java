@@ -55,8 +55,6 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 	@Autowired
 	private IdmIdentityContractService identityContractService;
 
-	private final String UNDEFINED_ROLE_NAME = "undefined";
-
 	@Autowired
 	public ExtrasIdmConceptRoleRequestService(IdmConceptRoleRequestRepository repository,
 											  WorkflowProcessInstanceService workflowProcessInstanceService, LookupService lookupService,
@@ -99,6 +97,7 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 			List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteesByRole(currentId);
 
 			// if user isn't guarantee, throw error directly
+			String UNDEFINED_ROLE_NAME = "undefined";
 			if (roleGuaranteeList.isEmpty() && roleGuaranteeRole.isEmpty()) {
 				IdmRoleDto roleDto = roleService.get(dto.getRole());
 				throw new ResultCodeException(ExtrasResultCode.IDENTITY_ROLE_CANNOT_BE_MODIFIED,

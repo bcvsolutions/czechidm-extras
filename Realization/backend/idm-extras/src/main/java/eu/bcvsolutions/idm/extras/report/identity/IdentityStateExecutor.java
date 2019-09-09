@@ -216,7 +216,7 @@ public class IdentityStateExecutor extends AbstractReportExecutor {
 	@Transactional
 	public IdmIdentity getVersion(IdmAuditDto auditDto) {
 		return auditService.findVersion(IdmIdentity.class, auditDto.getEntityId(),
-				Long.parseLong(auditDto.getId().toString()));
+				Long.valueOf(auditDto.getId().toString()));
 	}
 }
 

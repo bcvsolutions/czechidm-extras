@@ -64,11 +64,12 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 		}
 		IdmIdentityDto currentIdentity = securityService.getAuthentication().getCurrentIdentity();
 		IdmRoleGuaranteeFilter filter = new IdmRoleGuaranteeFilter();
-		filter.setGuarantee(currentIdentity.getId());
+		UUID currentIdentityId = currentIdentity.getId();
+		filter.setGuarantee(currentIdentityId);
 		// for check identity role we want all role guarantee
 		List<IdmRoleGuaranteeDto> roleGuarantees = roleGuaranteeService.find(filter, null).getContent();
 		// Get role guarantees by role
-		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteesByRole(currentIdentity.getId());
+		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteesByRole(currentIdentityId);
 
 		if (!roleGuarantees.isEmpty() || !roleGuaranteeRole.isEmpty()) {
 			Set<UUID> roleIds = roleGuarantees.stream().map(IdmRoleGuaranteeDto::getRole).collect(Collectors.toSet());
