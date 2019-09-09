@@ -100,6 +100,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public static final String PARAM_MEMBER_OF_ATTRIBUTE = "MemberOf attribute name";
 	public static final String PARAM_CAN_BE_REQUESTED = "Can be requested";
 	
+	private List<UUID> cataloguesUuid = new ArrayList<>();
+	private List<String> oldFormAttributesNames = new ArrayList<>();
+	
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
 	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
@@ -230,7 +233,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				}
 				// creates role catalogues
 				if(hasCatalogue) {
-					List<UUID> cataloguesUuid = new ArrayList<>();
 					List<String> cataloguesForRole = catalogues.get(roleName);
 					for(String catalogue : cataloguesForRole) {
 						if(catalogue != null && catalogue.trim().length() != 0) {
@@ -644,7 +646,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		    	// If the role definition exists, we'll check if it has the roleIdEav, if not, we'll add it
 		    	List<IdmFormAttributeDto> oldFormAttributes = def.getFormAttributes();
 		    	List<IdmFormAttributeDto> newFormAttributes = new ArrayList<>();
-		    	List<String> oldFormAttributesNames = new ArrayList<>();
+		    	
 			    for(IdmFormAttributeDto attr : oldFormAttributes) {
 			    	// gets names of all of the old attributes
 			    	oldFormAttributesNames.add(attr.getName());
@@ -908,7 +910,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		// csv file attachment
 		IdmFormAttributeDto csvAttachment = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT, PARAM_CSV_ATTACHMENT,
 				PersistentType.ATTACHMENT);
-		csvAttachment.setRequired(Boolean.TRUE);
+		csvAttachment.setRequired(true);
 		if (attachmentId != null) {
 			String attachmentIdString = attachmentId.toString();
 			csvAttachment.setDefaultValue(attachmentIdString);
@@ -916,80 +918,80 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		}
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		rolesColumnNameAttribute.setRequired(Boolean.TRUE);
+		rolesColumnNameAttribute.setRequired(true);
 		rolesColumnNameAttribute.setPlaceholder("The name of the column with the names of roles to import");
 		
 		IdmFormAttributeDto roleCodeColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLE_CODE_COLUMN_NAME, PARAM_ROLE_CODE_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		roleCodeColumnNameAttribute.setRequired(Boolean.FALSE);
+		roleCodeColumnNameAttribute.setRequired(true);
 		roleCodeColumnNameAttribute.setPlaceholder("The name of the column with the codes of roles to import.");
 		
 		IdmFormAttributeDto descriptionColumnNameAttribute = new IdmFormAttributeDto(PARAM_DESCRIPTION_COLUMN_NAME, PARAM_DESCRIPTION_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		descriptionColumnNameAttribute.setRequired(Boolean.FALSE);
+		descriptionColumnNameAttribute.setRequired(true);
 		descriptionColumnNameAttribute.setPlaceholder("The name of the column with the description of roles");
 	
 		IdmFormAttributeDto attributesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ATTRIBUTES_COLUMN_NAME, PARAM_ATTRIBUTES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		attributesColumnNameAttribute.setRequired(Boolean.FALSE);
+		attributesColumnNameAttribute.setRequired(false);
 		attributesColumnNameAttribute.setPlaceholder("The name of the column with the role attributes");
 		
 		
 		IdmFormAttributeDto criticalityColumnNameAttribute = new IdmFormAttributeDto(PARAM_CRITICALITY_COLUMN_NAME, PARAM_CRITICALITY_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		criticalityColumnNameAttribute.setRequired(Boolean.FALSE);
+		criticalityColumnNameAttribute.setRequired(false);
 		criticalityColumnNameAttribute.setPlaceholder("The name of the column with role criticality values");
 		
 		IdmFormAttributeDto guaranteeColumnNameAttribute = new IdmFormAttributeDto(PARAM_GUARANTEE_COLUMN_NAME, PARAM_GUARANTEE_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		guaranteeColumnNameAttribute.setRequired(Boolean.FALSE);
+		guaranteeColumnNameAttribute.setRequired(false);
 		guaranteeColumnNameAttribute.setPlaceholder("The name of the column with role guarantees by login");
 		
 		IdmFormAttributeDto guaranteeRolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_GUARANTEE_ROLE_COLUMN_NAME, PARAM_GUARANTEE_ROLE_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		guaranteeRolesColumnNameAttribute.setRequired(Boolean.FALSE);
+		guaranteeRolesColumnNameAttribute.setRequired(false);
 		guaranteeRolesColumnNameAttribute.setPlaceholder("The name of the column with role guarantees by roles");
 		
 		IdmFormAttributeDto cataloguesColumnNameAttribute = new IdmFormAttributeDto(PARAM_CATALOGUES_COLUMN_NAME, PARAM_CATALOGUES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		cataloguesColumnNameAttribute.setRequired(Boolean.FALSE);
+		cataloguesColumnNameAttribute.setRequired(false);
 		cataloguesColumnNameAttribute.setPlaceholder("The name of the column with catalogue names");
 		
 		IdmFormAttributeDto subRolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_SUBROLES_COLUMN_NAME, PARAM_SUBROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		subRolesColumnNameAttribute.setRequired(Boolean.FALSE);
+		subRolesColumnNameAttribute.setRequired(false);
 		subRolesColumnNameAttribute.setPlaceholder("The name of the column with subordinate roles codes");
 		
 		IdmFormAttributeDto formDefinitionAttribute = new IdmFormAttributeDto(PARAM_FORM_DEFINITION_CODE, PARAM_FORM_DEFINITION_CODE,
 				PersistentType.SHORTTEXT);
-		descriptionColumnNameAttribute.setRequired(Boolean.FALSE);
+		descriptionColumnNameAttribute.setRequired(false);
 		descriptionColumnNameAttribute.setPlaceholder("If you are importing role attributes, set the code of the definition");
 		
 		IdmFormAttributeDto columnSeparatorAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SEPARATOR, PARAM_COLUMN_SEPARATOR,
 				PersistentType.CHAR);
 		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
-		columnSeparatorAttribute.setRequired(Boolean.TRUE);
+		columnSeparatorAttribute.setRequired(true);
 		
 		IdmFormAttributeDto multiValueSeparatorAttribute = new IdmFormAttributeDto(PARAM_MULTI_VALUE_SEPARATOR, PARAM_MULTI_VALUE_SEPARATOR,
 				PersistentType.CHAR);
-		multiValueSeparatorAttribute.setRequired(Boolean.FALSE);
+		multiValueSeparatorAttribute.setRequired(false);
 		multiValueSeparatorAttribute.setPlaceholder("Default: new line");
 		
 		IdmFormAttributeDto systemNameAttribute = new IdmFormAttributeDto(PARAM_SYSTEM_NAME, PARAM_SYSTEM_NAME,
 				PersistentType.SHORTTEXT);
-		systemNameAttribute.setRequired(Boolean.FALSE);
+		systemNameAttribute.setRequired(false);
 		systemNameAttribute.setPlaceholder("The name of your system, leave empty if you don't want to set a system");
 		
 		IdmFormAttributeDto memberOfAttribute = new IdmFormAttributeDto(PARAM_MEMBER_OF_ATTRIBUTE, PARAM_MEMBER_OF_ATTRIBUTE,
 				PersistentType.SHORTTEXT);
-		memberOfAttribute.setRequired(Boolean.FALSE);
+		memberOfAttribute.setRequired(false);
 		memberOfAttribute.setPlaceholder("Leave empty if you don't want to set a memberOf");
 		
 		IdmFormAttributeDto canBeRequestedAttribute = new IdmFormAttributeDto(PARAM_CAN_BE_REQUESTED, PARAM_CAN_BE_REQUESTED,
 				PersistentType.BOOLEAN);
 		canBeRequestedAttribute.setDefaultValue(String.valueOf(CAN_BE_REQUESTED));
 		canBeRequestedAttribute.setFaceType(BaseFaceType.BOOLEAN_SELECT);
-		canBeRequestedAttribute.setRequired(Boolean.FALSE);
+		canBeRequestedAttribute.setRequired(false);
 		//
 		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, roleCodeColumnNameAttribute, descriptionColumnNameAttribute, 
 				attributesColumnNameAttribute, criticalityColumnNameAttribute, guaranteeColumnNameAttribute, 
