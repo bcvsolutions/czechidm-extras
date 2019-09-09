@@ -35,6 +35,8 @@ public enum ExtrasResultCode implements ResultCode {
 	SET_EAV_TREES_LRT_FAILED(HttpStatus.BAD_REQUEST, "Result of LRT is null!"),
 	SET_EAV_TREES_CONTRACT_IS_NULL(HttpStatus.BAD_REQUEST, "Contracts should not be null!"),
 	SET_EAV_TREES_MULTIPLE_CONTRACTS_FOUND(HttpStatus.BAD_REQUEST, "Multiple contracts were found!"),
+	SET_EAV_TREES_NO_DEFINITION_CODE(HttpStatus.BAD_REQUEST, "Property [%s] is not set or wrongly set. Please check " +
+			"it first."),
 	COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "Column [%s] not found!"),
 	ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Role[%s] not found!"),
 	ROLES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No roles found!"),

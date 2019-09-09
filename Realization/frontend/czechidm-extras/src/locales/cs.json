@@ -32,6 +32,10 @@
       "title": "Instance konektoru nebyla nalezena",
       "message": "Instance konektoru pro systém [{{system}}] nebyla nalezena. Ujistěte se prosím, zda zadáváte správn0 jméno systému."
     },
+    "SET_EAV_TREES_NO_DEFINITION_CODE": {
+      "title": "Špatná konfigurace",
+      "message": "Konfigurace [{{code}}] není nastavena nebo je špatně nastavena. Nejprve to prosím zkontrolujte."
+    },
     "IDENTITY_ROLE_CANNOT_BE_MODIFIED": {
       "title": "Nemůžete editovat toto přidělení role",
       "message": "Přiřazenou roli [{{role}}] nemůžete editovat, nejste jejím garantem."

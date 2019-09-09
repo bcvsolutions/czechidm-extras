@@ -21,16 +21,19 @@ import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
 import eu.bcvsolutions.idm.core.api.dto.BaseDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCompositionDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCompositionFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCompositionService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
@@ -49,6 +52,8 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private static final int CRITICALITY = 3;
 	private static final String GUARANTEE = "uzivatel1";
 	private static final String GUARANTEE_ROLE = "role1";
+	private static final String SUB_ROLE = "subrole";
+	private static final String SUB_ROLE_COLUMN = "subroles";
 	
 	@Autowired
 	private IdmRoleFormAttributeService roleFormAttributeService;
@@ -66,6 +71,8 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private IdmRoleService roleService;
 	@Autowired
 	private IdmRoleCatalogueService roleCatalogueService;
+	@Autowired
+	private IdmRoleCompositionService roleCompositionService;
 	
 	@Test
 	public void importRolesTest() {
@@ -79,6 +86,9 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		IdmIdentityDto identity = testHelper.createIdentity(GUARANTEE);
         testHelper.createIdentityContact(identity);
 		
+        // create subrole
+        IdmRoleDto subrole = testHelper.createRole(SUB_ROLE);
+        
 		// create role
 		IdmRoleDto roleToAssing = new IdmRoleDto();
 		roleToAssing.setCode(GUARANTEE_ROLE);
@@ -158,6 +168,12 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		IdmRoleDto garantRole = roleService.get(garantRoleLink.getGuaranteeRole());
 		
 		Assert.assertEquals(GUARANTEE_ROLE, garantRole.getCode());
+
+		// test for assigning sub roles
+		List<IdmRoleCompositionDto> subRoles = roleCompositionService.findAllSubRoles(ourRole.getId(), null);
+		Assert.assertEquals(1, subRoles.size());
+		Assert.assertEquals(ourRole.getId(), subRoles.get(0).getSuperior());
+
 	}
 
 	private Map<String, Object> addToCongig(Map<String, Object> configOfLRT){
@@ -168,6 +184,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_ROLE_COLUMN_NAME, GUARANTEE_ROLE_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CRITICALITY_COLUMN_NAME, CRITICALITY_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CATALOGUES_COLUMN_NAME, CATALOGUES_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_SUBROLES_COLUMN_NAME, SUB_ROLE_COLUMN);
 		return configOfLRT;
 	}
 }

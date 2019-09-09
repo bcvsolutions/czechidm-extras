@@ -70,7 +70,7 @@ public class ExtrasUtils implements ScriptEnabled {
 
 	public List<IdmRoleGuaranteeRoleDto> getRoleGuaranteesByRole(UUID currentId) {
 		// we need to check if user is guarantee based on some role
-		List<IdmIdentityRoleDto> roles = identityRoleService.findAllByIdentity(currentId);
+		List<IdmIdentityRoleDto> roles = identityRoleService.findValidRoles(currentId, null).getContent();
 		List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = new ArrayList<>();
 		roles.forEach(idmIdentityRoleDto -> {
 			IdmRoleGuaranteeRoleFilter roleGuaranteeRoleFilter = new IdmRoleGuaranteeRoleFilter();

@@ -1,6 +1,7 @@
 package eu.bcvsolutions.idm.extras.model.security.impl;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
@@ -59,15 +60,20 @@ public class ExtrasIdmConceptRoleRequestServiceTest extends AbstractIntegrationT
 	private IdmIdentityRoleService identityRoleService;
 
 	private IdmIdentityDto identity;
+	private IdmIdentityDto requester;
 	private IdmRoleDto roleWithGuarantee;
 	private IdmRoleDto roleWithoutGuarantee;
 	private IdmIdentityContractDto primeValidContract;
+	private IdmIdentityContractDto requesterPrimeValidContract;
 
 	@Before
 	public void init() {
+		getHelper().loginAdmin();
 		// prepare users
 		identity = getHelper().createIdentity();
+		requester = getHelper().createIdentity();
 		primeValidContract = contractService.getPrimeValidContract(identity.getId());
+		requesterPrimeValidContract = contractService.getPrimeValidContract(requester.getId());
 
 		// create role with all evaluators permissions
 		IdmRoleDto role = getHelper().createRole();
@@ -90,6 +96,7 @@ public class ExtrasIdmConceptRoleRequestServiceTest extends AbstractIntegrationT
 				IdmBasePermission.READ);
 
 		getHelper().assignRoles(primeValidContract, false, role);
+		getHelper().assignRoles(requesterPrimeValidContract, false, role);
 
 		// create other role and set our user as guarantee
 		roleWithGuarantee = getHelper().createRole();
@@ -99,6 +106,7 @@ public class ExtrasIdmConceptRoleRequestServiceTest extends AbstractIntegrationT
 		roleGuaranteeService.save(roleGuarantee);
 
 		roleWithoutGuarantee = getHelper().createRole();
+		getHelper().logout();
 	}
 
 	@After
@@ -179,16 +187,16 @@ public class ExtrasIdmConceptRoleRequestServiceTest extends AbstractIntegrationT
 			return entityEventService.find(eventFilter, new PageRequest(0, 1)).getTotalElements() != 0;
 		}, 1000, 30);
 
-		fail("Removing role for which I am not guarantee is forbidden");
+		fail("Edit role for which I am not guarantee is forbidden");
 	}
 
 	@Test(expected = ResultCodeException.class)
 	public void testAddRoleNotGuarantee() {
-		getHelper().login(identity);
+		getHelper().login(requester);
 
 		// add role
 		final IdmRoleRequestDto roleRequest = new IdmRoleRequestDto();
-		roleRequest.setApplicant(this.identity.getId());
+		roleRequest.setApplicant(this.requester.getId());
 		roleRequest.setRequestedByType(RoleRequestedByType.MANUALLY);
 		roleRequest.setExecuteImmediately(true);
 		final IdmRoleRequestDto roleRequestTwo = roleRequestService.save(roleRequest);
@@ -198,7 +206,6 @@ public class ExtrasIdmConceptRoleRequestServiceTest extends AbstractIntegrationT
 		conceptRoleRequest.setIdentityContract(primeValidContract.getId());
 		conceptRoleRequest.setRole(roleWithoutGuarantee.getId());
 		conceptRoleRequest.setOperation(ConceptRoleRequestOperation.ADD);
-		conceptRoleRequestService.save(conceptRoleRequest);
 		conceptRoleRequestService.save(conceptRoleRequest);
 		// execute
 		getHelper().executeRequest(roleRequestTwo, false);
@@ -210,7 +217,7 @@ public class ExtrasIdmConceptRoleRequestServiceTest extends AbstractIntegrationT
 			return entityEventService.find(eventFilter, new PageRequest(0, 1)).getTotalElements() != 0;
 		}, 1000, 30);
 
-		fail("Removing role for which I am not guarantee is forbidden");
+		fail("Adding role for which I am not guarantee is forbidden");
 	}
 
 	@Test

@@ -5,7 +5,8 @@
 	<parent>
 		<groupId>eu.bcvsolutions.idm</groupId>
 		<artifactId>idm-parent</artifactId>
-		<version>9.7.1-SNAPSHOT</version>
+		<version>9.7.2</version>
+
 	</parent>
 
 	<artifactId>czechidm-extras</artifactId>
@@ -18,7 +19,7 @@
 	<description>CzechIdM Module Extras.</description>
 
 	<properties>
-		<czechidm-version>9.7.1-SNAPSHOT</czechidm-version>
+		<czechidm-version>9.7.2</czechidm-version>
 	</properties>
 
 	<repositories>
@@ -70,6 +71,12 @@
 			<artifactId>idm-core-test-api</artifactId>
 			<version>${czechidm-version}</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>eu.bcvsolutions.idm</groupId>
+			<artifactId>idm-rpt-impl</artifactId>
+			<version>${czechidm-version}</version>
+			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 
@@ -165,5 +172,5 @@
 			<url>https://nexus.bcvsolutions.eu/repository/maven-releases/</url>
 		</repository>
 	</distributionManagement>
-	
+
 </project>
