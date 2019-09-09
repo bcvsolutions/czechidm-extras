@@ -269,7 +269,7 @@ public class CSVToIdM {
 
 					if(criticality.length() > 1) {
 						LOG.error(String.format("The criticality in the CSV file cannot be multivalued! Error in line: %s", Arrays.toString(line)));
-						throw new IllegalArgumentException("The criticality in the CSV file cannot be multivalued!" + line);
+						throw new IllegalArgumentException("The criticality in the CSV file cannot be multivalued!" + Arrays.toString(line));
 					}
 				} else {
 					criticality = "";

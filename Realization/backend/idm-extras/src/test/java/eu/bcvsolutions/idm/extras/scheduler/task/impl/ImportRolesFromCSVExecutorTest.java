@@ -46,13 +46,20 @@ import eu.bcvsolutions.idm.test.api.TestHelper;
 
 public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
-	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile04.csv";
+	private static final String PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile04.csv";
+	private static final String PATH_TWO = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile05.csv";
 
+	
 	private static final String ATTRIBUTE = "attr1";
+	private static final String ATTRIBUTE_TWO = "attr2";
 	private static final int CRITICALITY = 3;
+	private static final int CRITICALITY_TWO = 2;
 	private static final String GUARANTEE = "uzivatel1";
+	private static final String GUARANTEE_TWO = "uzivatel2";
 	private static final String GUARANTEE_ROLE = "role1";
+	private static final String GUARANTEE_ROLE_TWO = "role2";
 	private static final String SUB_ROLE = "subrole";
+	private static final String SUB_ROLE_TWO = "subrole2";
 	private static final String SUB_ROLE_COLUMN = "subroles";
 	
 	@Autowired
@@ -76,7 +83,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	
 	@Test
 	public void importRolesTest() {
-		setPath(path, "importRolesTestFile04.csv");
+		setPath(PATH, "importRolesTestFile04.csv");
 		CHECK_NAME = "CORE-CLOSE";
 		// create system
 		Pair<SysSystemDto, Map<String, Object>> pair = createData();
@@ -87,7 +94,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
         testHelper.createIdentityContact(identity);
 		
         // create subrole
-        IdmRoleDto subrole = testHelper.createRole(SUB_ROLE);
+        testHelper.createRole(SUB_ROLE);
         
 		// create role
 		IdmRoleDto roleToAssing = new IdmRoleDto();
@@ -173,7 +180,97 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		List<IdmRoleCompositionDto> subRoles = roleCompositionService.findAllSubRoles(ourRole.getId(), null);
 		Assert.assertEquals(1, subRoles.size());
 		Assert.assertEquals(ourRole.getId(), subRoles.get(0).getSuperior());
+		
+		
+		// ***testing role updates
+		// create system
+		
+		setPath(PATH_TWO, "importRolesTestFile05.csv");
+		Pair<SysSystemDto, Map<String, Object>> pairUpdate = createData();
+		SysSystemDto systemUpdate = pairUpdate.getFirst();
+		
+		// creates identity
+		IdmIdentityDto identityUpdate = testHelper.createIdentity(GUARANTEE_TWO);
+        testHelper.createIdentityContact(identityUpdate);
+        
+        // create subrole
+        testHelper.createRole(SUB_ROLE_TWO);
+        
+		// create role
+		IdmRoleDto roleToAssingUpdate = new IdmRoleDto();
+		roleToAssingUpdate.setCode(GUARANTEE_ROLE_TWO);
+		roleToAssingUpdate.setName(GUARANTEE_ROLE_TWO);
+		
+		roleToAssingUpdate = roleService.save(roleToAssingUpdate);
+		//
+		Map<String, Object> configOfLRTUpdate = addToCongig(pairUpdate.getSecond());
+		ImportRolesFromCSVExecutor lrtUpdate = new ImportRolesFromCSVExecutor();
+		lrtUpdate.init(configOfLRTUpdate);
+		longRunningTaskManager.executeSync(lrtUpdate);
+		IdmLongRunningTaskDto taskUpdate = longRunningTaskManager.getLongRunningTask(lrtUpdate);
+		while (taskUpdate.isRunning()) {
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		Long countUpdate = taskUpdate.getCount();
+		Long totalUpdate = 1L;
+		Assert.assertEquals(taskUpdate.getCounter(), countUpdate);
+		Assert.assertEquals(totalUpdate, countUpdate);
+		SysRoleSystemFilter filterUpdate = new SysRoleSystemFilter();
+		filterUpdate.setSystemId(systemUpdate.getId());
+		List<SysRoleSystemDto> contentUpdate = roleSystemService.find(filterUpdate, null).getContent();
+		Assert.assertEquals(1, contentUpdate.size());
 
+		LinkedList<IdmRoleDto> rolesUpdate = new LinkedList<>();
+		contentUpdate.forEach(r -> rolesUpdate.add(roleService.get(r.getRole())));
+		boolean containsUpdate = false;
+		IdmRoleDto ourRoleUpdate = null;
+		for (IdmRoleDto role : rolesUpdate) {
+			if (filterContains(role)) {
+				ourRoleUpdate = role;
+				containsUpdate = true;
+				break;
+			}
+		}
+		assertTrue(containsUpdate);
+		assertNotNull(ourRoleUpdate);
+		
+		// test for adding attributes
+		IdmRoleFormAttributeFilter roleFormAttributeFilterUpdate = new IdmRoleFormAttributeFilter();
+		roleFormAttributeFilterUpdate.setRole(ourRoleUpdate.getId());
+		List<IdmRoleFormAttributeDto> allRolesParamsUpdate = roleFormAttributeService.find(roleFormAttributeFilterUpdate, null).getContent();
+		
+		IdmFormAttributeDto formAttributeDtoUpdate = new IdmFormAttributeDto();
+		for(IdmRoleFormAttributeDto p : allRolesParamsUpdate) {
+			formAttributeDtoUpdate = formAttributeService.get(p.getFormAttribute());
+		}
+		
+		Assert.assertEquals(ATTRIBUTE_TWO, formAttributeDtoUpdate.getName());
+		
+		// test for setting criticality
+		Assert.assertEquals(CRITICALITY_TWO, ourRoleUpdate.getPriority());
+		
+		// test for setting guarantee, finds the guarantee of the role
+		IdmRoleGuaranteeFilter filterGuaranteeRoleUpdate = new IdmRoleGuaranteeFilter();
+		filterGuaranteeRoleUpdate.setRole(ourRoleUpdate.getId());
+		List<IdmRoleGuaranteeDto> garantLinksUpdate = roleGuaranteeService.find(filterGuaranteeRoleUpdate, null, null).getContent();
+
+		Assert.assertEquals(2, garantLinksUpdate.size());
+		
+		// test for setting guarantee role
+		IdmRoleGuaranteeRoleFilter filterRoleGuaranteeRoleUpdate = new IdmRoleGuaranteeRoleFilter();
+		filterRoleGuaranteeRoleUpdate.setRole(ourRoleUpdate.getId());
+		List<IdmRoleGuaranteeRoleDto> garantRoleLinksUpdate = roleGuaranteeRoleService.find(filterRoleGuaranteeRoleUpdate, null, null).getContent();
+		
+		Assert.assertEquals(2, garantRoleLinksUpdate.size());
+
+		// test for assigning sub roles
+		List<IdmRoleCompositionDto> subRolesUpdate = roleCompositionService.findAllSubRoles(ourRoleUpdate.getId(), null);
+		Assert.assertEquals(2, subRolesUpdate.size());
 	}
 
 	private Map<String, Object> addToCongig(Map<String, Object> configOfLRT){

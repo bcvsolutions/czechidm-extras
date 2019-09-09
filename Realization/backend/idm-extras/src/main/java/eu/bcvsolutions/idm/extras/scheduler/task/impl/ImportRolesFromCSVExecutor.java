@@ -495,10 +495,10 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param role
 	 * @return
 	 */
-	private boolean setGuarantees(List<String> guarantees, IdmRoleDto role) {
+	private Boolean setGuarantees(List<String> guarantees, IdmRoleDto role) {
 		// Set the guarantee by identity
 		// Find current guarantees
-		boolean updated = Boolean.FALSE;
+		Boolean updated = Boolean.FALSE;
 		List<String> currentGuaranteesLogin = new ArrayList<>();
 		IdmRoleGuaranteeFilter filterGuaranteeRole = new IdmRoleGuaranteeFilter();
 		filterGuaranteeRole.setRole(role.getId());
@@ -541,7 +541,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private Boolean setGuaranteeRoles(List<String> guaranteesRoles, IdmRoleDto role) {
 		// Set the guarantee by role
 		// Find current role guarantees
-		boolean updated = Boolean.FALSE;
+		Boolean updated = Boolean.FALSE;
 		List<String> currentGuaranteesRoleCodes = new ArrayList<>();
 		IdmRoleGuaranteeRoleFilter filterRoleGuaranteeRole = new IdmRoleGuaranteeRoleFilter();
 		filterRoleGuaranteeRole.setRole(role.getId());
@@ -793,7 +793,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
      * @param catalogueId
      * @return
      */
-    private boolean roleIsInCatalogue(UUID roleId, UUID catalogueId) {
+    private Boolean roleIsInCatalogue(UUID roleId, UUID catalogueId) {
 	    IdmRoleCatalogueRoleFilter filter = new IdmRoleCatalogueRoleFilter();
 	    filter.setRoleId(roleId);
 	    filter.setRoleCatalogueId(catalogueId);
