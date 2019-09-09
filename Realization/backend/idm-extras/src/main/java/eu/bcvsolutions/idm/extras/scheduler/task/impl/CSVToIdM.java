@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,6 @@ public class CSVToIdM {
 	private Boolean hasSubRoles;
 	private Boolean hasRoleCodes;
 	
-	private Maps maps;
 	private Map<String, String> roleDescriptions;
 	private Map<String, List<String>> roleAttributes;
 	private Map<String, String> criticalities;
@@ -131,6 +131,7 @@ public class CSVToIdM {
 			Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, 
 			Boolean hasGuarantees, Boolean hasGuaranteeRoles, Boolean hasCatalogues, Boolean hasSubRoles,
 			Boolean hasRoleCodes) {
+		
 		this.attachmentData = attachmentData;
 		this.rolesColumnName = rolesColumnName;
 		this.roleCodeColumnName = roleCodeColumnName;
@@ -151,7 +152,9 @@ public class CSVToIdM {
 		this.hasCatalogues = hasCatalogues;
 		this.hasSubRoles = hasSubRoles;
 		this.hasRoleCodes = hasRoleCodes;
-		this.maps = parseCSV();
+		
+		Maps maps = parseCSV();
+		
 		this.roleCodes = maps.getRoleCodes();
 		this.roleDescriptions = maps.getRoleDescriptions();
 		this.roleAttributes = maps.getRoleAttributes();
@@ -265,7 +268,7 @@ public class CSVToIdM {
 					criticality = line[criticalityColumnNumber];
 
 					if(criticality.length() > 1) {
-						LOG.error("The criticality in the CSV file cannot be multivalued! Error in line: " + line);
+						LOG.error(String.format("The criticality in the CSV file cannot be multivalued! Error in line: %s", Arrays.toString(line)));
 						throw new IllegalArgumentException("The criticality in the CSV file cannot be multivalued!" + line);
 					}
 				} else {
