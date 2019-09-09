@@ -34,7 +34,6 @@ import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
  *
  * @author Ondrej Kopr <kopr@xyxy.cz>
  * @author Roman Kucera
- *
  */
 
 @Component
@@ -55,7 +54,7 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 		this.securityService = securityService;
 		this.extrasUtils = extrasUtils;
 	}
-	
+
 	@Override
 	public Predicate getPredicate(Root<IdmIdentityRole> root, CriteriaQuery<?> query, CriteriaBuilder builder,
 								  AuthorizationPolicy policy, BasePermission... permission) {
@@ -79,7 +78,7 @@ public class IdentityRoleAccessForRoleGuaranteeEvaluator extends AbstractAuthori
 			return null;
 		}
 	}
-	
+
 	@Override
 	public Set<String> getPermissions(IdmIdentityRole entity, AuthorizationPolicy policy) {
 		Set<String> permissions = super.getPermissions(entity, policy);

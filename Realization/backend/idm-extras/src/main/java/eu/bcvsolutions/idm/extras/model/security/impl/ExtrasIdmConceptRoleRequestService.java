@@ -17,7 +17,6 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
@@ -48,8 +47,6 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 	private IdmRoleService roleService;
 	@Autowired
 	private IdmIdentityService identityService;
-	@Autowired
-	private IdmIdentityRoleService identityRoleService;
 	@Autowired
 	private ExtrasUtils extrasUtils;
 	@Autowired
