@@ -11,6 +11,7 @@ import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmContractPositionDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
@@ -28,6 +29,7 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 import eu.bcvsolutions.idm.test.api.TestHelper;
@@ -145,6 +147,44 @@ public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 		}
 		Assert.assertEquals("Amount of same records should be 1!", 1, counterSame);
 		Assert.assertEquals("Node name should be this!", childNode2, sameName);
+		resetConfig();
+	}
+
+	@Test
+	public void changeWorkPosition() {
+		prepareConfig();
+		String rootNodeA = "rootNode3a";
+		String rootNodeB = "rootNode3b";
+		String childNode = "childNode3";
+		String newRootNode = "newRootNode3";
+		// root 1
+		IdmTreeNodeDto rootNode = testHelper.createTreeNode(rootNodeA, null);
+		// root 2
+		IdmTreeNodeDto rootNode2 = testHelper.createTreeNode(rootNodeB, null);
+		// child
+		IdmTreeNodeDto grandchildNode = testHelper.createTreeNode(childNode, rootNode);
+		// create identity
+		IdmIdentityDto identity = testHelper.createIdentity();
+		// create contract
+		IdmIdentityContractDto identityContact = testHelper.createIdentityContact(identity, grandchildNode);
+		testHelper.createContractPosition(identityContact, rootNode2);
+		//
+		//
+		String eavNameTree = configurationService.getValue(AbstractContractSetEavTreesProcessor.EAV_CONFIG_TREE_NAME);
+		//
+		IdmFormDefinitionDto definition = formService.getDefinition(identityContact.getClass(), FormService.DEFAULT_DEFINITION_CODE);
+		//
+		List<IdmFormValueDto> values = formService.getValues(identityContact, definition, eavNameTree);
+		Assert.assertEquals("Values size should be 3!", 3, values.size());
+		//
+		IdmTreeNodeDto newBase = testHelper.createTreeNode(newRootNode, null);
+		grandchildNode.setParent(rootNode2.getId());
+		treeNodeService.save(grandchildNode);
+		rootNode2.setParent(newBase.getId());
+		treeNodeService.save(rootNode2);
+		List<IdmFormValueDto> newValues = formService.getValues(identityContact, definition, eavNameTree);
+		Assert.assertEquals("Values size should be 3!", 3, newValues.size());
+		//
 		resetConfig();
 	}
 
