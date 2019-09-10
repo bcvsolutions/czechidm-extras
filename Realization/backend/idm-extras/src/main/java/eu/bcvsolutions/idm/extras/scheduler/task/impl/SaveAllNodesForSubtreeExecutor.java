@@ -47,6 +47,7 @@ public class SaveAllNodesForSubtreeExecutor extends AbstractSchedulableTaskExecu
 
 	@Override
 	public Boolean process() {
+		setCount(0L);
 		if (nodeId == null) {
 			throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_NODE_IS_NULL);
 		}
@@ -55,7 +56,7 @@ public class SaveAllNodesForSubtreeExecutor extends AbstractSchedulableTaskExecu
 		List<IdmTreeNodeDto> allNodes = treeNodeService.findChildrenByParent(topNode.getId(), null).getContent();
 		saveContractsForNode(topNode);
 		allNodes.forEach(this::saveContractsForNode);
-		return true;
+		return Boolean.TRUE;
 	}
 
 	private void saveContractsForNode(IdmTreeNodeDto node) {
@@ -63,7 +64,8 @@ public class SaveAllNodesForSubtreeExecutor extends AbstractSchedulableTaskExecu
 		List<IdmContractPositionDto> contractPositions = positionService.findAllByWorkPosition(node.getId(), null);
 		List<IdmIdentityContractDto> identityContracts = contractService.findAllByWorkPosition(node.getId(), null);
 		// set count
-		setCount(getCount() + (long) (contractPositions.size() + identityContracts.size()));
+		int collectSizes = contractPositions.size() + identityContracts.size();
+		setCount(getCount() + new Long(collectSizes));
 
 		// ContactPosition
 		contractPositions.forEach(this::saveAndIncreaseContractPosition);
