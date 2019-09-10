@@ -17,7 +17,6 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
@@ -49,13 +48,9 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 	@Autowired
 	private IdmIdentityService identityService;
 	@Autowired
-	private IdmIdentityRoleService identityRoleService;
-	@Autowired
 	private ExtrasUtils extrasUtils;
 	@Autowired
 	private IdmIdentityContractService identityContractService;
-
-	private final String UNDEFINED_ROLE_NAME = "undefined";
 
 	@Autowired
 	public ExtrasIdmConceptRoleRequestService(IdmConceptRoleRequestRepository repository,
@@ -99,6 +94,7 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 			List<IdmRoleGuaranteeRoleDto> roleGuaranteeRole = extrasUtils.getRoleGuaranteesByRole(currentId);
 
 			// if user isn't guarantee, throw error directly
+			String UNDEFINED_ROLE_NAME = "undefined";
 			if (roleGuaranteeList.isEmpty() && roleGuaranteeRole.isEmpty()) {
 				IdmRoleDto roleDto = roleService.get(dto.getRole());
 				throw new ResultCodeException(ExtrasResultCode.IDENTITY_ROLE_CANNOT_BE_MODIFIED,
