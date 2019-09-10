@@ -50,8 +50,6 @@ public class SaveAllNodesForSubtreeExecutor extends AbstractSchedulableTaskExecu
 		if (nodeId == null) {
 			throw new ResultCodeException(ExtrasResultCode.SET_EAV_TREES_NODE_IS_NULL);
 		}
-		this.count = 0l;
-		this.counter = 0l;
 
 		IdmTreeNodeDto topNode = treeNodeService.get(nodeId);
 		List<IdmTreeNodeDto> allNodes = treeNodeService.findChildrenByParent(topNode.getId(), null).getContent();
