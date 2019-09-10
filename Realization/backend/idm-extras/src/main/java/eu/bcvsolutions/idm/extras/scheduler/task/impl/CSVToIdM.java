@@ -22,6 +22,10 @@ import com.opencsv.CSVReaderBuilder;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
+/**
+ * @author Petr Hanák
+ *
+ */
 public class CSVToIdM {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(CSVToIdM.class);
