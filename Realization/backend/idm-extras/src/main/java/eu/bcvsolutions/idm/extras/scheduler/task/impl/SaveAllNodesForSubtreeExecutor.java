@@ -64,8 +64,7 @@ public class SaveAllNodesForSubtreeExecutor extends AbstractSchedulableTaskExecu
 		List<IdmContractPositionDto> contractPositions = positionService.findAllByWorkPosition(node.getId(), null);
 		List<IdmIdentityContractDto> identityContracts = contractService.findAllByWorkPosition(node.getId(), null);
 		// set count
-		int collectSizes = contractPositions.size() + identityContracts.size();
-		setCount(getCount() + new Long(collectSizes));
+		setCount(getCount() + (long) contractPositions.size() + identityContracts.size());
 
 		// ContactPosition
 		contractPositions.forEach(this::saveAndIncreaseContractPosition);
