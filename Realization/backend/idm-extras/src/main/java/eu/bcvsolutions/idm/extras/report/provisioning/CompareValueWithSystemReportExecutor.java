@@ -9,14 +9,17 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.data.domain.Page;
@@ -34,6 +37,8 @@ import eu.bcvsolutions.idm.acc.domain.AttributeMapping;
 import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType;
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.dto.AccAccountDto;
+import eu.bcvsolutions.idm.acc.dto.SysAttributeControlledValueDto;
+import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto;
 import eu.bcvsolutions.idm.acc.dto.SysSchemaAttributeDto;
 import eu.bcvsolutions.idm.acc.dto.SysSchemaObjectClassDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
@@ -41,6 +46,7 @@ import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemEntityDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
 import eu.bcvsolutions.idm.acc.dto.filter.AccAccountFilter;
+import eu.bcvsolutions.idm.acc.dto.filter.SysAttributeControlledValueFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaObjectClassFilter;
 import eu.bcvsolutions.idm.acc.eav.domain.AccFaceType;
@@ -48,6 +54,7 @@ import eu.bcvsolutions.idm.acc.entity.AccAccount_;
 import eu.bcvsolutions.idm.acc.exception.ProvisioningException;
 import eu.bcvsolutions.idm.acc.service.api.AccAccountService;
 import eu.bcvsolutions.idm.acc.service.api.ProvisioningService;
+import eu.bcvsolutions.idm.acc.service.api.SysAttributeControlledValueService;
 import eu.bcvsolutions.idm.acc.service.api.SysSchemaAttributeService;
 import eu.bcvsolutions.idm.acc.service.api.SysSchemaObjectClassService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemAttributeMappingService;
@@ -72,13 +79,13 @@ import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.security.api.domain.Enabled;
 import eu.bcvsolutions.idm.core.security.api.domain.GuardedString;
 import eu.bcvsolutions.idm.core.security.api.domain.IdmBasePermission;
+import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.ic.api.IcAttribute;
 import eu.bcvsolutions.idm.ic.api.IcConnectorObject;
 import eu.bcvsolutions.idm.ic.api.IcObjectClass;
 import eu.bcvsolutions.idm.ic.api.IcObjectClassInfo;
 import eu.bcvsolutions.idm.ic.impl.IcAttributeImpl;
 import eu.bcvsolutions.idm.ic.impl.IcObjectClassImpl;
-import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.rpt.api.dto.RptReportDto;
 import eu.bcvsolutions.idm.rpt.api.exception.ReportGenerateException;
 import eu.bcvsolutions.idm.rpt.api.executor.AbstractReportExecutor;
@@ -131,7 +138,13 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 	private FormService formService;
 	@Autowired
 	private ConfidentialStorage confidentialStorage;
+	@Autowired
+	private SysAttributeControlledValueService attributeControlledValueService;
 
+	/*
+	 * Temporary cache for controlled value
+	 */
+	private Map<UUID, List<SysAttributeControlledValueDto>> controledValueCache = new HashMap<UUID, List<SysAttributeControlledValueDto>>();
 	/**
 	 * Report ~ executor name
 	 */
@@ -418,7 +431,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 				
 				Object transformValueToResource = null;
 
-				// if attribute is multivalued is neede iterate over all attributes in roles
+				// if attribute is multivalued is needed iterate over all attributes in roles
 				if (attributeMapping.getStrategyType() == AttributeMappingStrategyType.AUTHORITATIVE_MERGE ||
 						attributeMapping.getStrategyType() == AttributeMappingStrategyType.MERGE) {
 					Set<Object> mergedValues = new LinkedHashSet<>();
@@ -464,7 +477,29 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 				newCell.setIdmValue(transformValueToResource);
 				newCell.setMultivalued(schemaAttributeDto.isMultivalued());
 				if (schemaAttributeDto.isMultivalued()) {
-					newCell.setSystemValue(icAttribute.getValues());
+					UUID systemAttributeMappingId = null;
+					if (attributeMapping instanceof SysRoleSystemAttributeDto) {
+						systemAttributeMappingId = ((SysRoleSystemAttributeDto)attributeMapping).getSystemAttributeMapping();
+					} else if (attributeMapping instanceof SysSystemAttributeMappingDto) {
+						systemAttributeMappingId = ((SysSystemAttributeMappingDto)attributeMapping).getId();
+					}
+					List<SysAttributeControlledValueDto> controlledValues = controledValueCache.get(systemAttributeMappingId);
+					if (systemAttributeMappingId == null) {
+						LOG.error("System attribute mapping ID for attribute id [{}] didn't found. We will use classic behavior.", attributeMapping.getId());
+						newCell.setSystemValue(icAttribute.getValues());
+					} else {
+						if (controlledValues == null) {
+							// Get controlled values
+							SysAttributeControlledValueFilter filter = new SysAttributeControlledValueFilter();
+							
+							filter.setAttributeMappingId(systemAttributeMappingId); // This must exists
+							filter.setHistoricValue(Boolean.FALSE); // Actually controlled
+							// We need them all
+							controlledValues = attributeControlledValueService.find(filter, null).getContent();
+							controledValueCache.put(systemAttributeMappingId, controlledValues);
+						}
+						newCell.setSystemValue(removeNotControlledValues(icAttribute.getValues(), controlledValues));
+					}
 				} else {
 					newCell.setSystemValue(icAttribute.getValue());
 				}
@@ -477,6 +512,29 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 		// set generated cells and return new row
 		row.setCells(cells);
 		return row;
+	}
+
+	/**
+	 * Process given value in values attribute with controlled values given in attribute controlledValues.
+	 * Return new created list of controlled values.
+	 *
+	 * @param values
+	 * @param controlledValues
+	 * @return
+	 */
+	private Collection<?> removeNotControlledValues(List<Object> values, List<SysAttributeControlledValueDto> controlledValues) {
+		List<Object> valuesAfterCheck = new ArrayList<Object>();
+		
+		values.forEach(val -> {
+			SysAttributeControlledValueDto existingValue = controlledValues.stream().filter(controlledValue -> {
+				return ObjectUtils.equals(String.valueOf(controlledValue.getValue()), String.valueOf(val));
+			}).findAny().orElse(null);
+			if (existingValue != null) {
+				valuesAfterCheck.add(val);
+			}
+		});
+
+		return valuesAfterCheck;
 	}
 
 	/**
