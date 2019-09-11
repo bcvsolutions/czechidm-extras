@@ -158,7 +158,7 @@ public class ImportFromCSVToSystemExecutor extends AbstractSchedulableTaskExecut
 		for (IcConfigurationProperty property : config.getConfigurationProperties().getProperties()) {
 			if (property.getName().equals(DEFAULT_NOTIFY_PROPERTY)) {
 				newProperties.addProperty(DEFAULT_NOTIFY_PROPERTY,
-						false,
+						Boolean.FALSE,
 						property.getType(),
 						property.getDisplayName(),
 						property.getHelpMessage(),
@@ -175,7 +175,7 @@ public class ImportFromCSVToSystemExecutor extends AbstractSchedulableTaskExecut
 		}
 		if (!wasThereProperty) {
 			newProperties.addProperty(DEFAULT_NOTIFY_PROPERTY,
-					false,
+					Boolean.FALSE,
 					null,
 					null,
 					null,
