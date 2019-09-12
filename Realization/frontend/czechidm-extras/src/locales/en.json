@@ -31,6 +31,22 @@
     "CONNECTOR_INSTANCE_NOT_FOUND": {
       "title": "Connector instance was not found",
       "message": "Connector instance for system [{{system}}] was not found. Please, make sure you added right system name."
+    },
+    "SET_EAV_TREES_NO_DEFINITION_CODE": {
+      "title": "Property set wrong",
+      "message": "Property [{{code}}] is not set or wrongly set. Please check it first."
+    },
+    "IDENTITY_ROLE_CANNOT_BE_MODIFIED": {
+      "title": "You can not edit this role assignment",
+      "message": "Assigned role [{{role}}] you can not edit, you are not her guarantee."
+    },
+    "EMPTY_ATTACHMENT_ID": {
+      "title": "Choose file to import!",
+      "message": "Choose file to import!"
+    },
+    "COLUMN_NOT_FOUND": {
+      "title": "Column not found.",
+      "message": "Column [{{name}}] not found."
     }
   }
 }

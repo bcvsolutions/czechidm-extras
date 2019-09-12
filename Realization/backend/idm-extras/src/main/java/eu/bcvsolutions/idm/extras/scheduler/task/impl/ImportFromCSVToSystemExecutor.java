@@ -67,15 +67,15 @@ import eu.bcvsolutions.idm.ic.service.impl.DefaultIcConnectorFacade;
 public class ImportFromCSVToSystemExecutor extends AbstractSchedulableTaskExecutor<Boolean> {
 
 	//
-	public static final String PARAM_CSV_FILE_PATH = "Path to file";
-	public static final String PARAM_SYSTEM_NAME = "Name of system";
-	public static final String PARAM_ATTRIBUTE_SEPARATOR = "Attribute separator";
-	public static final String PARAM_NAME_ATTRIBUTE = "Name attribute";
-	public static final String PARAM_UID_ATTRIBUTE = "Uid attribute";
-	public static final String PARAM_MULTIVALUED_SEPARATOR = "Separator of multivalued attributes";
+	static final String PARAM_CSV_FILE_PATH = "Path to file";
+	static final String PARAM_SYSTEM_NAME = "Name of system";
+	static final String PARAM_ATTRIBUTE_SEPARATOR = "Attribute separator";
+	static final String PARAM_NAME_ATTRIBUTE = "Name attribute";
+	static final String PARAM_UID_ATTRIBUTE = "Uid attribute";
+	static final String PARAM_MULTIVALUED_SEPARATOR = "Separator of multivalued attributes";
 	private static final Logger LOG = LoggerFactory.getLogger(ImportFromCSVToSystemExecutor.class);
 	//
-	public String DEFAULT_NOTIFY_PROPERTY = "requiredConfirmation";
+	private String DEFAULT_NOTIFY_PROPERTY = "requiredConfirmation";
 	//
 	private String systemName;
 	private String pathToFile;
@@ -158,7 +158,7 @@ public class ImportFromCSVToSystemExecutor extends AbstractSchedulableTaskExecut
 		for (IcConfigurationProperty property : config.getConfigurationProperties().getProperties()) {
 			if (property.getName().equals(DEFAULT_NOTIFY_PROPERTY)) {
 				newProperties.addProperty(DEFAULT_NOTIFY_PROPERTY,
-						false,
+						Boolean.FALSE,
 						property.getType(),
 						property.getDisplayName(),
 						property.getHelpMessage(),
@@ -175,7 +175,7 @@ public class ImportFromCSVToSystemExecutor extends AbstractSchedulableTaskExecut
 		}
 		if (!wasThereProperty) {
 			newProperties.addProperty(DEFAULT_NOTIFY_PROPERTY,
-					false,
+					Boolean.FALSE,
 					null,
 					null,
 					null,

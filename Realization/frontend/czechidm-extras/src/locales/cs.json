@@ -31,6 +31,22 @@
     "CONNECTOR_INSTANCE_NOT_FOUND": {
       "title": "Instance konektoru nebyla nalezena",
       "message": "Instance konektoru pro systém [{{system}}] nebyla nalezena. Ujistěte se prosím, zda zadáváte správn0 jméno systému."
+    },
+    "SET_EAV_TREES_NO_DEFINITION_CODE": {
+      "title": "Špatná konfigurace",
+      "message": "Konfigurace [{{code}}] není nastavena nebo je špatně nastavena. Nejprve to prosím zkontrolujte."
+    },
+    "IDENTITY_ROLE_CANNOT_BE_MODIFIED": {
+      "title": "Nemůžete editovat toto přidělení role",
+      "message": "Přiřazenou roli [{{role}}] nemůžete editovat, nejste jejím garantem."
+    },
+    "EMPTY_ATTACHMENT_ID": {
+      "title": "Vyberte soubor pro import!",
+      "message": "Vyberte soubor pro import!"
+    },
+    "COLUMN_NOT_FOUND": {
+      "title": "Sloupec nenalezen.",
+      "message": "Sloupec [{{name}}] nebyl nenalezen."
     }
   }
 }
