@@ -176,9 +176,13 @@ public class CompareValueWithSystemReportXlsxRenderer extends AbstractXlsxRender
 					
 					if (rowData.isFailed()) {
 						cell = row.createCell(2);
-						XSSFRichTextString failedMessage = new XSSFRichTextString(rowData.getFailedMessage());
-						failedMessage.applyFont(redFont);
-						cell.setCellValue(failedMessage);
+						
+						String failedMessageValue = rowData.getFailedMessage();
+						if (StringUtils.isNotBlank(failedMessageValue)) {
+							XSSFRichTextString failedMessage = new XSSFRichTextString(rowData.getFailedMessage());
+							failedMessage.applyFont(redFont);
+							cell.setCellValue(failedMessage);
+						}
 
 						cell = row.getCell(0);
 						cell.setCellStyle(failedStyle);
