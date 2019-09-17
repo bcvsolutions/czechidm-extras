@@ -4,21 +4,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
-import eu.bcvsolutions.idm.core.api.dto.BaseDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleCompositionDto;
@@ -26,8 +22,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCompositionFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
@@ -48,6 +43,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
 	private static final String PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile04.csv";
 	private static final String PATH_TWO = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile05.csv";
+	private static final String PATH_THREE = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile06.csv";
 
 	
 	private static final String ATTRIBUTE = "attr1";
@@ -61,6 +57,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private static final String SUB_ROLE = "subrole";
 	private static final String SUB_ROLE_TWO = "subrole2";
 	private static final String SUB_ROLE_COLUMN = "subroles";
+	private static final String ENVIRONMENT = "testing env";
 	
 	@Autowired
 	private IdmRoleFormAttributeService roleFormAttributeService;
@@ -272,6 +269,36 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		List<IdmRoleCompositionDto> subRolesUpdate = roleCompositionService.findAllSubRoles(ourRoleUpdate.getId(), null);
 		Assert.assertEquals(2, subRolesUpdate.size());
 	}
+	
+	@Test
+	public void importRolesTestEnvironment() {
+		setPath(PATH_THREE, "importRolesTestFile06.csv");
+		Pair<SysSystemDto, Map<String, Object>> pair = createData();
+		//
+		Map<String, Object> configOfLRT = addToCongigEnvironment(pair.getSecond());
+		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
+		lrt.init(configOfLRT);
+		longRunningTaskManager.executeSync(lrt);
+		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(lrt);
+		while (task.isRunning()) {
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		Long count = task.getCount();
+		Long total = 1L;
+		Assert.assertEquals(task.getCounter(), count);
+		Assert.assertEquals(total, count);
+		
+		IdmRoleFilter rf = new IdmRoleFilter();
+		rf.setEnvironment(ENVIRONMENT);
+		List<IdmRoleDto> rolesForEnvironment = roleService.find(rf, null, null).getContent();
+		Assert.assertEquals(1, rolesForEnvironment.size());
+		Assert.assertEquals("testtest3" + "|" + ENVIRONMENT, rolesForEnvironment.get(0).getCode());
+		Assert.assertEquals(ENVIRONMENT, rolesForEnvironment.get(0).getEnvironment());
+	}
 
 	private Map<String, Object> addToCongig(Map<String, Object> configOfLRT){
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ATTRIBUTES_COLUMN_NAME, ROLE_ATTRIBUTE);
@@ -282,6 +309,11 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CRITICALITY_COLUMN_NAME, CRITICALITY_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CATALOGUES_COLUMN_NAME, CATALOGUES_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_SUBROLES_COLUMN_NAME, SUB_ROLE_COLUMN);
+		return configOfLRT;
+	}
+	
+	private Map<String, Object> addToCongigEnvironment(Map<String, Object> configOfLRT){
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ENVIRONMENT, ENVIRONMENT);
 		return configOfLRT;
 	}
 }

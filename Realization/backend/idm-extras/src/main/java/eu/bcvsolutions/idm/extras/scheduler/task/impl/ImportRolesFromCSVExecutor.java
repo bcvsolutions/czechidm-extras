@@ -98,6 +98,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	public static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
 	public static final String PARAM_MEMBER_OF_ATTRIBUTE = "MemberOf attribute name";
+	public static final String PARAM_ENVIRONMENT = "Role environment";
 	public static final String PARAM_CAN_BE_REQUESTED = "Can be requested";
 	
 	private List<UUID> cataloguesUuid = new ArrayList<>();
@@ -124,6 +125,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private String columnSeparator;
 	private String multiValueSeparator;
 	private String memberOfAttribute;
+	private String environmentName;
 	private Boolean canBeRequested;
 	private Boolean hasRoleCodes;
 	private Boolean hasDescription;
@@ -132,6 +134,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private Boolean hasGuarantees;
 	private Boolean hasGuaranteeRoles;
 	private Boolean hasSystem;
+	private Boolean hasEnvironment;
 	private Boolean hasMemberOf;
 	private Boolean hasCatalogue;
 	private Boolean hasSubRoles;
@@ -226,11 +229,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				if (role == null) {
 					role = createRole(roleName, system, roleDescriptions.get(roleName), roleAttributes.get(roleName), 
 							criticalities.get(roleName), guarantees.get(roleName), guaranteeRoles.get(roleName), subRoles.get(roleName),
-							roleCodeToSearch);
+							roleCodeToSearch, environmentName);
 				} else {
 					updateRole(roleName, system, role, roleDescriptions.get(roleName), roleAttributes.get(roleName), criticalities.get(roleName),
 							guarantees.get(roleName), guaranteeRoles.get(roleName), subRoles.get(roleName));
 				}
+				
 				// creates role catalogues
 				if(hasCatalogue) {
 					List<String> cataloguesForRole = catalogues.get(roleName);
@@ -294,12 +298,16 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 */
 	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description, List<String> roleAttributes, 
 			String criticality, List<String> guarantees, List<String> guaranteesRoles, List<String> subRoles,
-				String roleCode) {
+				String roleCode, String environmentName) {
 		// Create role
 		IdmRoleDto role = new IdmRoleDto();
-		role.setCode(roleCode);
+		role.setBaseCode(roleCode);
 		
 		role.setName(roleName);
+		
+		if(hasEnvironment) {
+			role.setEnvironment(environmentName);
+		}
 		
 		setCriticality(criticality, role, Boolean.FALSE);
 			
@@ -824,6 +832,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
 		systemName = getParameterConverter().toString(properties, PARAM_SYSTEM_NAME);
+		environmentName = getParameterConverter().toString(properties, PARAM_ENVIRONMENT);
 		memberOfAttribute = getParameterConverter().toString(properties, PARAM_MEMBER_OF_ATTRIBUTE);
 		canBeRequested = getParameterConverter().toBoolean(properties, PARAM_CAN_BE_REQUESTED);
 		// if not filled, init multiValueSeparator and check if csv has description
@@ -865,6 +874,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		} else {
 			hasSystem = Boolean.FALSE;
 		}
+		if (environmentName != null) {
+			hasEnvironment = Boolean.TRUE;
+		} else {
+			hasEnvironment = Boolean.FALSE;
+		}
 		if (memberOfAttribute != null) {
 			hasMemberOf = Boolean.TRUE;
 		} else {
@@ -900,6 +914,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
 		props.put(PARAM_SYSTEM_NAME, systemName);
+		props.put(PARAM_ENVIRONMENT, environmentName);
 		props.put(PARAM_MEMBER_OF_ATTRIBUTE, memberOfAttribute);
 		props.put(PARAM_CAN_BE_REQUESTED, canBeRequested);
 		return props;
@@ -923,7 +938,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		
 		IdmFormAttributeDto roleCodeColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLE_CODE_COLUMN_NAME, PARAM_ROLE_CODE_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		roleCodeColumnNameAttribute.setRequired(true);
+		roleCodeColumnNameAttribute.setRequired(false);
 		roleCodeColumnNameAttribute.setPlaceholder("The name of the column with the codes of roles to import.");
 		
 		IdmFormAttributeDto descriptionColumnNameAttribute = new IdmFormAttributeDto(PARAM_DESCRIPTION_COLUMN_NAME, PARAM_DESCRIPTION_COLUMN_NAME,
@@ -987,6 +1002,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		memberOfAttribute.setRequired(false);
 		memberOfAttribute.setPlaceholder("Leave empty if you don't want to set a memberOf");
 		
+		IdmFormAttributeDto environment = new IdmFormAttributeDto(PARAM_ENVIRONMENT, PARAM_ENVIRONMENT,
+				PersistentType.SHORTTEXT);
+		environment.setRequired(false);
+		environment.setPlaceholder("The name of the environment to which you want to add the roles.");
+		
 		IdmFormAttributeDto canBeRequestedAttribute = new IdmFormAttributeDto(PARAM_CAN_BE_REQUESTED, PARAM_CAN_BE_REQUESTED,
 				PersistentType.BOOLEAN);
 		canBeRequestedAttribute.setDefaultValue(String.valueOf(CAN_BE_REQUESTED));
@@ -997,7 +1017,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				attributesColumnNameAttribute, criticalityColumnNameAttribute, guaranteeColumnNameAttribute, 
 				guaranteeRolesColumnNameAttribute, cataloguesColumnNameAttribute, subRolesColumnNameAttribute, 
 				formDefinitionAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, 
-				systemNameAttribute, memberOfAttribute, canBeRequestedAttribute);
+				systemNameAttribute, memberOfAttribute, environment, canBeRequestedAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {
