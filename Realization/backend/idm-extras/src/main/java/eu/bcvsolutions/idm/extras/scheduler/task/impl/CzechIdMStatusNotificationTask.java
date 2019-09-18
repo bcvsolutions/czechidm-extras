@@ -82,12 +82,12 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	// TODO: add to configuration and change core!!
 	public static String LAST_RUN_DATE_TIME = "idm.sec.core.status.lastRun";
 	//	private static String SYSTEM_ID_PARAM = "systemIdParam";
-	private static String SEND_PROVISIONING_STATUS_PARAM = "sendProvisioningStatusParam";
-	private static String SEND_SYNC_STATUS_PARAM = "sendSyncStatusParam";
-	private static String SEND_LRT_STATUS_PARAM = "sendLrtStatusParam";
-	private static String SEND_EVENT_STATUS_PARAM = "sendEventStatusParam";
-	private static String SEND_CONTRACTS_STATUS_PARAM = "sendContractsStatusParam";
-	private static String RECIPIENTS_PARAM = "recipients";
+	public static String SEND_PROVISIONING_STATUS_PARAM = "sendProvisioningStatusParam";
+	public static String SEND_SYNC_STATUS_PARAM = "sendSyncStatusParam";
+	public static String SEND_LRT_STATUS_PARAM = "sendLrtStatusParam";
+	public static String SEND_EVENT_STATUS_PARAM = "sendEventStatusParam";
+	public static String SEND_CONTRACTS_STATUS_PARAM = "sendContractsStatusParam";
+	public static String RECIPIENTS_PARAM = "recipients";
 	private static String REGEX = ",";
 	@Autowired
 	private SysProvisioningOperationService provisioningOperationService;
