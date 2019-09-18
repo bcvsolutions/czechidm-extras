@@ -39,6 +39,14 @@
     "IDENTITY_ROLE_CANNOT_BE_MODIFIED": {
       "title": "Nemůžete editovat toto přidělení role",
       "message": "Přiřazenou roli [{{role}}] nemůžete editovat, nejste jejím garantem."
+    },
+    "EMPTY_ATTACHMENT_ID": {
+      "title": "Vyberte soubor pro import!",
+      "message": "Vyberte soubor pro import!"
+    },
+    "COLUMN_NOT_FOUND": {
+      "title": "Sloupec nenalezen.",
+      "message": "Sloupec [{{name}}] nebyl nenalezen."
     }
   }
 }

@@ -39,6 +39,14 @@
     "IDENTITY_ROLE_CANNOT_BE_MODIFIED": {
       "title": "You can not edit this role assignment",
       "message": "Assigned role [{{role}}] you can not edit, you are not her guarantee."
+    },
+    "EMPTY_ATTACHMENT_ID": {
+      "title": "Choose file to import!",
+      "message": "Choose file to import!"
+    },
+    "COLUMN_NOT_FOUND": {
+      "title": "Column not found.",
+      "message": "Column [{{name}}] not found."
     }
   }
 }

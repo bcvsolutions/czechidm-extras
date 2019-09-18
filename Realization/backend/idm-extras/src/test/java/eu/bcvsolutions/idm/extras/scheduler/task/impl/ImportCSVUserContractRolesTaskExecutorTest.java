@@ -29,6 +29,10 @@ import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 import eu.bcvsolutions.idm.extras.utils.Pair;
 
+/**
+ * 
+ * @author Petr Hanák
+ */
 public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractRoleExecutorTest {
 
 	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importContractEavRolesTestFile.csv";
@@ -45,7 +49,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractRoleExec
 	private IdmFormAttributeService formAttributeService;
 	
 	@Test
-	public void importRolesTest() {
+	public void assignRolesToContractTest() {
 		loginAsAdmin();
 		setPath(path, "importContractEavRolesTestFile.csv");
 		Pair<SysSystemDto, Map<String, Object>> pair = createData();
@@ -59,7 +63,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractRoleExec
 		String contractEav = "cicin";
 		IdmFormDefinitionDto definition = formService.getDefinition(formService.getDefaultDefinitionType(IdmIdentityContractDto.class));
 		IdmFormAttributeDto formAttribute = createFormAttribute(contractEav, definition.getId());
-		IdmIdentityDto identity = createIdentity("uzivatel1");
+		IdmIdentityDto identity = createIdentity("user321");
 		IdmIdentityContractDto identityContract1 = createContract(identity.getId());
 		IdmIdentityContractDto identityContract2 = createContract(identity.getId());
 		// set eav value for contract
