@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
 		<groupId>eu.bcvsolutions.idm</groupId>
 		<artifactId>idm-parent</artifactId>
-		<version>9.7.2</version>
+		<version>9.7.6</version>
 	</parent>
 
 	<artifactId>czechidm-extras</artifactId>
@@ -18,7 +19,7 @@
 	<description>CzechIdM Module Extras.</description>
 
 	<properties>
-		<czechidm-version>9.7.2</czechidm-version>
+		<czechidm-version>9.7.6</czechidm-version>
 	</properties>
 
 	<repositories>
@@ -67,12 +68,6 @@
 		</dependency>
 		<dependency>
 			<groupId>eu.bcvsolutions.idm</groupId>
-			<artifactId>idm-core-test-api</artifactId>
-			<version>${czechidm-version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>eu.bcvsolutions.idm</groupId>
 			<artifactId>idm-rpt-impl</artifactId>
 			<version>${czechidm-version}</version>
 			<scope>provided</scope>
@@ -80,7 +75,7 @@
 		<dependency>
 			<groupId>eu.bcvsolutions.idm</groupId>
 			<artifactId>idm-core-test-api</artifactId>
-			<version>9.7.7-SNAPSHOT</version>
+			<version>9.7.2</version>
 			<scope>compile</scope>
 		</dependency>
 	</dependencies>
