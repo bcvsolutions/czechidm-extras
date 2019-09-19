@@ -24,7 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-public abstract class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter {
+public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter {
 	private static final Logger LOG = LoggerFactory.getLogger(SsoIdmAuthenticationFilter.class);
 	static final String PARAMETER_FIELDS = "fields";
 
