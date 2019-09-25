@@ -116,7 +116,25 @@ public class ExtrasSsoIdmAuthenticationFilterTest extends AbstractIntegrationTes
 		Assert.assertTrue(filter.authorize(TEST_SAME_SERVICE_LOGIN + PARAMETER_UID_SUFFIXES, null, null));
 	}
 
-	@Test(expected = IdmAuthenticationException.class)
+	@Test
+	public void testSsoAuthUserWithEmptyToken() {
+		IdmFormAttributeDto eavAttributeIdentity = getHelper().createEavAttribute(
+				TEST_SAME_SERVICE_LOGIN_FIELD,
+				IdmIdentity.class,
+				PersistentType.SHORTTEXT);
+		eavAttributeIdentity.setMultiple(true);
+
+		IdmIdentityDto identity = getHelper().createIdentity();
+		formService.saveValues(
+				identity.getId(),
+				identity.getClass(),
+				eavAttributeIdentity,
+				Lists.newArrayList(null, PARAMETER_UID_SUFFIXES));
+
+		Assert.assertFalse(filter.authorize(TEST_SAME_SERVICE_LOGIN + PARAMETER_UID_SUFFIXES, null, null));
+	}
+
+	@Test
 	public void testSsoAuthUserWithDuplicatedFormFieldDifferentPeople() {
 
 		IdmFormAttributeDto eavAttributeContract = getHelper().createEavAttribute(
@@ -144,8 +162,7 @@ public class ExtrasSsoIdmAuthenticationFilterTest extends AbstractIntegrationTes
 				PersistentType.SHORTTEXT
 		);
 
-		//
-		filter.authorize(TEST_SAME_SERVICE_LOGIN + PARAMETER_UID_SUFFIXES, null, null);// Wait exception.
+		Assert.assertFalse(filter.authorize(TEST_SAME_SERVICE_LOGIN + PARAMETER_UID_SUFFIXES, null, null));
 	}
 
 	@Test

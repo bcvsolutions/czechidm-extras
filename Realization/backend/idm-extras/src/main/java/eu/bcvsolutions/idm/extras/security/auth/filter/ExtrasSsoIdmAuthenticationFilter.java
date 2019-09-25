@@ -9,7 +9,6 @@ import eu.bcvsolutions.idm.core.eav.service.impl.DefaultFormService;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 import eu.bcvsolutions.idm.core.security.auth.filter.SsoIdmAuthenticationFilter;
-import eu.bcvsolutions.idm.core.security.exception.IdmAuthenticationException;
 import java.text.MessageFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -26,13 +25,18 @@ import org.springframework.util.StringUtils;
 
 public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter {
 	private static final Logger LOG = LoggerFactory.getLogger(SsoIdmAuthenticationFilter.class);
-	public static final String FILTER_NAME = "extras-sso-authentication-filter";
+	private static final String FILTER_NAME = "extras-sso-authentication-filter";
 	static final String PARAMETER_FIELDS = "fields";
 
-	@Autowired//todo: In version 9.7.7 this line need delete
+	@Autowired
 	private LookupService lookupService;
 	@Autowired
 	private DefaultFormService formService;
+
+	@Override
+	public String getName() {
+		return FILTER_NAME;
+	}
 
 	@Override
 	public boolean authorize(String token, HttpServletRequest request, HttpServletResponse response) {
@@ -77,9 +81,10 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 
 		if (!uuids.isEmpty()) {
 			if (uuids.size() > 1) {
-				throw new IdmAuthenticationException(MessageFormat.format(
+				LOG.debug(MessageFormat.format(
 						"The login [{0}] is not unique. SSO authentication is not passable.",
 						userName));
+				return false;
 			}
 			IdmIdentityDto identity = (IdmIdentityDto) lookupService.lookupDto(IdmIdentityDto.class, uuids.iterator().next());
 			if (null == identity) {
@@ -93,6 +98,7 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 
 	/**
 	 * todo: In version 9.7.7 this line need delete
+	 *
 	 * @param token
 	 * @return
 	 */
@@ -103,7 +109,7 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 		}
 		for (String suffix : suffixes) {
 			if (token.endsWith(suffix)) {
-				return token.substring(0,  token.length() - suffix.length());
+				return token.substring(0, token.length() - suffix.length());
 			}
 		}
 		return token;
