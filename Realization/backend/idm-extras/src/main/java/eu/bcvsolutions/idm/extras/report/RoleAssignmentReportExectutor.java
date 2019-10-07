@@ -10,6 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
+import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
+import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
+import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.core.api.audit.dto.IdmAuditDto;
 import eu.bcvsolutions.idm.core.api.audit.dto.IdmAuditEntityDto;
 import eu.bcvsolutions.idm.core.api.audit.dto.filter.IdmAuditFilter;
@@ -73,6 +77,8 @@ import eu.bcvsolutions.idm.rpt.api.executor.AbstractReportExecutor;
         @Autowired private IdmIdentityService identityService;
         @Autowired private IdmRoleService roleService;
         @Autowired private IdmIdentityContractService contractService;
+        @Autowired private SysRoleSystemService roleSystemService;
+        @Autowired private SysSystemService sysSystemService;
 
         /**
          * Report ~ executor name
@@ -151,7 +157,23 @@ import eu.bcvsolutions.idm.rpt.api.executor.AbstractReportExecutor;
             IdmIdentityContractDto contractDto = getContract(embedded.get(IdmIdentityRole_.identityContract.getName()));
             IdmIdentityDto identityDto = getIdentity(contractDto.getIdentity());
             IdmRoleDto roleDto = getRole(embedded.get(IdmIdentityRole_.role.getName()));
-            return new RoleAssignmentReportDto(identityDto, contractDto, roleDto, next.getRevisionDate(), next.getModification(), next.getModifier());
+            String system = getSystem(roleDto);
+
+
+            return new RoleAssignmentReportDto(identityDto, contractDto, roleDto, next.getRevisionDate(),
+                    next.getModification(), next.getModifier(), system);
+        }
+
+        private String getSystem(IdmRoleDto roleDto) {
+            SysRoleSystemFilter filter = new SysRoleSystemFilter();
+            filter.setRoleId(roleDto.getId());
+            List<SysRoleSystemDto> systems = roleSystemService.find(filter, null, null).getContent();
+            return systems.stream()
+                    .map(s -> s.getSystem())
+                    .map(s -> sysSystemService.get(s))
+                    .map(s -> s.getCode())
+                    .reduce((s1, s2) -> s1 + "," + s2)
+                    .orElse("");
         }
 
         private IdmRoleDto getRole(Object o) {
