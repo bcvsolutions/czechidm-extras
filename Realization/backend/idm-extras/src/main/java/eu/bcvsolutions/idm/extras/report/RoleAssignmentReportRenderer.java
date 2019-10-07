@@ -54,6 +54,8 @@ public class RoleAssignmentReportRenderer
             cell.setCellValue("Operation");
             cell = row.createCell(7);
             cell.setCellValue("Applicant");
+            cell = row.createCell(8);
+            cell.setCellValue("System");
             int rowNum = 1;
             //
             // json is array of identities
@@ -86,6 +88,9 @@ public class RoleAssignmentReportRenderer
 
                     cell = row.createCell(7);
                     cell.setCellValue(auditDto.getApplicant());
+
+                    cell = row.createCell(8);
+                    cell.setCellValue(auditDto.getSystem());
                 }
             }
             // close json stream

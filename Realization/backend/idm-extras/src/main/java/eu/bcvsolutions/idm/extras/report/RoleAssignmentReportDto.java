@@ -21,9 +21,10 @@ public class RoleAssignmentReportDto implements Serializable {
     private Date revisionDate;
     private String operation;
     private String applicant;
+    private String system;
 
     public RoleAssignmentReportDto(IdmIdentityDto relatedIdentity, IdmIdentityContractDto relatedContract,
-                                   IdmRoleDto relatedRole, Date revisionDate, String operation, String applicant) {
+                                   IdmRoleDto relatedRole, Date revisionDate, String operation, String applicant, String system) {
         //this.auditDto = auditDto;
         this.relatedIdentity = relatedIdentity;
         this.relatedContract = relatedContract;
@@ -31,6 +32,7 @@ public class RoleAssignmentReportDto implements Serializable {
         this.revisionDate = revisionDate;
         this.operation = operation;
         this.applicant = applicant;
+        this.system = system;
     }
 
     public RoleAssignmentReportDto() {
@@ -76,6 +78,10 @@ public class RoleAssignmentReportDto implements Serializable {
         this.relatedRole = relatedRole;
     }
 
+    public void setSystem(String system) {
+        this.system = system;
+    }
+
     /*public IdmAuditDto getAuditDto() {
         return auditDto;
     }*/
@@ -90,5 +96,9 @@ public class RoleAssignmentReportDto implements Serializable {
 
     public IdmRoleDto getRelatedRole() {
         return relatedRole;
+    }
+
+    public String getSystem() {
+        return system;
     }
 }
