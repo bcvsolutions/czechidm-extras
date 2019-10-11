@@ -136,24 +136,5 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 		return false;
 	}
 
-	/**
-	 * todo: In version 9.7.7 this line need delete
-	 *
-	 * @param token
-	 * @return
-	 */
-	private String removeUidSuffix(String token) {
-		List<String> suffixes = getConfigurationService().getValues(getConfigurationPropertyName(PARAMETER_UID_SUFFIXES));
-		if (CollectionUtils.isEmpty(suffixes)) {
-			return token;
-		}
-		for (String suffix : suffixes) {
-			if (token.endsWith(suffix)) {
-				return token.substring(0, token.length() - suffix.length());
-			}
-		}
-		return token;
-	}
-
 
 }
