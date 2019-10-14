@@ -33,8 +33,10 @@ import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 /**
  * Overridden service for concept role request.
  * Throw error when currently logged user try to save concept with roles for which is not guarantee
+ * 
+ * TODO: service is in bad package
  *
- * @author Ondrej Kopr <kopr@xyxy.cz>
+ * @author Ondrej Kopr
  * @author Roman Kucera
  */
 public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleRequestService {
@@ -66,6 +68,17 @@ public class ExtrasIdmConceptRoleRequestService extends DefaultIdmConceptRoleReq
 		// for administrator doesnt work the behavior
 		if (securityService.isAdmin()) {
 			return super.save(dto, permission);
+		}
+
+		// If request isn't check if only changed attribute is a systemState
+		if (!this.isNew(dto)) {
+			// In future is possible use ObjectDifferBuilder
+			IdmConceptRoleRequestDto currentConcept = this.get(dto.getId());
+			// If concepts are same we can same it directly
+			// In version 9.7.10 and lower isn't checked systemState in equals method for concepts
+			if (dto.equals(currentConcept)) {
+				return super.save(dto, permission);
+			}
 		}
 
 		if (dto.getIdentityContract() != null && currentId != null) {
