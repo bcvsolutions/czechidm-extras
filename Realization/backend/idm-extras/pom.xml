@@ -15,7 +15,7 @@
 
 	<name>CzechIdM Module Extras</name>
 
-	<version>1.2.0</version>
+	<version>1.2.1</version>
 	<description>CzechIdM Module Extras.</description>
 
 	<properties>
@@ -77,12 +77,6 @@
 			<artifactId>idm-rpt-impl</artifactId>
 			<version>${czechidm-version}</version>
 			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>eu.bcvsolutions.idm</groupId>
-			<artifactId>idm-core-test-api</artifactId>
-			<version>${czechidm-version}</version>
-			<scope>compile</scope>
 		</dependency>
 	</dependencies>
 
