@@ -1,0 +1,35 @@
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes"?>
+<!-- 
+	Notification to manager that contract is ending in future.
+parameters:
+    user - full name
+    department -
+    ppvEnd -
+    manager
+ -->
+
+<template>
+    <name>Contract end in future</name>
+    <code>ContractEndInFuture</code>
+    <subject>IdM - Uživateli $!user bude v následujících dnech ukončen PPV</subject>
+    <bodyHtml>
+        <![CDATA[
+            <html>
+                <body>
+                    Dobrý den,<br />
+                    <br />
+                    zaměstnanec $!user odchází ke dni $ppvEnd (konec pracovního poměru) z oddělení $!department.<br />
+                    <br />
+                    Přejeme Vám pěkný den.<br />
+                <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
+			        CzechIdM © 2019&nbsp;BCV Solutions s.r.o.&nbsp;
+		        </div>
+                </body>
+            </html>
+        ]]>
+    </bodyHtml>
+    <bodyText></bodyText>
+    <parameter>user, department, ppvEnd, manager</parameter>
+    <systemTemplate>true</systemTemplate>
+    <moduleId>extras</moduleId>
+</template>

@@ -32,6 +32,8 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 
 	public static final String MODULE_ID = "extras";
 	public static final String TOPIC_STATUS = String.format("%s:status", MODULE_ID);
+	public static final String TOPIC_CONTRACT_END = String.format("%s:contractEnd", MODULE_ID);
+	public static final String TOPIC_CONTRACT_END_IN_X_DAYS = String.format("%s:contractEndInXDays", MODULE_ID);
 
 	@Autowired
 	private IdmNotificationTemplateService notificationTemplateService;
