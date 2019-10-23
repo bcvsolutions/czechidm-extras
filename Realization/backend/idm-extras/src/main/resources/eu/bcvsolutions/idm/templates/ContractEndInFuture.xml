@@ -30,6 +30,6 @@ parameters:
     </bodyHtml>
     <bodyText></bodyText>
     <parameter>user, department, ppvEnd, manager</parameter>
-    <systemTemplate>true</systemTemplate>
+    <systemTemplate>false</systemTemplate>
     <moduleId>extras</moduleId>
 </template>

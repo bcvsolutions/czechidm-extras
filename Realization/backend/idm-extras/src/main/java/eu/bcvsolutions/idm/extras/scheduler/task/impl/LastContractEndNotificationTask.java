@@ -240,8 +240,10 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 			recipients.add(manager);
 		}
 		
-		List<IdmIdentityDto> recipientsFromRoleBefore = getUsersByRoleId(recipientRoleBefore);
-		recipients.addAll(recipientsFromRoleBefore);
+		if (recipientRoleBefore != null) {
+			List<IdmIdentityDto> recipientsFromRoleBefore = getUsersByRoleId(recipientRoleBefore);
+			recipients.addAll(recipientsFromRoleBefore);
+		}
 
 		return recipients;
 	}
