@@ -26,6 +26,7 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.security.api.domain.AuthorizationPolicy;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
+import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 
 /**
  * Ultra mega awesome extra util for all projects by Roman Kucera
@@ -45,13 +46,14 @@ public class ExtrasUtils implements ScriptEnabled {
 	private IdmRoleGuaranteeRoleService roleGuaranteeRoleService;
 	@Autowired
 	private IdmIdentityRoleService identityRoleService;
+	@Autowired
+	private ExtrasConfiguration extrasConfiguration;
 
 	/*
-	 * All Czech available titles.
-	 * TODO: it will be awesome if this titles will be configurable
+	 * All Czech available titles. This is only default value, real value is stored in configuration. See ExtrasConfiguration.
 	 */
 	public static final List<String> TITLES_AFTER = Lists.newArrayList("Ph.D.", "Th.D.", "CSc.", "DrSc.", "dr. h. c.",
-			"DiS.");
+			"DiS.", "MBA");
 	public static final List<String> TITLES_BEFORE = Lists.newArrayList("Bc.", "BcA.", "Ing.", "Ing. arch.", "MUDr.",
 			"MVDr.", "MgA.", "Mgr.", "JUDr.", "PhDr.", "RNDr.", "PharmDr.", "ThLic.", "ThDr.", "prof.", "doc.",
 			"PaedDr.", "Dr.", "PhMr.");
@@ -109,7 +111,7 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * @return
 	 */
 	public String getTitlesAfter(String value) {
-		return getTitles(value, TITLES_AFTER);
+		return getTitles(value, extrasConfiguration.getTitlesAfter());
 	}
 
 	/**
@@ -119,7 +121,7 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * @return
 	 */
 	public String getTitlesBefore(String value) {
-		return getTitles(value, TITLES_BEFORE);
+		return getTitles(value, extrasConfiguration.getTitlesBefore());
 	}
 
 	/**

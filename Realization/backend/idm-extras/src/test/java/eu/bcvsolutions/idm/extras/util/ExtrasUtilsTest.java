@@ -56,6 +56,32 @@ public class ExtrasUtilsTest extends AbstractIntegrationTest {
 	}
 
 	@Test
+	public void testGetTitlesAfterTestTwo() {
+		String titles = "Ph.D. MBA";
+		String titlesBefore = extrasUtils.getTitlesBefore(titles);
+		assertTrue(titlesBefore.isEmpty());
+
+		String titlesAfter = extrasUtils.getTitlesAfter(titles);
+		assertNotNull(titlesAfter);
+		assertFalse(titlesAfter.isEmpty());
+		assertTrue(titlesAfter.equals("Ph.D., MBA"));
+	}
+
+	@Test
+	public void testGetTitlesAfterTestThree() {
+		String titles = "Ing. MBA";
+		String titlesBefore = extrasUtils.getTitlesBefore(titles);
+		assertNotNull(titlesBefore);
+		assertFalse(titlesBefore.isEmpty());
+		assertTrue(titlesBefore.equals("Ing."));
+
+		String titlesAfter = extrasUtils.getTitlesAfter(titles);
+		assertNotNull(titlesAfter);
+		assertFalse(titlesAfter.isEmpty());
+		assertTrue(titlesAfter.equals("MBA"));
+	}
+
+	@Test
 	public void testGetTitlesBeforeNullValue() {
 		String titlesBefore = extrasUtils.getTitlesBefore(null);
 		assertNull(titlesBefore);
