@@ -16,6 +16,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
@@ -140,6 +141,12 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		}
 	}
 	
+	@Test
+	public void getFormAttributesTest() {
+		List<IdmFormAttributeDto> attributes = notification.getFormAttributes();
+		Assert.assertEquals(3, attributes.size());
+	}
+	
 	@After
 	public void after() {
 		getHelper().logout();
@@ -195,6 +202,8 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 		Assert.assertEquals(1, count2);
 		Assert.assertEquals(templateFuture, usedTemplateTwo);
+		
+		getHelper().deleteIdentity(subject.getId());
 	}
 	
 	@Test
@@ -246,5 +255,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		long countFour = notificationLogService.count(filterFour);
 
 		Assert.assertEquals(0, countFour);
+		
+		getHelper().deleteIdentity(subjectTwo.getId());
 	}
 }

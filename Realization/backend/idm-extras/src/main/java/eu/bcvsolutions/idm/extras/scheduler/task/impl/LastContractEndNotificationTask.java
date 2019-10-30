@@ -53,7 +53,8 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  * @author Tomáš Doischer
  */
 @Service
-@Description("Task which will send notification X days before end of the last contract")
+@Description("Task which will send notification X days before end of the last contract. It is recommended to"
+		+ "run for the first time without sending emails.")
 
 public class LastContractEndNotificationTask extends AbstractSchedulableStatefulExecutor<IdmIdentityContractDto> {
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(LastContractEndNotificationTask.class);
@@ -126,7 +127,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 
 		validMinusXDays = dto.getValidTill().minusDays(Math.toIntExact(daysBeforeEnd));
 		
-		if (!currentDate.isEqual(validMinusXDays)) {
+		// this we are interested in contracts which end in x days or sooner 
+		if (!currentDate.isAfter(validMinusXDays.minusDays(1))) {
 			// the contract ends on different times than specified, leave alone
 			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
 		}
@@ -159,7 +161,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		}
 
 		// end of contract will be in daysBeforeEnd days
-		if (daysBeforeEnd > 0L && currentDate.isEqual(validMinusXDays)) {
+		if (daysBeforeEnd > 0L) {
 			recipients = getRecipients(guarantee);
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END_IN_X_DAYS, new ArrayList<>(recipients), guarantee);
 			return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
