@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +28,6 @@ import eu.bcvsolutions.idm.core.api.domain.RecursionType;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleTreeNodeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleTreeNodeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmTreeNodeFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
@@ -117,31 +115,15 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 			
 			// find number of column with role codes
 			int roleCodeColumnNumber = findColumnNumber(header, roleCodesColumnName);
-			if (roleCodeColumnNumber == -1) {
-				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", roleCodesColumnName));
-			}
+
 			// find number of column with node codes
 			int nodeCodesColumnNumber = findColumnNumber(header, nodeCodesColumnName);
-			if (nodeCodesColumnNumber == -1) {
-				throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", nodeCodesColumnName));
-			}
+
 			// find number of column with node ids
-			int nodeIdColumnNumber = -1;
-			if (useNodeIds) {
-				nodeIdColumnNumber = findColumnNumber(header, nodeIdColumnName);
-				if (nodeIdColumnNumber == -1) {
-					throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", nodeIdColumnName));
-				}
-			}
+			int nodeIdColumnNumber = findColumnNumber(header, nodeIdColumnName);
+
 			// find number of column with recursion type
-			int recursionTypeColumnNumber = -1;
-			if (setRecursion) {
-				recursionTypeColumnNumber = findColumnNumber(header, recursionTypeColumnName);
-				if (recursionTypeColumnNumber == -1) {
-					throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", recursionTypeColumnName));
-					}
-			}
-			
+			int recursionTypeColumnNumber = findColumnNumber(header, recursionTypeColumnName);;		
 
 			Map<String, ImportedNodeRole> values = new HashMap<>();
 
@@ -194,6 +176,9 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 	 * @return
 	 */
 	private int findColumnNumber(String[] header, String columnName) {
+		if (columnName == null) {
+			return -1;
+		}
 		int counterHeader = 0;
 		for (String item : header){
 			if(item.equals(columnName)){
@@ -201,7 +186,17 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 			}
 			counterHeader++;
 		}
-		return -1;
+		counterHeader = -1;
+		if (counterHeader == -1) {
+			if ((useNodeIds == null || useNodeIds.equals(Boolean.FALSE)) && columnName.equals(PARAM_COLUMN_NODE_IDS)) {
+				return -1;
+			}
+			if ((setRecursion == null || setRecursion.equals(Boolean.FALSE)) && columnName.equals(PARAM_COLUMN_RECURSION_TYPE)) {
+				return -1;
+			}
+			throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", columnName));
+		}
+		return counterHeader;
 	}
 	
 	/**
@@ -220,7 +215,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 			LOG.debug(String.format("The tree node %s doesn't exist.", nodeCode));
 			return null;
 		}
-		IdmRoleDto role = findRole(roleCode);
+		IdmRoleDto role = roleService.getByCode(roleCode);
 		if (role == null) {
 			LOG.debug(String.format("The role %s doesn't exist.", roleCode));
 			return null;
@@ -235,8 +230,9 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		roleTreeNode.setRole(role.getId());
 		roleTreeNode.setTreeNode(treeNode.getId());
 		roleTreeNode.setName(String.format("%s | %s", role.getName(), treeNode.getName()));
-		if (setRecursion && getRecursionType(recursionType) != null) {
-			roleTreeNode.setRecursionType(getRecursionType(recursionType));
+		if ((setRecursion && recursionType != null && !recursionType.equals("")) 
+				&& (RecursionType.valueOf(recursionType) != null)) {
+			roleTreeNode.setRecursionType(RecursionType.valueOf(recursionType));
 		}
 		
 		return roleTreeNodeService.save(roleTreeNode);
@@ -264,37 +260,6 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		}
 		
 		return node;
-	}
-	
-	/**
-	 * Finds role based on its code.
-	 * 
-	 * @param roleCode
-	 * @return
-	 */
-	private IdmRoleDto findRole(String roleCode) {
-		IdmRoleFilter filter = new IdmRoleFilter();
-		filter.setBaseCode(roleCode);
-		return roleService.find(filter, null, null).getContent().get(0);
-	}
-	
-	/**
-	 * Converts String to RecursionType.
-	 * 
-	 * @param recursionType
-	 * @return
-	 */
-	private RecursionType getRecursionType(String recursionType) {
-		if (recursionType.equals("down") || recursionType.equals("DOWN")) {
-			return RecursionType.DOWN;
-		}
-		if (recursionType.equals("no") || recursionType.equals("NO")) {
-			return RecursionType.NO;
-		}
-		if (recursionType.equals("up") || recursionType.equals("UP")) {
-			return RecursionType.UP;
-		}
-		return null;
 	}
 	
 	/**
