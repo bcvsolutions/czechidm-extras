@@ -9,8 +9,8 @@ parameters:
  -->
 
 <template>
-    <name>Contract end now</name>
-    <code>ContractEndNow</code>
+    <name>Contract end now (extras)</name>
+    <code>contractEndNow</code>
     <subject>IdM - Uživateli $!user bude dnes ukončen PPV</subject>
     <bodyHtml>
         <![CDATA[

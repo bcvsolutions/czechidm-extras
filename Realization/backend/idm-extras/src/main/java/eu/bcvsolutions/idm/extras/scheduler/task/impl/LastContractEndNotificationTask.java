@@ -107,7 +107,6 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	@Override
 	public Page<IdmIdentityContractDto> getItemsToProcess(Pageable pageable) {
 		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
-		identityContractFilter.setExcluded(false);
 		if (daysBeforeEnd == 0) {
 			identityContractFilter.setValidTill(currentDate);
 		} else {

@@ -63,14 +63,14 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 				IdmEmailLog.NOTIFICATION_TYPE,
 				"Status notification",
 				templateDto != null ? templateDto.getId() : null));
-		IdmNotificationTemplateDto contractEndNow = notificationTemplateService.getByCode("ContractEndNow");
+		IdmNotificationTemplateDto contractEndNow = notificationTemplateService.getByCode("contractEndNow");
 		configs.add(new NotificationConfigurationDto(
 				TOPIC_CONTRACT_END,
 				NotificationLevel.INFO,
 				IdmEmailLog.NOTIFICATION_TYPE,
 				"Contract end notification",
 				contractEndNow != null ? contractEndNow.getId() : null));
-		IdmNotificationTemplateDto contractEndInXDaysNow = notificationTemplateService.getByCode("ContractEndInFuture");
+		IdmNotificationTemplateDto contractEndInXDaysNow = notificationTemplateService.getByCode("contractEndInFuture");
 		configs.add(new NotificationConfigurationDto(
 				TOPIC_CONTRACT_END_IN_X_DAYS,
 				NotificationLevel.INFO,
