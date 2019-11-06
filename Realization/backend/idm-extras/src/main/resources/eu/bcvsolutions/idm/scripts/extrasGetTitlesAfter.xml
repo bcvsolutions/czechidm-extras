@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <body><![CDATA[return extrasUtils.getTitlesAfter(attributeValue);]]></body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasGetTitlesAfter</code>
+    <description><![CDATA[<p>Return titles after</p>]]></description>
+    <name>extrasGetTitlesAfter</name>
+    <services>
+        <service>
+            <name>extrasUtils</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>

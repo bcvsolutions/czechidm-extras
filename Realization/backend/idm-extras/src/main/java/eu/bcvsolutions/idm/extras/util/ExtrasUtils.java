@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import com.google.common.collect.Lists;
+
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
@@ -24,9 +26,13 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.security.api.domain.AuthorizationPolicy;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
+import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 
 /**
+ * Ultra mega awesome extra util for all projects by Roman Kucera
+ *
  * @author Roman Kucera
+ * @author Ondrej Kopr
  */
 
 @Service("extrasUtils")
@@ -40,6 +46,17 @@ public class ExtrasUtils implements ScriptEnabled {
 	private IdmRoleGuaranteeRoleService roleGuaranteeRoleService;
 	@Autowired
 	private IdmIdentityRoleService identityRoleService;
+	@Autowired
+	private ExtrasConfiguration extrasConfiguration;
+
+	/*
+	 * All Czech available titles. This is only default value, real value is stored in configuration. See ExtrasConfiguration.
+	 */
+	public static final List<String> TITLES_AFTER = Lists.newArrayList("Ph.D.", "Th.D.", "CSc.", "DrSc.", "dr. h. c.",
+			"DiS.", "MBA");
+	public static final List<String> TITLES_BEFORE = Lists.newArrayList("Bc.", "BcA.", "Ing.", "Ing. arch.", "MUDr.",
+			"MVDr.", "MgA.", "Mgr.", "JUDr.", "PhDr.", "RNDr.", "PharmDr.", "ThLic.", "ThDr.", "prof.", "doc.",
+			"PaedDr.", "Dr.", "PhMr.");
 
 	public Predicate getGuaranteePredicate(CriteriaBuilder builder) {
 		IdmIdentityDto currentIdentity = securityService.getAuthentication().getCurrentIdentity();
@@ -85,5 +102,52 @@ public class ExtrasUtils implements ScriptEnabled {
 		IdmRoleGuaranteeFilter filter = new IdmRoleGuaranteeFilter();
 		filter.setGuarantee(currentIdentity.getId());
 		return roleGuaranteeService.find(filter, new PageRequest(0, 1)).getContent();
+	}
+
+	/**
+	 * Return titles that must by behind name
+	 *
+	 * @param value
+	 * @return
+	 */
+	public String getTitlesAfter(String value) {
+		return getTitles(value, extrasConfiguration.getTitlesAfter());
+	}
+
+	/**
+	 * Return titles that must by before name
+	 *
+	 * @param value
+	 * @return
+	 */
+	public String getTitlesBefore(String value) {
+		return getTitles(value, extrasConfiguration.getTitlesBefore());
+	}
+
+	/**
+	 * Private method for same behavior for titles after and before
+	 *
+	 * @param value
+	 * @param dictonary
+	 * @return
+	 */
+	private String getTitles(String value, List<String> dictonary) {
+		if (value == null || value.isEmpty()) {
+			return null;
+		}
+		List<String> result = new ArrayList<String>();
+
+		String[] titles = value.split(" ");
+		for (String title : titles) {
+			final String finalTitle = title.trim().toLowerCase();
+
+			String exits = dictonary.stream().filter(t -> t.trim().toLowerCase().equals(finalTitle)).findFirst()
+					.orElse(null);
+			if (exits != null) {
+				result.add(title);
+			}
+		}
+
+		return String.join(", ", result);
 	}
 }
