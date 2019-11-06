@@ -5,6 +5,7 @@ import java.util.List;
 
 import eu.bcvsolutions.idm.core.api.service.Configurable;
 import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService;
+import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 
 /**
  * Extras configuration - interface
@@ -13,8 +14,8 @@ import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService;
  */
 public interface ExtrasConfiguration extends Configurable {
 
-	String EXTRAS_TITLES_AFTER = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + "bee.configuration.titlesAfter";
-	String EXTRAS_TITLES_BEFORE = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + "bee.configuration.titlesBefore";
+	String EXTRAS_TITLES_AFTER = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesAfter";
+	String EXTRAS_TITLES_BEFORE = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesBefore";
 
 	@Override
 	default String getConfigurableType() {
