@@ -174,7 +174,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 				topic,
 				new IdmMessageDto
 						.Builder()
-						.setLevel(NotificationLevel.SUCCESS)
+						.setLevel(NotificationLevel.INFO)
 						.addParameter("user", fullName)
 						.addParameter("department", position)
 						.addParameter("ppvEnd", ppvEnd)
