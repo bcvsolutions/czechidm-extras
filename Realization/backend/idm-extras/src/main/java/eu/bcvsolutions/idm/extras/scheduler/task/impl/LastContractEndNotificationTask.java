@@ -89,6 +89,9 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		daysBeforeEnd = getParameterConverter().toLong(properties, PARAMETER_DAYS_BEFORE);
 		recipientRoleBefore = getParameterConverter().toUuid(properties, RECIPIENT_ROLE_BEFORE_PARAM);
 		sendToManagerBefore = getParameterConverter().toBoolean(properties, SEND_TO_MANAGER_BEFORE_PARAM);
+		if (sendToManagerBefore == null) {
+			sendToManagerBefore = false;
+		}
 		if (daysBeforeEnd == null || daysBeforeEnd.compareTo(0L) <= -1) {
 			throw new ResultCodeException(ExtrasResultCode.CONTRACT_END_NOTIFICATION_DAYS_BEFORE,
 					ImmutableMap.of("daysBeforeEnd", daysBeforeEnd == null ? "null" : daysBeforeEnd));
