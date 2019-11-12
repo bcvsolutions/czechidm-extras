@@ -467,7 +467,6 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	}
 
 	private List<IdentityStateReportDto> getContractsStatus() {
-		List<IdentityStateReportDto> result = new ArrayList<IdentityStateReportDto>();
 		IdmAuditFilter filter = new IdmAuditFilter();
 		filter.setFrom(lastRun);
 		filter.setTill(started);
@@ -477,6 +476,9 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		filter.setChangedAttributesList(changedAttributesList);
 
 		List<IdmAuditDto> audits = auditService.find(filter, null).getContent();
+		
+		List<IdentityStateReportDto> result = new ArrayList<>((int) (audits.size() / 0.75));
+		
 		for (IdmAuditDto audit : audits) {
 			IdentityStateReportDto reportDto = identityStateExecutor.getIdentityState(audit);
 			result.add(reportDto);

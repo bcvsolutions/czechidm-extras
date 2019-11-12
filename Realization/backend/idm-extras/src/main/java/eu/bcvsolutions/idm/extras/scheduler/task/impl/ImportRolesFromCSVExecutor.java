@@ -206,8 +206,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				(!guarantees.isEmpty()) || (!guaranteeRoles.isEmpty())) {
 			this.count = (long) roleDescriptions.size();
 			this.counter = 0L;
-			
-			for (String roleName : roleDescriptions.keySet()) {
+			//**
+			for (Map.Entry<String, String> entry : roleDescriptions.entrySet()) {
+				String roleName = entry.getKey();
+				String roleDescription = entry.getValue();
+				
 				// try to find the role
 				String roleCodeToSearch = "";
 				if(hasRoleCodes) {
@@ -227,11 +230,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				}
 
 				if (role == null) {
-					role = createRole(roleName, system, roleDescriptions.get(roleName), roleAttributes.get(roleName), 
+					role = createRole(roleName, system, roleDescription, roleAttributes.get(roleName), 
 							criticalities.get(roleName), guarantees.get(roleName), guaranteeRoles.get(roleName), subRoles.get(roleName),
 							roleCodeToSearch, environmentName);
 				} else {
-					updateRole(roleName, system, role, roleDescriptions.get(roleName), roleAttributes.get(roleName), criticalities.get(roleName),
+					updateRole(roleName, system, role, roleDescription, roleAttributes.get(roleName), criticalities.get(roleName),
 							guarantees.get(roleName), guaranteeRoles.get(roleName), subRoles.get(roleName));
 				}
 				
@@ -509,10 +512,10 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		// Set the guarantee by identity
 		// Find current guarantees
 		Boolean updated = Boolean.FALSE;
-		List<String> currentGuaranteesLogin = new ArrayList<>();
 		IdmRoleGuaranteeFilter filterGuaranteeRole = new IdmRoleGuaranteeFilter();
 		filterGuaranteeRole.setRole(role.getId());
 		List<IdmRoleGuaranteeDto> currentGarantsLinks = roleGuaranteeService.find(filterGuaranteeRole, null, null).getContent();
+		List<String> currentGuaranteesLogin = new ArrayList<>((int) (currentGarantsLinks.size() / 0.75));
 		for(IdmRoleGuaranteeDto garantLink : currentGarantsLinks) {
 			IdmIdentityDto garant = identityService.get(garantLink.getGuarantee());
 			currentGuaranteesLogin.add(garant.getUsername());
@@ -552,10 +555,10 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		// Set the guarantee by role
 		// Find current role guarantees
 		Boolean updated = Boolean.FALSE;
-		List<String> currentGuaranteesRoleCodes = new ArrayList<>();
 		IdmRoleGuaranteeRoleFilter filterRoleGuaranteeRole = new IdmRoleGuaranteeRoleFilter();
 		filterRoleGuaranteeRole.setRole(role.getId());
 		List<IdmRoleGuaranteeRoleDto> currentGarantsRoleLinks = roleGuaranteeRoleService.find(filterRoleGuaranteeRole, null, null).getContent();
+		List<String> currentGuaranteesRoleCodes = new ArrayList<>((int) (currentGarantsRoleLinks.size() / 0.75));
 		for(IdmRoleGuaranteeRoleDto garantRoleLink : currentGarantsRoleLinks) {
 			IdmRoleDto garantRole = roleService.get(garantRoleLink.getGuaranteeRole());
 			currentGuaranteesRoleCodes.add(garantRole.getCode());

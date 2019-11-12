@@ -86,15 +86,14 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		if (!values.isEmpty()) {
 			this.count = (long) values.size();
 			this.counter = 0L;
-
-			Set<String> nodes = values.keySet();
 			
-			for (String node : nodes) {
-				ImportedNodeRole inr = values.get(node);
+			for (Map.Entry<String, ImportedNodeRole> entry : values.entrySet()) {
+				String node = entry.getKey();
+				ImportedNodeRole inr = entry.getValue();
 				Map<String, String> rolesAndRecursion = inr.getRolesAndRecursion();
-				for (String role : rolesAndRecursion.keySet()) {
-					createRoleTreeNode(node, inr.getNodeId(), role, rolesAndRecursion.get(role));
-				}			
+				for (Map.Entry<String, String> secondEntry : rolesAndRecursion.entrySet()) {
+					createRoleTreeNode(node, inr.getNodeId(), secondEntry.getKey(), secondEntry.getValue());
+				}
 			}
 		} else {
 			throw new ResultCodeException(ExtrasResultCode.ROLES_NOT_FOUND);
@@ -275,7 +274,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		nodeFilter.setTreeNodeId(node.getId());
 		
 		List<IdmRoleTreeNodeDto> existing = roleTreeNodeService.find(nodeFilter, null, null).getContent();
-		if (existing == null || (existing != null && existing.isEmpty())) {
+		if (existing == null || existing.isEmpty()) {
 			return null;
 		} 
 		
@@ -294,15 +293,15 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		recursionTypeColumnName = getParameterConverter().toString(properties, PARAM_COLUMN_RECURSION_TYPE);
 		
 		if (nodeIdColumnName != null) {
-			useNodeIds = true;
+			useNodeIds = Boolean.TRUE;
 		} else {
-			useNodeIds = false;
+			useNodeIds = Boolean.FALSE;
 		}
 		
 		if (recursionTypeColumnName != null) {
-			setRecursion = true;
+			setRecursion = Boolean.TRUE;
 		} else {
-			setRecursion = false;
+			setRecursion = Boolean.FALSE;
 		}
 	}
 

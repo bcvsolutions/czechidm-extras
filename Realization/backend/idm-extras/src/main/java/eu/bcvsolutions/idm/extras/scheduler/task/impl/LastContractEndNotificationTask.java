@@ -1,5 +1,7 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import static org.junit.Assert.assertNotNull;
+
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -90,7 +92,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		recipientRoleBefore = getParameterConverter().toUuid(properties, RECIPIENT_ROLE_BEFORE_PARAM);
 		sendToManagerBefore = getParameterConverter().toBoolean(properties, SEND_TO_MANAGER_BEFORE_PARAM);
 		if (sendToManagerBefore == null) {
-			sendToManagerBefore = false;
+			sendToManagerBefore = Boolean.FALSE;
 		}
 		if (daysBeforeEnd == null || daysBeforeEnd.compareTo(0L) <= -1) {
 			throw new ResultCodeException(ExtrasResultCode.CONTRACT_END_NOTIFICATION_DAYS_BEFORE,
@@ -113,7 +115,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		if (daysBeforeEnd == 0) {
 			identityContractFilter.setValidTill(currentDate);
 		} else {
-			identityContractFilter.setValid(true);
+			identityContractFilter.setValid(Boolean.TRUE);
 		}
 		return identityContractService.find(identityContractFilter, pageable);
 	}
@@ -293,6 +295,9 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected Boolean isLastContract(IdmIdentityContractDto checkedContract) {
 		List<IdmIdentityContractDto> contracts = identityContractService.findAllByIdentity(checkedContract.getIdentity());
 		if (contracts != null && contracts.size() == 1) {
+			return Boolean.TRUE;
+		}
+		if (contracts == null) {
 			return Boolean.TRUE;
 		}
 		for (IdmIdentityContractDto contract : contracts) {

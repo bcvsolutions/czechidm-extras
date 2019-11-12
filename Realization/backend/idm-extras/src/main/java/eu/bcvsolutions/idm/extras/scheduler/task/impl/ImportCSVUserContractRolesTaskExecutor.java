@@ -270,11 +270,11 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 
 	private String getAssignedRolesToString(List<UUID> roleIds) {
 //			List<IdmRoleDto> assignedRoleDtos = roleService.getRolesByIds(roleIds.toString());
-		List<IdmRoleDto> assignedRoleDtos = new ArrayList<>();
+		List<IdmRoleDto> assignedRoleDtos = new ArrayList<>((int) (roleIds.size() / 0.75));
 		for (UUID roleId : roleIds) {
 			assignedRoleDtos.add(roleService.get(roleId));
 		}
-		List<String> assignedRolesList = new ArrayList<>();
+		List<String> assignedRolesList = new ArrayList<>((int) (assignedRoleDtos.size() / 0.75));
 		for (IdmRoleDto role : assignedRoleDtos) {
 			assignedRolesList.add(role.getCode());
 		}

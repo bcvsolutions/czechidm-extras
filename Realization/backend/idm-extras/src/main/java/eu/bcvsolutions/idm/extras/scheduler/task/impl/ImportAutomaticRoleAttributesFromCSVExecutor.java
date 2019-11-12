@@ -145,7 +145,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 					// task completed
 					this.logItemProcessed(role, taskCompleted("Automatic role: " + automaticRoleAttribute.getName() + " created"));
 				} else {
-					LOG.debug("Role [" + roleName + "] not found.");
+					LOG.debug(String.format("Role %s not found.", roleName));
 					--this.count;
 				}
 				
@@ -228,9 +228,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		IdmAutomaticRoleFilter roleFilter = new IdmAutomaticRoleFilter();
 		roleFilter.setRoleId(role.getId());
 		roleFilter.setRuleType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
-		roleFilter.setHasRules(true);
+		roleFilter.setHasRules(Boolean.TRUE);
 		List<IdmAutomaticRoleAttributeDto> result = automaticRoleAttributeService.find(roleFilter, null).getContent();
-		if (result.size() > 0) {
+		if (!result.isEmpty()) {
 			IdmAutomaticRoleAttributeRuleFilter ruleFilter = new IdmAutomaticRoleAttributeRuleFilter();
 			ruleFilter.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
 			ruleFilter.setValue(attributeValue);
@@ -362,9 +362,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 			multiValueSeparator = MULTI_VALUE_SEPARATOR;
 		}
 		if (secondAttributeColumnName != null && secondContractEavAttributeName != null) {
-			hasSecondAttribute = true;
+			hasSecondAttribute = Boolean.TRUE;
 		} else {
-			hasSecondAttribute = false;
+			hasSecondAttribute = Boolean.FALSE;
 		}
 	}
 

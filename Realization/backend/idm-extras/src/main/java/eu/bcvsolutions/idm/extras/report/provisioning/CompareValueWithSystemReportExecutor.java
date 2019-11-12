@@ -646,7 +646,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 			return Lists.newArrayList();
 		}
 
-		List<UUID> result = new ArrayList<>();
+		List<UUID> result = new ArrayList<>((int) (identitiesAsSerializable.size() / 0.75));
 		for (Serializable identityIdAsSerializable : identitiesAsSerializable) {
 			if (identityIdAsSerializable == null) {
 				continue;
