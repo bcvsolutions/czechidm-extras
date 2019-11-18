@@ -237,7 +237,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 						i.remove();
 						++this.count;
 						this.logItemProcessed(contract, taskNotExecuted("Role is already assigned: " + roleService.get(roleId).getCode()));
-						continue;
+						break;
 					}
 				}
 			}
