@@ -136,7 +136,7 @@ IdmRoleCatalogueDto getCatalogueByExternalId(String externalId) {
 }
 
 String getCatalogueExternalIdList(List&lt;String&gt; list, int number) {
-  List&lt;String&gt; subList = list.subList(number, list.size() -1);
+  List&lt;String&gt; subList = list.subList(number, list.size());
   return DigestUtils.sha1Hex(subList.toString());
 }
 

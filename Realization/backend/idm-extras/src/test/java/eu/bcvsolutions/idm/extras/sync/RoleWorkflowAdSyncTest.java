@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
@@ -23,7 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import eu.bcvsolutions.idm.InitApplicationData;
-import eu.bcvsolutions.idm.extras.TestHelper;
+import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType;
 import eu.bcvsolutions.idm.acc.domain.OperationResultType;
 import eu.bcvsolutions.idm.acc.domain.ReconciliationMissingAccountActionType;
 import eu.bcvsolutions.idm.acc.domain.SynchronizationActionType;
@@ -53,7 +54,6 @@ import eu.bcvsolutions.idm.acc.dto.filter.SysSyncItemLogFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSyncLogFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSystemAttributeMappingFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSystemMappingFilter;
-import eu.bcvsolutions.idm.extras.entity.TestRoleResource;
 import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService;
 import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
 import eu.bcvsolutions.idm.acc.service.api.SysSchemaAttributeService;
@@ -87,6 +87,9 @@ import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
+import eu.bcvsolutions.idm.extras.TestHelper;
+import eu.bcvsolutions.idm.extras.TestResource;
+import eu.bcvsolutions.idm.extras.entity.TestRoleResource;
 import eu.bcvsolutions.idm.extras.service.api.ExtrasSyncRoleLdapService;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 import groovy.json.StringEscapeUtils;
@@ -108,6 +111,8 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	private static final String SYSTEM_NAME = "TestSystem" + System.currentTimeMillis();
 	private final String wfExampleKey =  "extrasSyncRoleLdap";
 	private static final String CATALOG_FOLDER = "TestCatalog" + System.currentTimeMillis();
+	private static String USER_SYSTEM_NAME = "TestUserSystemName" + System.currentTimeMillis();
+	private static String overridedAttributeName = "EAV_ATTRIBUTE";
 	
 	@Autowired
 	private TestHelper helper;
@@ -160,6 +165,15 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 		loginAsAdmin(InitApplicationData.ADMIN_USERNAME);
 		configurationService.setBooleanValue("idm.pub.acc.enabled", Boolean.TRUE);
 		configurationService.setValue("idm.pub.acc.syncRole.system.mapping.attributeRoleIdentificator", ATTRIBUTE_DN);
+		configurationService.setValue("idm.pub.acc.syncRole.provisioningOfIdentities.system.code", USER_SYSTEM_NAME);
+		configurationService.setValue("idm.pub.acc.syncRole.system.mapping.attributeMemberOf", overridedAttributeName);
+		
+		SysSystemDto userSystem = systemService.getByCode(USER_SYSTEM_NAME);
+		if (userSystem == null) {
+			userSystem = initData(USER_SYSTEM_NAME, true);
+			userSystem.setDisabledProvisioning(true);
+			systemService.save(userSystem);
+		}
 	}
 
 	@After
@@ -174,7 +188,6 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 			systemService.delete(systemService.getByCode(SYSTEM_NAME));
 		}
 		configurationService.deleteValue("idm.pub.acc.syncRole.system.mapping.attributeRoleIdentificator");
-		configurationService.setBooleanValue("idm.pub.acc.enabled", Boolean.FALSE);
 		super.logout();
 	}
 	
@@ -253,6 +266,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 		List<IdmFormValueDto> dnValues = formService.getValues(role, ATTRIBUTE_DN);
 		Assert.assertEquals(1, dnValues.size());
 		Assert.assertEquals(newDN, dnValues.get(0).getValue());
+		
 		IdmRoleCatalogueDto catalogueFirst = getCatalogueByCode("Flat");
 		IdmRoleCatalogueDto catalogueSecond = getCatalogueByCode("Pardubice");
 		Assert.assertNotNull(catalogueFirst);
@@ -437,7 +451,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	
 	@Test
 	public void n81_testSyncWithWfSituationMissingEntityCreateCatalog() {
-		configurationService.setValue("idm.pub.acc.syncRole.roleCatalog.catalogueTreeInOneCatalog", CATALOG_FOLDER);
+		configurationService.setValue("idm.pub.acc.syncRole.roles.allToOneCatalog", CATALOG_FOLDER);
 		
 		SysSystemDto system = initData();
 		
@@ -481,7 +495,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	@Test
-	public void n82_testSyncWithWfSituationMissingEntityTwiceSync() {
+	public void n82_testSyncWithWfSituationMissingEntityTwiceSync() throws InterruptedException {
 		String valueOfMemberAtt = "" + System.currentTimeMillis();
 		String nameOfEav = "externalIdentifier";
 		configurationService.setValue("idm.pub.acc.syncRole.identity.eav.externalIdentifier.code", nameOfEav);
@@ -521,6 +535,8 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 
 		SysSyncLogDto log = checkSyncLog(config, SynchronizationActionType.MISSING_ENTITY, 1,
 				OperationResultType.WF);
+		
+		TimeUnit.SECONDS.sleep(1);
 
 		Assert.assertFalse(log.isRunning());
 		Assert.assertFalse(log.isContainsError());
@@ -623,19 +639,11 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	
 	@Test
 	public void n94_testSyncWithWfSituationMissingEntityTriceSyncForwardManagement() {
+		SysSystemDto userSystem = systemService.getByCode(USER_SYSTEM_NAME);
 		String valueOfMemberAtt = "" + System.currentTimeMillis();
 		String nameOfEav = "externalIdentifier";
-		String USER_SYSTEM_NAME = "TestName001";
-		String overridedAttributeName = "EAV_ATTRIBUTE";
-		configurationService.setValue("idm.pub.acc.syncRole.provisioningOfIdentities.system.code", USER_SYSTEM_NAME);
-		configurationService.setValue("idm.pub.acc.syncRole.system.mapping.attributeMemberOf", overridedAttributeName);
 		configurationService.setBooleanValue("idm.pub.acc.syncRole.roleSystem.forwardManagement.value", true);
 		configurationService.setBooleanValue("idm.pub.acc.syncRole.roleSystem.update.manageforwardManagement", false);
-		
-		SysSystemDto userSystem = systemService.getByCode(USER_SYSTEM_NAME);
-		if (userSystem == null) {
-			userSystem = initData(USER_SYSTEM_NAME, true);
-		}
 		
 		IdmIdentityDto identity = this.getHelper().createIdentity();
 		IdmFormAttributeDto attribute = formService.getAttribute(formService.getDefinition(IdmIdentity.class), nameOfEav);
@@ -717,19 +725,11 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	
 	@Test
 	public void n95_contractOnExclusionOptionTest() {
+		SysSystemDto userSystem = systemService.getByCode(USER_SYSTEM_NAME);
 		String valueOfMemberAtt = "" + System.currentTimeMillis();
 		String nameOfEav = "externalIdentifier";
-		String USER_SYSTEM_NAME = "TestName001";
-		String overridedAttributeName = "EAV_ATTRIBUTE";
-		configurationService.setValue("idm.pub.acc.syncRole.provisioningOfIdentities.system.code", USER_SYSTEM_NAME);
-		configurationService.setValue("idm.pub.acc.syncRole.system.mapping.attributeMemberOf", overridedAttributeName);
 		configurationService.setValue("idm.pub.acc.syncRole.roles.nameOfRoles.doNotSentValueOnExclusion", ROLE_NAME);
 		configurationService.setBooleanValue("idm.pub.acc.syncRole.roleSystem.update.manageforwardManagement", false);
-		
-		SysSystemDto userSystem = systemService.getByCode(USER_SYSTEM_NAME);
-		if (userSystem == null) {
-			userSystem = initData(USER_SYSTEM_NAME, true);
-		}
 		
 		IdmIdentityDto identity = this.getHelper().createIdentity();
 		IdmFormAttributeDto attribute = formService.getAttribute(formService.getDefinition(IdmIdentity.class), nameOfEav);
@@ -811,13 +811,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	
 	@Test
 	public void n93_testSyncWithWfSituationMissingEntityAddResource() {
-		String USER_SYSTEM_NAME = "TestName001";
-		String overridedAttributeName = "EAV_ATTRIBUTE";
-		configurationService.setValue("idm.pub.acc.syncRole.provisioningOfIdentities.system.code", USER_SYSTEM_NAME);
-		configurationService.setValue("idm.pub.acc.syncRole.system.mapping.attributeMemberOf", overridedAttributeName);
-		SysSystemDto userSystem = initData(USER_SYSTEM_NAME, true);
-		
-		
+		SysSystemDto userSystem = systemService.getByCode(USER_SYSTEM_NAME);
 		SysSystemDto system = initData();
 		
 		IdmRoleFilter roleFilter = new IdmRoleFilter();
@@ -875,7 +869,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	@Test
-	public void n91_testSyncWithWfSituationMissingResolveMember() {
+	public void n91_testSyncWithWfSituationMissingResolveMember() throws InterruptedException {
 		
 		String valueOfMemberAtt = "" + System.currentTimeMillis();
 		String nameOfEav = "externalIdentifier";
@@ -921,6 +915,8 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 
 		Assert.assertFalse(log.isRunning());
 		Assert.assertFalse(log.isContainsError());
+		
+		TimeUnit.SECONDS.sleep(1);
 
 		roles = roleService.find(roleFilter, null).getContent();
 		Assert.assertEquals(1, roles.size());
@@ -938,7 +934,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	@Test
-	public void n92_testSyncWithWfSituationLinkedResolveMember() {
+	public void n92_testSyncWithWfSituationLinkedResolveMember() throws InterruptedException {
 		createRolesInSystem();
 		final String newDN = "CN=" + ROLE_NAME + ",OU=Flat,OU=Pardubice,DC=bcvsolutions,DC=eu";
 		this.getBean().initIdentityData(ROLE_NAME, newDN, SECOND_ROLE_NAME, SECOND_ATTRIBUTE_DN_VALUE);
@@ -987,6 +983,8 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 
 		Assert.assertFalse(log.isRunning());
 		Assert.assertFalse(log.isContainsError());
+		
+		TimeUnit.SECONDS.sleep(1);
 
 		roles = roleService.find(roleFilter, null).getContent();
 		Assert.assertEquals(1, roles.size());
@@ -1078,7 +1076,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	private SysSystemDto initData(String systemName, boolean isProvisioning) {
 
 		// create test system
-		SysSystemDto system = helper.createSystem(TestRoleResource.TABLE_NAME, systemName);
+		SysSystemDto system = isProvisioning ? helper.createSystem(TestResource.TABLE_NAME, systemName) : helper.createSystem(TestRoleResource.TABLE_NAME, systemName);
 		Assert.assertNotNull(system);
 
 		// generate schema for system
@@ -1095,9 +1093,11 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 			syncSystemMapping.setOperationType(SystemOperationType.PROVISIONING);
 		}
 		final SysSystemMappingDto syncMapping = systemMappingService.save(syncSystemMapping);
-		createMapping(system, syncMapping);
 		if (!isProvisioning) {
+			createMapping(system, syncMapping);
 			this.getBean().initIdentityData(ROLE_NAME, ATTRIBUTE_DN_VALUE, SECOND_ROLE_NAME, SECOND_ATTRIBUTE_DN_VALUE);
+		} else {
+			createProvMapping(system, syncMapping);	
 		}
 		return system;
 
@@ -1139,6 +1139,46 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 				attributeMappingTwo.setSystemMapping(entityHandlingResult.getId());
 				schemaAttributeMappingService.save(attributeMappingTwo);
 
+			}
+		});
+	}
+	
+	private void createProvMapping(SysSystemDto system, final SysSystemMappingDto entityHandlingResult) {
+		SysSchemaAttributeFilter schemaAttributeFilter = new SysSchemaAttributeFilter();
+		schemaAttributeFilter.setSystemId(system.getId());
+
+		Page<SysSchemaAttributeDto> schemaAttributesPage = schemaAttributeService.find(schemaAttributeFilter, null);
+		schemaAttributesPage.forEach(schemaAttr -> {
+			if (ATTRIBUTE_NAME.equals(schemaAttr.getName())) {
+				SysSystemAttributeMappingDto attributeMapping = new SysSystemAttributeMappingDto();
+				attributeMapping.setUid(true);
+				attributeMapping.setEntityAttribute(true);
+				attributeMapping.setIdmPropertyName("username");
+				attributeMapping.setName(schemaAttr.getName());
+				attributeMapping.setSchemaAttribute(schemaAttr.getId());
+				attributeMapping.setSystemMapping(entityHandlingResult.getId());
+				schemaAttributeMappingService.save(attributeMapping);
+
+			} else if (ATTRIBUTE_DN.equalsIgnoreCase(schemaAttr.getName())) {
+				SysSystemAttributeMappingDto attributeMappingTwo = new SysSystemAttributeMappingDto();
+				attributeMappingTwo.setIdmPropertyName(ATTRIBUTE_DN);
+				attributeMappingTwo.setEntityAttribute(false);
+				attributeMappingTwo.setExtendedAttribute(true);
+				attributeMappingTwo.setName("distinguishedName");
+				attributeMappingTwo.setSchemaAttribute(schemaAttr.getId());
+				attributeMappingTwo.setSystemMapping(entityHandlingResult.getId());
+				schemaAttributeMappingService.save(attributeMappingTwo);
+
+			} else if (ATTRIBUTE_MEMBER.equalsIgnoreCase(schemaAttr.getName())) {
+				SysSystemAttributeMappingDto attributeMappingTwo = new SysSystemAttributeMappingDto();
+				attributeMappingTwo.setIdmPropertyName(ATTRIBUTE_MEMBER);
+				attributeMappingTwo.setEntityAttribute(false);
+				attributeMappingTwo.setExtendedAttribute(true);
+				attributeMappingTwo.setName("MEMBER");
+				attributeMappingTwo.setSchemaAttribute(schemaAttr.getId());
+				attributeMappingTwo.setSystemMapping(entityHandlingResult.getId());
+				attributeMappingTwo.setStrategyType(AttributeMappingStrategyType.MERGE);
+				schemaAttributeMappingService.save(attributeMappingTwo);
 			}
 		});
 	}
