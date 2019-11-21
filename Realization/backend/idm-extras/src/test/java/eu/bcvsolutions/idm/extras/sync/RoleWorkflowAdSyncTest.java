@@ -5,7 +5,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
@@ -495,7 +494,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	@Test
-	public void n82_testSyncWithWfSituationMissingEntityTwiceSync() throws InterruptedException {
+	public void n82_testSyncWithWfSituationMissingEntityTwiceSync() {
 		String valueOfMemberAtt = "" + System.currentTimeMillis();
 		String nameOfEav = "externalIdentifier";
 		configurationService.setValue("idm.pub.acc.syncRole.identity.eav.externalIdentifier.code", nameOfEav);
@@ -536,8 +535,6 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 		SysSyncLogDto log = checkSyncLog(config, SynchronizationActionType.MISSING_ENTITY, 1,
 				OperationResultType.WF);
 		
-		TimeUnit.SECONDS.sleep(1);
-
 		Assert.assertFalse(log.isRunning());
 		Assert.assertFalse(log.isContainsError());
 
@@ -869,7 +866,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	@Test
-	public void n91_testSyncWithWfSituationMissingResolveMember() throws InterruptedException {
+	public void n91_testSyncWithWfSituationMissingResolveMember() {
 		
 		String valueOfMemberAtt = "" + System.currentTimeMillis();
 		String nameOfEav = "externalIdentifier";
@@ -916,8 +913,6 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 		Assert.assertFalse(log.isRunning());
 		Assert.assertFalse(log.isContainsError());
 		
-		TimeUnit.SECONDS.sleep(1);
-
 		roles = roleService.find(roleFilter, null).getContent();
 		Assert.assertEquals(1, roles.size());
 
@@ -934,7 +929,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	@Test
-	public void n92_testSyncWithWfSituationLinkedResolveMember() throws InterruptedException {
+	public void n92_testSyncWithWfSituationLinkedResolveMember() {
 		createRolesInSystem();
 		final String newDN = "CN=" + ROLE_NAME + ",OU=Flat,OU=Pardubice,DC=bcvsolutions,DC=eu";
 		this.getBean().initIdentityData(ROLE_NAME, newDN, SECOND_ROLE_NAME, SECOND_ATTRIBUTE_DN_VALUE);
@@ -984,8 +979,6 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 		Assert.assertFalse(log.isRunning());
 		Assert.assertFalse(log.isContainsError());
 		
-		TimeUnit.SECONDS.sleep(1);
-
 		roles = roleService.find(roleFilter, null).getContent();
 		Assert.assertEquals(1, roles.size());
 
