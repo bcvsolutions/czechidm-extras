@@ -27,6 +27,7 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.security.api.domain.AuthorizationPolicy;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
+import org.springframework.util.StringUtils;
 
 /**
  * Ultra mega awesome extra util for all projects by Roman Kucera
@@ -132,7 +133,7 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * @return
 	 */
 	private String getTitles(String value, List<String> dictonary) {
-		if (value == null || value.isEmpty()) {
+		if (StringUtils.isEmpty(value)) {
 			return null;
 		}
 		List<String> result = new ArrayList<String>();
@@ -141,7 +142,10 @@ public class ExtrasUtils implements ScriptEnabled {
 		for (String title : titles) {
 			final String finalTitle = title.trim().toLowerCase();
 
-			String exits = dictonary.stream().filter(t -> t.trim().toLowerCase().equals(finalTitle)).findFirst()
+			String exits = dictonary.stream()
+					.map(String::trim)
+					.map(String::toLowerCase).filter(t -> t.equals(finalTitle))
+					.findFirst()
 					.orElse(null);
 			if (exits != null) {
 				result.add(title);
