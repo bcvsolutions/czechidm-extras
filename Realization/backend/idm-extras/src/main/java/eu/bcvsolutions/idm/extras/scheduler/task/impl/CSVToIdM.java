@@ -324,7 +324,7 @@ public class CSVToIdM {
 						roleDescriptions.put(roleName, description);
 						
 						// save attributes
-						List<String> attr = new ArrayList<>();
+						List<String> attr = new ArrayList<>((int) (attributes.length / 0.75));
 						for(String attribute : attributes) {
 							attr.add(attribute);
 						}
@@ -334,28 +334,28 @@ public class CSVToIdM {
 						criticalities.put(roleName, criticality);
 						
 						// save guarantees
-						List<String> guar = new ArrayList<>();
+						List<String> guar = new ArrayList<>((int) (guaranteesArray.length / 0.75));
 						for(String guarantee : guaranteesArray) {
 							guar.add(guarantee);
 						}
 						guarantees.put(roleName, guar);
 						
 						// save guaranteesRoles
-						List<String> guarRoles = new ArrayList<>();
+						List<String> guarRoles = new ArrayList<>((int) (guaranteesRolesArray.length / 0.75));
 						for(String guaranteeRole : guaranteesRolesArray) {
 							guarRoles.add(guaranteeRole);
 						}
 						guaranteeRoles.put(roleName, guarRoles);
 						
 						// save catalogues
-						List<String> catalogueList = new ArrayList<>();
+						List<String> catalogueList = new ArrayList<>((int) (cataloguesArray.length / 0.75));
 						for(String catalogue : cataloguesArray) {
 							catalogueList.add(catalogue);
 						}
 						catalogues.put(roleName, catalogueList);
 						
 						// save sub roles
-						List<String> subRolesList = new ArrayList<>();
+						List<String> subRolesList = new ArrayList<>((int) (subRolesArray.length / 0.75));
 						for(String subRole : subRolesArray) {
 							subRolesList.add(subRole);
 						}

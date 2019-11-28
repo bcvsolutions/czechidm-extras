@@ -69,7 +69,7 @@ public class RemoveWorkflowInstanceTaskExecutor extends AbstractSchedulableTaskE
 
 	@Override
 	public Boolean process() {
-		LOG.info("Starting LRT time:" + System.currentTimeMillis());
+		LOG.info(String.format("Starting LRT time: %s", System.currentTimeMillis()));
 		this.counter = 0L;
 		//
 		assertNotNull(processDefinitionKey);
@@ -79,7 +79,7 @@ public class RemoveWorkflowInstanceTaskExecutor extends AbstractSchedulableTaskE
 		processEngine.getHistoryService().createHistoricProcessInstanceQuery()
 				.processDefinitionKey(processDefinitionKey).finishedAfter(from).finishedBefore(till).list()
 				.forEach(processInstance -> {
-					LOG.info("Start deleting time:" + System.currentTimeMillis() + " processInstance id: " + processInstance.getId());
+					LOG.info(String.format("Start deleting time: %s, processInstance id: %s", System.currentTimeMillis(), processInstance.getId()));
 					processEngine.getHistoryService().deleteHistoricProcessInstance(processInstance.getId());
 					counter++;
 					count = counter;
@@ -88,7 +88,7 @@ public class RemoveWorkflowInstanceTaskExecutor extends AbstractSchedulableTaskE
 						return;
 					}
 				});
-		return true;
+		return Boolean.TRUE;
 	}
 
 	@Override

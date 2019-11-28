@@ -1,0 +1,36 @@
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes"?>
+<!-- 
+	Notification to role holders and optionally manager that the contract is ending today.
+parameters:
+    user - full name
+    department -
+    ppvEnd -
+    manager
+ -->
+
+<template>
+    <name>Contract end now (extras)</name>
+    <code>contractEndNow</code>
+    <subject>IdM - Uživateli $!user bude dnes ukončen PPV</subject>
+    <bodyHtml>
+        <![CDATA[
+            <html>
+                <body>
+                    Dobrý den,<br />
+                    <br />
+                    zaměstnanec $!user odchází k dnešnímu dni $!ppvEnd (konec pracovního poměru) z oddělení $!department.<br />
+                    <br />
+                    Přejeme Vám pěkný den.<br />
+                    <br />
+                <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
+			        CzechIdM © 2019&nbsp;BCV Solutions s.r.o.&nbsp;
+		        </div>
+                </body>
+            </html>
+        ]]>
+    </bodyHtml>
+    <bodyText></bodyText>
+    <parameter>user, department, ppvEnd, manager</parameter>
+    <systemTemplate>false</systemTemplate>
+    <moduleId>extras</moduleId>
+</template>

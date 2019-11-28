@@ -222,6 +222,12 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		IdmIdentityContractDto contract = identityContractService.get(contractId);
 		UUID identityRoleId = null;
 		ConceptRoleRequestOperation operation = ConceptRoleRequestOperation.ADD;
+
+		IdmRoleRequestDto roleRequest = new IdmRoleRequestDto();
+		roleRequest.setApplicant(contract.getIdentity());
+		roleRequest.setRequestedByType(RoleRequestedByType.MANUALLY);
+		roleRequest.setExecuteImmediately(true);
+		roleRequest = roleRequestService.save(roleRequest);
 		
 		Iterator<UUID> i = roleIds.iterator();
 		while (i.hasNext()) {
@@ -237,17 +243,12 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 						i.remove();
 						++this.count;
 						this.logItemProcessed(contract, taskNotExecuted("Role is already assigned: " + roleService.get(roleId).getCode()));
-						continue;
+						break;
 					}
 				}
 			}
+			
 			if (!roleAssigned) {
-				IdmRoleRequestDto roleRequest = new IdmRoleRequestDto();
-				roleRequest.setApplicant(contract.getIdentity());
-				roleRequest.setRequestedByType(RoleRequestedByType.MANUALLY);
-				roleRequest.setExecuteImmediately(true);
-				roleRequest = roleRequestService.save(roleRequest);
-				
 				IdmConceptRoleRequestDto conceptRoleRequest = new IdmConceptRoleRequestDto();
 				conceptRoleRequest.setRoleRequest(roleRequest.getId());
 				conceptRoleRequest.setIdentityContract(contract.getId());
@@ -257,11 +258,12 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 				conceptRoleRequest.setRole(roleId);
 				conceptRoleRequest.setOperation(operation);
 				conceptRoleRequestService.save(conceptRoleRequest);
-				
-				roleRequestService.startRequestInternal(roleRequest.getId(), true);
 			}
 		}
-		if (roleIds.size() > 0) {
+		
+		roleRequestService.startRequestInternal(roleRequest.getId(), true);
+		
+		if (!roleIds.isEmpty()) {
 			this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
 		} else {
 			--this.count;
@@ -269,12 +271,11 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	}
 
 	private String getAssignedRolesToString(List<UUID> roleIds) {
-//			List<IdmRoleDto> assignedRoleDtos = roleService.getRolesByIds(roleIds.toString());
-		List<IdmRoleDto> assignedRoleDtos = new ArrayList<>();
+		List<IdmRoleDto> assignedRoleDtos = new ArrayList<>((int) (roleIds.size() / 0.75));
 		for (UUID roleId : roleIds) {
 			assignedRoleDtos.add(roleService.get(roleId));
 		}
-		List<String> assignedRolesList = new ArrayList<>();
+		List<String> assignedRolesList = new ArrayList<>((int) (assignedRoleDtos.size() / 0.75));
 		for (IdmRoleDto role : assignedRoleDtos) {
 			assignedRolesList.add(role.getCode());
 		}
