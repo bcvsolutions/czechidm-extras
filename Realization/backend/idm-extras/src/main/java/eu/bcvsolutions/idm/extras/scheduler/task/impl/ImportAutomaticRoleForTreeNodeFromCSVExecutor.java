@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -25,6 +24,7 @@ import com.opencsv.CSVReaderBuilder;
 
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.RecursionType;
+import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleTreeNodeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
@@ -211,17 +211,20 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 			String recursionType) {
 		IdmTreeNodeDto treeNode = findTreeNode(nodeCode, nodeId);
 		if (treeNode == null) {
-			LOG.debug(String.format("The tree node %s doesn't exist.", nodeCode));
+			this.logItemProcessed(new IdmTreeNodeDto(UUID.randomUUID()), taskNotCompleted(String.format("The tree node %s does not exist, automatic role with role %s was not created", nodeCode, roleCode)));
+			LOG.warn("The tree node [{0}] doesn't exist.", nodeCode);
 			return null;
 		}
 		IdmRoleDto role = roleService.getByCode(roleCode);
 		if (role == null) {
-			LOG.debug(String.format("The role %s doesn't exist.", roleCode));
+			this.logItemProcessed(treeNode, taskNotCompleted(String.format("The role %s does not exist, automatic role on tree node %s was not created", roleCode, treeNode.getName())));
+			LOG.warn("The role [{0}] doesn't exist.", roleCode);
 			return null;
 		}
 		
 		if (roleTreeNodeExists(treeNode, role) != null) {
-			LOG.debug(String.format("The role for %s and %s already exists", nodeCode, roleCode));
+			this.logItemProcessed(treeNode, taskNotCompleted(String.format("Automatic role %s on node %s already exists", role.getName(), treeNode.getName())));
+			LOG.warn("The role for [{0}] and [{1}] already exists", nodeCode, roleCode);
 			return null;
 		}
 		
@@ -234,6 +237,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 			roleTreeNode.setRecursionType(RecursionType.valueOf(recursionType));
 		}
 		
+		this.logItemProcessed(treeNode, taskCompleted(String.format("Automatic role %s on node %s created", role.getName(), treeNode.getName())));
 		return roleTreeNodeService.save(roleTreeNode);
 	}
 	
@@ -247,8 +251,13 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 	private IdmTreeNodeDto findTreeNode(String nodeCode, String nodeId) {
 		IdmTreeNodeFilter filter = new IdmTreeNodeFilter();
 		filter.setCode(nodeCode);
+		IdmTreeNodeDto node = null;
 		
-		IdmTreeNodeDto node = treeNodeService.find(filter, null, null).getContent().get(0);
+		List<IdmTreeNodeDto> nodes = treeNodeService.find(filter, null).getContent();
+		
+		if (nodes != null && !nodes.isEmpty()) {
+			node = nodes.get(0);
+		}
 		
 		if (node != null) {
 			return node;
@@ -273,7 +282,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		nodeFilter.setRoleId(role.getId());
 		nodeFilter.setTreeNodeId(node.getId());
 		
-		List<IdmRoleTreeNodeDto> existing = roleTreeNodeService.find(nodeFilter, null, null).getContent();
+		List<IdmRoleTreeNodeDto> existing = roleTreeNodeService.find(nodeFilter, null).getContent();
 		if (existing == null || existing.isEmpty()) {
 			return null;
 		} 
@@ -385,6 +394,16 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		public void setRolesAndRecursion(Map<String, String> rolesAndRecursion) {
 			this.rolesAndRecursion = rolesAndRecursion;
 		}
+	}
+	
+	private OperationResult taskCompleted(String message) {
+		return new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+				ImmutableMap.of("message", message))).build();
+	}
+
+	private OperationResult taskNotCompleted(String message) {
+		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+				ImmutableMap.of("message", message))).build();
 	}
 }
 
