@@ -1,3 +1,5 @@
 nodecodes;nodeids;roles;recursiontype
 testtreenode;testtreenode;testrole;UP
 testtreenode;testtreenode;testroletwo;UP
+faketreenode;faketreenode;testroletwo;UP
+testtreenode;testtreenode;fakerole;UP
