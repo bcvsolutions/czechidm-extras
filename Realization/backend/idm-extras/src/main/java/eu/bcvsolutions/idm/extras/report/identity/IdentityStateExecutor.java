@@ -13,7 +13,7 @@ import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.joda.time.DateTime;
+import java.time.ZonedDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Description;
@@ -90,8 +90,8 @@ public class IdentityStateExecutor extends AbstractReportExecutor {
 
 	@Override
 	protected IdmAttachmentDto generateData(RptReportDto report) {
-		DateTime dateFrom = (DateTime) getParameterValue(report, PARAMETR_DATE_FROM);
-		DateTime dateTo = (DateTime) getParameterValue(report, PARAMETR_DATE_TO);
+		ZonedDateTime dateFrom = (ZonedDateTime) getParameterValue(report, PARAMETR_DATE_FROM);
+		ZonedDateTime dateTo = (ZonedDateTime) getParameterValue(report, PARAMETR_DATE_TO);
 		Serializable treeNodeValue = getParameterValue(report, PARAMETER_TREE_NODE);
 		if (treeNodeValue != null) {
 			treeNode = UUID.fromString(treeNodeValue.toString());

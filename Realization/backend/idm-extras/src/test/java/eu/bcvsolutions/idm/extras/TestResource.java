@@ -5,7 +5,7 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import org.joda.time.DateTime;
+import java.time.ZonedDateTime;
 
 import eu.bcvsolutions.idm.core.api.domain.DefaultFieldLengths;
 
@@ -37,7 +37,7 @@ public class TestResource {
 	@Column(name = "STATUS", length = DefaultFieldLengths.NAME)
 	private String status;
 	@Column(name = "MODIFIED", length = DefaultFieldLengths.NAME)
-	private DateTime modified;
+	private ZonedDateTime modified;
 	@Column(name = "EAV_ATTRIBUTE", length = DefaultFieldLengths.NAME)
 	private String eavAttribute;
 
@@ -105,11 +105,11 @@ public class TestResource {
 		this.status = status;
 	}
 
-	public DateTime getModified() {
+	public ZonedDateTime getModified() {
 		return modified;
 	}
 
-	public void setModified(DateTime modified) {
+	public void setModified(ZonedDateTime modified) {
 		this.modified = modified;
 	}
 }

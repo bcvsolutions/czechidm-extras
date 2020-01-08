@@ -39,7 +39,7 @@ public class ExtrasFlywayConfig extends AbstractFlywayConfiguration {
 	@ConfigurationProperties(prefix = "flyway.extras")
 	public Flyway flywayModuleExtras() {
 		Flyway flyway = super.createFlyway();		
-		log.info("Starting flyway migration for extras module [{}]: ", flyway.getTable());
+		log.info("Starting flyway migration for extras module [{}]: ", flyway.getConfiguration().getTable());
 		return flyway;
 	}
 }

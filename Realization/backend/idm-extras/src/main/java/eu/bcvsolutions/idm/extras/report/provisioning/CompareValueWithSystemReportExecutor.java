@@ -294,7 +294,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 	 */
 	private CompareValueDataInfoDto generateRows(CompareValueDataInfoDto infoData, AccAccountFilter filterAccount, SysSchemaObjectClassDto schemaObjectClassDto, SysSystemDto systemDto, List<SysSystemAttributeMappingDto> attributes, List<SysSchemaAttributeDto> schemaAttributes, RptReportDto report) {
 		boolean canContinue = true;
-		Pageable pageable = new PageRequest(0, 100, new Sort(Direction.ASC, AccAccount_.created.getName()));
+		Pageable pageable = PageRequest.of(0, 100, Sort.by(Direction.ASC, AccAccount_.created.getName()));
 		List<CompareValueRowDto> rows = infoData.getRows();
 		do {
 			Page<AccAccountDto> accounts = accountService.find(filterAccount, pageable, IdmBasePermission.READ);

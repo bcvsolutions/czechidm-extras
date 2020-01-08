@@ -1063,7 +1063,7 @@ execution.setVariable("logItem", logItem);
           }
 
           def resolveMemberId(member) {
-              def owners = formService.findOwners(IdmIdentityDto.class, identityIdentificatorFormAttributeCode, member, null)?.getContent();
+              def owners = idmFormService.findOwners(IdmIdentityDto.class, identityIdentificatorFormAttributeCode, member, null)?.getContent();
               return Optional.ofNullable(owners).orElse(Collections.&amp;emptyList()).stream()
                       .map({o -&gt; o.getId()})
                       .findAny()

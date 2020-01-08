@@ -1,9 +1,8 @@
 package eu.bcvsolutions.idm.extras.util;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.Predicate;
@@ -102,7 +101,7 @@ public class ExtrasUtils implements ScriptEnabled {
 		// for check guarantee we need only one record
 		IdmRoleGuaranteeFilter filter = new IdmRoleGuaranteeFilter();
 		filter.setGuarantee(currentIdentity.getId());
-		return roleGuaranteeService.find(filter, new PageRequest(0, 1)).getContent();
+		return roleGuaranteeService.find(filter, PageRequest.of(0, 1)).getContent();
 	}
 
 	/**
@@ -153,5 +152,11 @@ public class ExtrasUtils implements ScriptEnabled {
 		}
 
 		return String.join(", ", result);
+	}
+
+	public static Date convertToDateViaInstant(LocalDate dateToConvert) {
+		return java.util.Date.from(dateToConvert.atStartOfDay()
+				.atZone(ZoneId.systemDefault())
+				.toInstant());
 	}
 }

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.BooleanUtils;
-import org.joda.time.DateTime;
+import java.time.ZonedDateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
@@ -119,8 +119,8 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	private boolean sendLrtStatus = false;
 	private boolean sendEventStatus = false;
 	private boolean sendContractsStatus = false;
-	private DateTime lastRun = null;
-	private DateTime started = null;
+	private ZonedDateTime lastRun = null;
+	private ZonedDateTime started = null;
 	private List<IdmIdentityDto> recipients = null;
 
 	@Override
@@ -128,16 +128,16 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		super.init(properties);
 
 		// we must set started there
-		started = DateTime.now();
+		started = ZonedDateTime.now();
 
 //		systems = new ArrayList<>();
 		String lastRunAsString = configurationService.getValue(LAST_RUN_DATE_TIME);
 
 		// first run, default run - 10days
 		if (lastRunAsString == null) {
-			lastRunAsString = DateTime.now().minusDays(10).toString();
+			lastRunAsString = ZonedDateTime.now().minusDays(10).toString();
 		}
-		lastRun = new DateTime(lastRunAsString);
+		lastRun = ZonedDateTime.parse(lastRunAsString);
 		//
 		sendProvisioningStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_PROVISIONING_STATUS_PARAM));
 		sendSyncStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_SYNC_STATUS_PARAM));
@@ -512,7 +512,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 				SysSyncLogFilter filter = new SysSyncLogFilter();
 				filter.setSynchronizationConfigId(sync.getId());
-				List<SysSyncLogDto> logs = syncLongService.find(filter, new PageRequest(0, 1, new Sort(Direction.DESC,
+				List<SysSyncLogDto> logs = syncLongService.find(filter, PageRequest.of(0, 1, Sort.by(Direction.DESC,
 						SysSyncLog_.created.getName()))).getContent();
 
 				// must be only one

@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.activiti.engine.ProcessEngine;
-import org.joda.time.LocalDate;
+import java.time.LocalDate;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import com.google.common.primitives.Ints;
 
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
+
+import static eu.bcvsolutions.idm.extras.util.ExtrasUtils.convertToDateViaInstant;
 
 /**
  * Lrt for deleting historic workflow
@@ -56,14 +58,14 @@ public class RemoveWorkflowInstanceTaskExecutor extends AbstractSchedulableTaskE
 		}
 
 		int numberOfDays = Optional.ofNullable(numberOfDaysBeforeString).map(Ints::tryParse).orElse(0);
-		this.from = new LocalDate().minusDays(numberOfDays).toDate();
+		this.from = convertToDateViaInstant(LocalDate.now().minusDays(numberOfDays));
 
 		if (numberOfDaysTillString != null) {
 			numberOfDaysTillString = numberOfDaysTillString.trim();
 		}
 
 		numberOfDays = Optional.ofNullable(numberOfDaysTillString).map(Ints::tryParse).orElse(0);
-		this.till = new LocalDate().minusDays(numberOfDays).toDate();
+		this.till = convertToDateViaInstant(LocalDate.now().minusDays(numberOfDays));
 
 	}
 

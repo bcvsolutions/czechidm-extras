@@ -8,7 +8,7 @@ import java.util.UUID;
 
 import javax.transaction.Transactional;
 
-import org.joda.time.LocalDate;
+import java.time.LocalDate;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -654,7 +654,7 @@ public class ExtrasIdmConceptRoleRequestServiceTest extends AbstractIntegrationT
 		final IdmEntityEventFilter eventFilter = new IdmEntityEventFilter();
 		eventFilter.setOwnerId(requestId);
 		getHelper().waitForResult(res -> {
-			return entityEventService.find(eventFilter, new PageRequest(0, 1)).getTotalElements() != 0;
+			return entityEventService.find(eventFilter, PageRequest.of(0, 1)).getTotalElements() != 0;
 		}, 1000, 30);
 	}
 }

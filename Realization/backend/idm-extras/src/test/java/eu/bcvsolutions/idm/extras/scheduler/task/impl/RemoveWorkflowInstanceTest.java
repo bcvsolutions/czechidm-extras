@@ -179,8 +179,8 @@ public class RemoveWorkflowInstanceTest extends AbstractIntegrationTest {
 		assertEquals(RoleRequestState.IN_PROGRESS, request.getState());
 
 		WorkflowFilterDto taskFilter = new WorkflowFilterDto();
-		List<WorkflowTaskInstanceDto> tasks = (List<WorkflowTaskInstanceDto>) workflowTaskInstanceService
-				.search(taskFilter).getResources();
+		List<WorkflowTaskInstanceDto> tasks = workflowTaskInstanceService
+				.find(taskFilter, null).getContent();
 		assertEquals(0, tasks.size());
 
 		loginAsAdmin();
@@ -262,7 +262,7 @@ public class RemoveWorkflowInstanceTest extends AbstractIntegrationTest {
 	private void checkAndCompleteOneTask(WorkflowFilterDto taskFilter, String userName, String decision) {
 		IdmIdentityDto identity = identityService.getByUsername(userName);
 		List<WorkflowTaskInstanceDto> tasks;
-		tasks = (List<WorkflowTaskInstanceDto>) workflowTaskInstanceService.search(taskFilter).getResources();
+		tasks = (List<WorkflowTaskInstanceDto>) workflowTaskInstanceService.find(taskFilter, null).getContent();
 		assertEquals(1, tasks.size());
 		assertEquals(identity.getId().toString(), tasks.get(0).getApplicant());
 

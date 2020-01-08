@@ -500,8 +500,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 		configurationService.setValue("idm.pub.acc.syncRole.identity.eav.externalIdentifier.code", nameOfEav);
 		configurationService.setValue("idm.pub.acc.syncRole.roles.attributeNameOfMembership", ATTRIBUTE_MEMBER);
 		configurationService.setBooleanValue("idm.pub.acc.syncRole.update.resolveMembership", true);
-		
-		
+
 		IdmIdentityDto identity = this.getHelper().createIdentity();
 		IdmFormAttributeDto attribute = helper.createEavAttribute(nameOfEav, IdmIdentity.class, PersistentType.SHORTTEXT);
 		helper.setEavValue(identity, attribute, IdmIdentity.class, valueOfMemberAtt, PersistentType.SHORTTEXT);
@@ -1211,7 +1210,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	private RoleWorkflowAdSyncTest getBean() {
-		return applicationContext.getBean(this.getClass());
+		return applicationContext.getAutowireCapableBeanFactory().createBean(this.getClass());
 	}
 	
 	private IdmRoleCatalogueDto getCatalogueByCode(String code) {

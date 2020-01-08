@@ -2,6 +2,7 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.joda.time.LocalDate;
+import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.data.domain.Page;
@@ -65,8 +66,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected static final String SEND_TO_MANAGER_BEFORE_PARAM = "Should the manager of the contract receive the notification?";
 	
 	private Long daysBeforeEnd;
-	private LocalDate currentDate = new LocalDate();
-	private LocalDate validMinusXDays = new LocalDate();
+	private LocalDate currentDate = LocalDate.now();
+	private LocalDate validMinusXDays = LocalDate.now();
 	private String fullName;
 	private String position;
 	private String ppvEnd;
@@ -150,7 +151,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 			position = DtoUtils.getEmbedded(dto, IdmIdentityContract_.workPosition, IdmTreeNodeDto.class).getName();
 		}
 		
-		ppvEnd = dto.getValidTill().toString("dd. MM. YYYY");
+		ppvEnd = dto.getValidTill().format(DateTimeFormatter.ofPattern("dd. MM. YYYY"));
 
 		IdmIdentityDto guarantee = getManagerForContract(dto.getId(), identityDto.getId());
 		if (guarantee == null) {

@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.joda.time.LocalDate;
+import java.time.LocalDate;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -81,7 +81,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	
 	@Test
 	public void isLastContractTest() {
-		LocalDate now = new LocalDate();
+		LocalDate now = LocalDate.now();
 		
 		notification.setDatesForTest(now, 7L);
 		
@@ -98,7 +98,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		userOneContract.setValidTill(now);
 		identityContractService.saveInternal(userOneContract);
 		
-		LocalDate later = new LocalDate();
+		LocalDate later = LocalDate.now();
 		later = later.plusDays(180);
 		
 		userOneContractTwo.setValidTill(later);
@@ -156,7 +156,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	public void testLrtEndsInFuture() {
 		IdmIdentityDto subject = getHelper().createIdentity();
 		IdmIdentityContractDto subjectContract = getHelper().getPrimeContract(subject);
-		subjectContract.setValidTill(new LocalDate().plusDays(7));
+		subjectContract.setValidTill(LocalDate.now().plusDays(7));
 		identityContractService.saveInternal(subjectContract);
 		
 		IdmIdentityDto manager = getHelper().createIdentity("manager");
@@ -210,7 +210,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	public void testLrtEndsToday() {
 		IdmIdentityDto subjectTwo = getHelper().createIdentity();
 		IdmIdentityContractDto subjectTwoContract = getHelper().getPrimeContract(subjectTwo);
-		subjectTwoContract.setValidTill(new LocalDate());
+		subjectTwoContract.setValidTill(LocalDate.now());
 		identityContractService.saveInternal(subjectTwoContract);
 		
 		IdmIdentityDto managerTwo = getHelper().createIdentity("alternateManager");
