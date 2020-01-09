@@ -2,6 +2,7 @@ package eu.bcvsolutions.idm.extras.config.domain;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import eu.bcvsolutions.idm.core.api.service.Configurable;
 import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService;
@@ -16,6 +17,9 @@ public interface ExtrasConfiguration extends Configurable {
 
 	String EXTRAS_TITLES_AFTER = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesAfter";
 	String EXTRAS_TITLES_BEFORE = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesBefore";
+
+	// cross AD
+	String EXTRAS_AD_SYSTEMS = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.cross.adSystems";
 
 	@Override
 	default String getConfigurableType() {
@@ -42,4 +46,11 @@ public interface ExtrasConfiguration extends Configurable {
 	 * @return
 	 */
 	List<String> getTitlesBefore();
+
+	/**
+	 * return uids of all AD instances in which we will search
+	 *
+	 * @return
+	 */
+	List<UUID> getAdSystems();
 }

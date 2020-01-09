@@ -1,6 +1,8 @@
 package eu.bcvsolutions.idm.extras.config.domain;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -38,6 +40,12 @@ public class DefaultExtrasConfiguration
 		}
 
 		return splitStringByComma(value);
+	}
+
+	@Override
+	public List<UUID> getAdSystems() {
+		String value = getConfigurationService().getValue(EXTRAS_AD_SYSTEMS);
+		return splitStringByComma(value).stream().map(UUID::fromString).collect(Collectors.toList());
 	}
 
 	/**
