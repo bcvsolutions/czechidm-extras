@@ -141,7 +141,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 			return new DefaultEventResult<>(event, this);
 		}
 
-		String userDn;
+		String userDn = null;
 
 		// load old DN, in event we have the new one but we need the old one for finding users groups
 		IcObjectClass objectClass = provisioningOperation.getProvisioningContext().getConnectorObject()
@@ -160,9 +160,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 			IcUidAttribute uidAttribute = new IcUidAttributeImpl(null, uid, null);
 			existsConnectorObject = connectorFacade.readObject(system.getConnectorInstance(), connectorConfig,
 					objectClass, uidAttribute);
-			if (existsConnectorObject == null) {
-				return new DefaultEventResult<>(event, this);
-			} else {
+			if (existsConnectorObject != null) {
 				userDn = String.valueOf(existsConnectorObject.getAttributeByName("__NAME__").getValue());
 			}
 		} catch (Exception ex) {
@@ -176,11 +174,13 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		Set<String> userGroups = new HashSet<>();
 
 		// find all user's groups
-		String finalUserDn = userDn;
-		adSystems.forEach(adSystem -> {
-			SysSystemDto adSystemDto = systemService.get(adSystem);
-			userGroups.addAll(findUserGroupsOnSystem(adSystemDto, groupClass, finalUserDn));
-		});
+		if (userDn != null) {
+			String finalUserDn = userDn;
+			adSystems.forEach(adSystem -> {
+				SysSystemDto adSystemDto = systemService.get(adSystem);
+				userGroups.addAll(findUserGroupsOnSystem(adSystemDto, groupClass, finalUserDn));
+			});
+		}
 
 		// check if user has more roles then in IdM = that can happen if he has roles from other servers then the normal search will not return all of them
 		Map<ProvisioningAttributeDto, Object> fullAccountObject = provisioningOperationService
