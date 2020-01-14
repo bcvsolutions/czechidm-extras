@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
+
 import java.time.ZonedDateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -338,9 +340,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					// Deleted
 				} else {
 					niceLabel.append(identityDto.getUsername());
-					niceLabel.append(" (");
-					niceLabel.append(identityDto.getExternalCode());
-					niceLabel.append(')');
+					if (!StringUtils.isBlank(identityDto.getExternalCode())) {
+						niceLabel.append(" (");
+						niceLabel.append(identityDto.getExternalCode());
+						niceLabel.append(')');
+					}
 				}
 				String finalNiceLabel = niceLabel.toString();
 				if (!niceLabels.contains(finalNiceLabel)) {
