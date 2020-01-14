@@ -456,9 +456,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 						// Deleted
 					} else {
 						niceLabel.append(identityDto.getUsername());
-						niceLabel.append(" (");
-						niceLabel.append(identityDto.getExternalCode());
-						niceLabel.append(')');
+						if (!StringUtils.isBlank(identityDto.getExternalCode())) {
+							niceLabel.append(" (");
+							niceLabel.append(identityDto.getExternalCode());
+							niceLabel.append(')');
+						}
 					}
 					String finalNiceLabel = niceLabel.toString();
 					if (!niceLabels.contains(finalNiceLabel)) {
