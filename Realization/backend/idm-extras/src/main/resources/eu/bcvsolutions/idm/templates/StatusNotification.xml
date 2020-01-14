@@ -188,12 +188,12 @@
 					#else
 						<tr>
 					#end
-						<td>$contract.username</td>
-						<td>$contract.personalNumber</td>
-						<td>$contract.firstName</td>
-						<td>$contract.lastName</td>
-						<td>$contract.state</td>
-						<td>$contract.dateOfChange</td>
+						<td>$!contract.username</td>
+						<td>$!contract.personalNumber</td>
+						<td>$!contract.firstName</td>
+						<td>$!contract.lastName</td>
+						<td>$!contract.state</td>
+						<td>$!contract.dateOfChange</td>
 					</tr>
 				#end
 			</table>
