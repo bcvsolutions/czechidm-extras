@@ -1,14 +1,5 @@
 package eu.bcvsolutions.idm.extras;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.stereotype.Component;
-
 import eu.bcvsolutions.idm.core.api.domain.PropertyModuleDescriptor;
 import eu.bcvsolutions.idm.core.api.domain.ResultCode;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
@@ -19,6 +10,14 @@ import eu.bcvsolutions.idm.core.notification.entity.IdmEmailLog;
 import eu.bcvsolutions.idm.core.security.api.domain.GroupPermission;
 import eu.bcvsolutions.idm.extras.domain.ExtrasGroupPermission;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Extras module descriptor
@@ -45,7 +44,7 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 	}
 	
 	/**
-	 * Enables links to swagger documention
+	 * Enables links to swagger documentation
 	 */
 	@Override
 	public boolean isDocumentationAvailable() {

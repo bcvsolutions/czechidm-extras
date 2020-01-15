@@ -1,40 +1,14 @@
 package eu.bcvsolutions.idm.extras.model.security.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.util.List;
-import java.util.UUID;
-
-import javax.transaction.Transactional;
-
-import java.time.LocalDate;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-
 import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
-import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
-import eu.bcvsolutions.idm.core.api.dto.OperationResultDto;
+import eu.bcvsolutions.idm.core.api.dto.*;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmEntityEventFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmConceptRoleRequestService;
-import eu.bcvsolutions.idm.core.api.service.IdmEntityEventService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
+import eu.bcvsolutions.idm.core.api.service.*;
 import eu.bcvsolutions.idm.core.model.domain.CoreGroupPermission;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
@@ -44,6 +18,19 @@ import eu.bcvsolutions.idm.extras.security.evaluator.identity.IdentityAccessForR
 import eu.bcvsolutions.idm.extras.security.evaluator.identity.IdentityRoleAccessForRoleGuaranteeEvaluator;
 import eu.bcvsolutions.idm.extras.security.evaluator.identity.RoleRequestAccessForRoleGuaranteeEvaluator;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+
+import javax.transaction.Transactional;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * @author Roman Kucera

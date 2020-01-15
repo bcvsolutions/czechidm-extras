@@ -1,24 +1,21 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import static org.junit.Assert.assertNotNull;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
+import com.google.common.primitives.Ints;
+import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import org.activiti.engine.ProcessEngine;
-import java.time.LocalDate;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Service;
 
-import com.google.common.primitives.Ints;
-
-import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
+import java.time.LocalDate;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static eu.bcvsolutions.idm.extras.util.ExtrasUtils.convertToDateViaInstant;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * Lrt for deleting historic workflow

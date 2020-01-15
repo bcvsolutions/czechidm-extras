@@ -1,28 +1,8 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import static org.junit.Assert.assertNotNull;
-
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.RecursionType;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmProfileDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleTreeNodeDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+import eu.bcvsolutions.idm.core.api.dto.*;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleTreeNodeFilter;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleTreeNodeService;
 import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
@@ -33,6 +13,17 @@ import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmProcessedTaskItemDto;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.filter.IdmProcessedTaskItemFilter;
 import eu.bcvsolutions.idm.core.scheduler.api.service.IdmProcessedTaskItemService;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import org.junit.Assert;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.*;
+
+import static org.junit.Assert.assertNotNull;
 
 public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private static final String PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importAutomaticRolesTest.csv";

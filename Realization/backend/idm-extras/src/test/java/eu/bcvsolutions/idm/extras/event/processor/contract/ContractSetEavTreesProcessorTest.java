@@ -1,38 +1,23 @@
 package eu.bcvsolutions.idm.extras.event.processor.contract;
 
-import java.util.List;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
-import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmContractPositionDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+import eu.bcvsolutions.idm.core.api.dto.*;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
-import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
-import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleService;
-import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
+import eu.bcvsolutions.idm.core.api.service.*;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
-import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 import eu.bcvsolutions.idm.test.api.TestHelper;
+import org.junit.Assert;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.List;
 
 public class ContractSetEavTreesProcessorTest extends AbstractIntegrationTest {
 

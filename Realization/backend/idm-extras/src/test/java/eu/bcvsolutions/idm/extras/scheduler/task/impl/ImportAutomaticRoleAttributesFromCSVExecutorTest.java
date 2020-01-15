@@ -1,15 +1,5 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
@@ -26,6 +16,15 @@ import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 import eu.bcvsolutions.idm.extras.utils.Pair;
+import org.junit.Assert;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 

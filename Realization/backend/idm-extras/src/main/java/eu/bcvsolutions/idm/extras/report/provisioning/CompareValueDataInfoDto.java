@@ -1,12 +1,12 @@
 package eu.bcvsolutions.idm.extras.report.provisioning;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Transfer date from executor {@link CompareValueWithSystemReportExecutor} to

@@ -1,17 +1,8 @@
 package eu.bcvsolutions.idm.extras.event.processor.contract;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.UUID;
-
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-
 import eu.bcvsolutions.idm.core.api.dto.AbstractDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmContractPositionDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
@@ -29,6 +20,12 @@ import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Abstract class for setting tree structure or node to eav of contract
@@ -122,7 +119,7 @@ public abstract class AbstractContractSetEavTreesProcessor<E extends AbstractDto
 	}
 
 	private void getResult(UUID contract, IdmFormDefinitionDto definition, String eavName, List<String> values) {
-		if (values.size() > 0) {
+		if (!values.isEmpty()) {
 			List resultTree = formService.saveValues(contract,
 					IdmIdentityContract.class,
 					definition,

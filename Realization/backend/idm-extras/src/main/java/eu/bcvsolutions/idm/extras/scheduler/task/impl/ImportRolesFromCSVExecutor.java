@@ -1,22 +1,7 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.InputStream;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Component;
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
@@ -28,31 +13,11 @@ import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
-import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleCompositionDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueRoleFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
+import eu.bcvsolutions.idm.core.api.dto.*;
+import eu.bcvsolutions.idm.core.api.dto.filter.*;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleCompositionService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
+import eu.bcvsolutions.idm.core.api.service.*;
 import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
@@ -64,6 +29,19 @@ import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Component;
+
+import java.io.InputStream;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 
 /**

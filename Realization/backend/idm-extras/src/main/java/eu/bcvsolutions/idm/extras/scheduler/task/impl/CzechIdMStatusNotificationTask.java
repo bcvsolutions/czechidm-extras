@@ -1,25 +1,6 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.Serializable;
-import java.lang.management.ManagementFactory;
-import java.lang.management.RuntimeMXBean;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.BooleanUtils;
-import java.time.ZonedDateTime;
-import org.quartz.DisallowConcurrentExecution;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.Sort.Direction;
-import org.springframework.stereotype.Service;
-
 import com.google.common.collect.Lists;
-
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.dto.AbstractSysSyncConfigDto;
 import eu.bcvsolutions.idm.acc.dto.SysProvisioningOperationDto;
@@ -57,12 +38,24 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.IdmLongRunningTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateExecutor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.CompleteStatus;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.EventStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.LrtStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.ProvisioningStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SyncStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SystemSyncStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.*;
+import org.apache.commons.lang3.BooleanUtils;
+import org.quartz.DisallowConcurrentExecution;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.stereotype.Service;
+
+import java.io.Serializable;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * LRT send status about state of CzechIdM

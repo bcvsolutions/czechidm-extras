@@ -1,11 +1,5 @@
 package eu.bcvsolutions.idm.extras.event.processor.contract;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.stereotype.Component;
-
 import eu.bcvsolutions.idm.core.api.dto.IdmContractPositionDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
@@ -14,6 +8,11 @@ import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.api.event.processor.ContractPositionProcessor;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.model.event.ContractPositionEvent.ContractPositionEventType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.stereotype.Component;
 
 /**
  * Class for setting tree structure or node to eav of contract - contract position

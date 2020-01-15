@@ -1,8 +1,8 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo;
 
-import java.util.List;
-
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
+
+import java.util.List;
 
 public class CompleteStatus {
 

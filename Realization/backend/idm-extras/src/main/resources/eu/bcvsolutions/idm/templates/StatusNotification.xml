@@ -3,8 +3,7 @@
 
  -->
 
-<template
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
     <code>statusNotification</code>
     <name>Send status about CzechIdM</name>
