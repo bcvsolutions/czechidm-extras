@@ -214,6 +214,9 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	public Boolean process() {
 		CompleteStatus status = new CompleteStatus();
 		status.setContainsError(false);
+		
+		RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+		status.setUptime(String.valueOf((runtimeMXBean.getUptime() / (1000 * 60 * 60 * 24))));
 
 		try {
 
@@ -223,6 +226,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+		
+		try {
 
 			if (sendLrtStatus) {
 				status.setLrts(getLrtStatus());
@@ -230,6 +240,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+		
+		try {
 
 			if (sendEventStatus) {
 				status.setEvents(getEventStatus());
@@ -237,6 +254,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+		
+		try {
 
 			if (sendSyncStatus) {
 				status.setSyncs(getSyncStatus());
@@ -244,24 +268,31 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+			
+		try {
 
 			if (sendContractsStatus) {
 				status.setContracts(getContractsStatus());
 			}
 
-			RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
-			status.setUptime(String.valueOf((runtimeMXBean.getUptime() / (1000 * 60 * 60 * 24))));
+			
 		} catch (Exception e) {
 			LOG.error("Error during send CzechIdM status.", e);
 			status.setErrorDuringSend(e.getMessage());
-		} finally {
-			notificationManager.send(ExtrasModuleDescriptor.TOPIC_STATUS,
-					new IdmMessageDto.Builder()
-							.setLevel(NotificationLevel.INFO)
-							.addParameter("status", status)
-							.build(),
-					recipients);
 		}
+		
+		notificationManager.send(ExtrasModuleDescriptor.TOPIC_STATUS,
+				new IdmMessageDto.Builder()
+						.setLevel(NotificationLevel.INFO)
+						.addParameter("status", status)
+						.build(),
+				recipients);
+		
 		if (status.getErrorDuringSend() != null) {
 			return Boolean.FALSE;
 		}
