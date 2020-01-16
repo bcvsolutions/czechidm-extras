@@ -1,30 +1,8 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import static org.junit.Assert.assertNotNull;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.joda.time.LocalDate;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-
 import com.google.common.collect.ImmutableMap;
-
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+import eu.bcvsolutions.idm.core.api.dto.*;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityContractFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
@@ -46,6 +24,16 @@ import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableStatefulExecutor;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This task sends a notification to those with a specified role and optionally the manager of the contract. The
@@ -65,8 +53,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected static final String SEND_TO_MANAGER_BEFORE_PARAM = "Should the manager of the contract receive the notification?";
 	
 	private Long daysBeforeEnd;
-	private LocalDate currentDate = new LocalDate();
-	private LocalDate validMinusXDays = new LocalDate();
+	private LocalDate currentDate = LocalDate.now();
+	private LocalDate validMinusXDays = LocalDate.now();
 	private String fullName;
 	private String position;
 	private String ppvEnd;
@@ -150,7 +138,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 			position = DtoUtils.getEmbedded(dto, IdmIdentityContract_.workPosition, IdmTreeNodeDto.class).getName();
 		}
 		
-		ppvEnd = dto.getValidTill().toString("dd. MM. YYYY");
+		ppvEnd = dto.getValidTill().format(DateTimeFormatter.ofPattern("dd. MM. YYYY"));
 
 		IdmIdentityDto guarantee = getManagerForContract(dto.getId(), identityDto.getId());
 		if (guarantee == null) {

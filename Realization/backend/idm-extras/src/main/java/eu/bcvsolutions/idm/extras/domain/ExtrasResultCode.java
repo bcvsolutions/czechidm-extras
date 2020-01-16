@@ -1,9 +1,8 @@
 package eu.bcvsolutions.idm.extras.domain;
 
-import org.springframework.http.HttpStatus;
-
 import eu.bcvsolutions.idm.core.api.domain.ResultCode;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
+import org.springframework.http.HttpStatus;
 
 /**
  * Enum class for formatting response messages (mainly errors).

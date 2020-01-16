@@ -1,10 +1,10 @@
 package eu.bcvsolutions.idm.extras.service.api;
 
-import java.util.UUID;
-
 import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
+
+import java.util.UUID;
 
 /**
  * Helping service for synchronization of roles from system ldap/AD with workflow

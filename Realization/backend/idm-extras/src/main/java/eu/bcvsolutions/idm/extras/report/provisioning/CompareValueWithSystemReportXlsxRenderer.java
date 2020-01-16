@@ -1,14 +1,12 @@
 package eu.bcvsolutions.idm.extras.report.provisioning;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
+import eu.bcvsolutions.idm.rpt.api.dto.RptReportDto;
+import eu.bcvsolutions.idm.rpt.api.exception.ReportRenderException;
+import eu.bcvsolutions.idm.rpt.api.renderer.AbstractXlsxRenderer;
+import eu.bcvsolutions.idm.rpt.api.renderer.RendererRegistrar;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -17,22 +15,13 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFCellStyle;
-import org.apache.poi.xssf.usermodel.XSSFFont;
-import org.apache.poi.xssf.usermodel.XSSFRichTextString;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-
-import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
-import eu.bcvsolutions.idm.rpt.api.dto.RptReportDto;
-import eu.bcvsolutions.idm.rpt.api.exception.ReportRenderException;
-import eu.bcvsolutions.idm.rpt.api.renderer.AbstractXlsxRenderer;
-import eu.bcvsolutions.idm.rpt.api.renderer.RendererRegistrar;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
 
 /**
  * Renderer for {@link CompareValueWithSystemReportExecutor}

@@ -1,19 +1,6 @@
 package eu.bcvsolutions.idm.extras.util;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.Predicate;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-
 import com.google.common.collect.Lists;
-
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
@@ -27,7 +14,16 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.security.api.domain.AuthorizationPolicy;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.Predicate;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
 
 /**
  * Ultra mega awesome extra util for all projects by Roman Kucera
@@ -102,7 +98,7 @@ public class ExtrasUtils implements ScriptEnabled {
 		// for check guarantee we need only one record
 		IdmRoleGuaranteeFilter filter = new IdmRoleGuaranteeFilter();
 		filter.setGuarantee(currentIdentity.getId());
-		return roleGuaranteeService.find(filter, new PageRequest(0, 1)).getContent();
+		return roleGuaranteeService.find(filter, PageRequest.of(0, 1)).getContent();
 	}
 
 	/**
@@ -153,5 +149,11 @@ public class ExtrasUtils implements ScriptEnabled {
 		}
 
 		return String.join(", ", result);
+	}
+
+	public static Date convertToDateViaInstant(LocalDate dateToConvert) {
+		return java.util.Date.from(dateToConvert.atStartOfDay()
+				.atZone(ZoneId.systemDefault())
+				.toInstant());
 	}
 }

@@ -20,13 +20,11 @@ import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import static eu.bcvsolutions.idm.InitTestData.HAL_CONTENT_TYPE;
 import static eu.bcvsolutions.idm.core.security.auth.filter.SsoIdmAuthenticationFilter.DEFAULT_HEADER_NAME;
+import static eu.bcvsolutions.idm.test.api.TestHelper.HAL_CONTENT_TYPE;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 
 /**

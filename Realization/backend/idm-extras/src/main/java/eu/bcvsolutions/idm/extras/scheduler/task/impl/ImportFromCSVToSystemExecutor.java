@@ -1,25 +1,6 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.identityconnectors.framework.common.objects.Name;
-import org.identityconnectors.framework.common.objects.ObjectClass;
-import org.identityconnectors.framework.common.objects.Uid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.stereotype.Component;
-
 import com.google.common.collect.ImmutableMap;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
@@ -41,21 +22,27 @@ import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
-import eu.bcvsolutions.idm.ic.api.IcAttribute;
-import eu.bcvsolutions.idm.ic.api.IcAttributeInfo;
-import eu.bcvsolutions.idm.ic.api.IcConfigurationProperty;
-import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
-import eu.bcvsolutions.idm.ic.api.IcConnectorInstance;
-import eu.bcvsolutions.idm.ic.api.IcConnectorObject;
-import eu.bcvsolutions.idm.ic.api.IcObjectClass;
-import eu.bcvsolutions.idm.ic.api.IcObjectClassInfo;
-import eu.bcvsolutions.idm.ic.api.IcUidAttribute;
+import eu.bcvsolutions.idm.ic.api.*;
 import eu.bcvsolutions.idm.ic.connid.domain.ConnIdIcConvertUtil;
 import eu.bcvsolutions.idm.ic.czechidm.domain.IcConnectorConfigurationCzechIdMImpl;
 import eu.bcvsolutions.idm.ic.impl.IcAttributeImpl;
 import eu.bcvsolutions.idm.ic.impl.IcConfigurationPropertiesImpl;
 import eu.bcvsolutions.idm.ic.impl.IcUidAttributeImpl;
 import eu.bcvsolutions.idm.ic.service.impl.DefaultIcConnectorFacade;
+import org.identityconnectors.framework.common.objects.Name;
+import org.identityconnectors.framework.common.objects.ObjectClass;
+import org.identityconnectors.framework.common.objects.Uid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This LRT imports all items from csv to IDM

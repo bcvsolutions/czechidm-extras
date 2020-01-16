@@ -1,27 +1,11 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.stereotype.Component;
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
-
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.RecursionType;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
@@ -40,6 +24,22 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.stereotype.Component;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static com.opencsv.ICSVParser.DEFAULT_ESCAPE_CHARACTER;
 
 /**
  * This tasks allows to import automatic roles to tree nodes from a CSV file.
@@ -103,7 +103,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 	}
 	
 	private Map<String, ImportedNodeRole> parseCsv() {
-		CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
+		CSVParser parser = new CSVParserBuilder().withEscapeChar(DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
 		try {
@@ -212,19 +212,19 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		IdmTreeNodeDto treeNode = findTreeNode(nodeCode, nodeId);
 		if (treeNode == null) {
 			this.logItemProcessed(new IdmTreeNodeDto(UUID.randomUUID()), taskNotCompleted(String.format("The tree node %s does not exist, automatic role with role %s was not created", nodeCode, roleCode)));
-			LOG.warn("The tree node [{0}] doesn't exist.", nodeCode);
+			LOG.warn("The tree node [{}] doesn't exist.", nodeCode);
 			return null;
 		}
 		IdmRoleDto role = roleService.getByCode(roleCode);
 		if (role == null) {
 			this.logItemProcessed(treeNode, taskNotCompleted(String.format("The role %s does not exist, automatic role on tree node %s was not created", roleCode, treeNode.getName())));
-			LOG.warn("The role [{0}] doesn't exist.", roleCode);
+			LOG.warn("The role [{}] doesn't exist.", roleCode);
 			return null;
 		}
 		
 		if (roleTreeNodeExists(treeNode, role) != null) {
 			this.logItemProcessed(treeNode, taskNotCompleted(String.format("Automatic role %s on node %s already exists", role.getName(), treeNode.getName())));
-			LOG.warn("The role for [{0}] and [{1}] already exists", nodeCode, roleCode);
+			LOG.warn("The role for [{}] and [{}] already exists", nodeCode, roleCode);
 			return null;
 		}
 		
@@ -232,8 +232,8 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		roleTreeNode.setRole(role.getId());
 		roleTreeNode.setTreeNode(treeNode.getId());
 		roleTreeNode.setName(String.format("%s | %s", role.getName(), treeNode.getName()));
-		if ((setRecursion && recursionType != null && !recursionType.equals("")) 
-				&& (RecursionType.valueOf(recursionType) != null)) {
+		if ((setRecursion && recursionType != null && !recursionType.equals(""))) {
+			RecursionType.valueOf(recursionType);
 			roleTreeNode.setRecursionType(RecursionType.valueOf(recursionType));
 		}
 		
@@ -255,7 +255,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		
 		List<IdmTreeNodeDto> nodes = treeNodeService.find(filter, null).getContent();
 		
-		if (nodes != null && !nodes.isEmpty()) {
+		if (!nodes.isEmpty()) {
 			node = nodes.get(0);
 		}
 		
@@ -273,7 +273,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 	/**
 	 * Checks if the automatic role already exists and if so, it return the role.
 	 * 
-	 * @param nodeCode
+	 * @param node
 	 * @param role
 	 * @return
 	 */
@@ -283,7 +283,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		nodeFilter.setTreeNodeId(node.getId());
 		
 		List<IdmRoleTreeNodeDto> existing = roleTreeNodeService.find(nodeFilter, null).getContent();
-		if (existing == null || existing.isEmpty()) {
+		if (existing.isEmpty()) {
 			return null;
 		} 
 		
@@ -358,10 +358,8 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractSched
 		return Lists.newArrayList(csvAttachment,nodeCodesColumnNameAttribute, nodeIdColumnNameAttribute,
 				roleCodesColumnNameAttribute, recursionTypeColumnAttribute, columnSeparatorAttribute);
 	}
-	
-	
-	
-	class ImportedNodeRole {
+
+	static class ImportedNodeRole {
 		String nodeId;
 		Map<String, String> rolesAndRecursion;
 		

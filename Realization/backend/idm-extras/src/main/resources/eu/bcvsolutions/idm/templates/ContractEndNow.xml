@@ -8,7 +8,8 @@ parameters:
     manager
  -->
 
-<template>
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
     <name>Contract end now (extras)</name>
     <code>contractEndNow</code>
     <subject>IdM - Uživateli $!user bude dnes ukončen PPV</subject>
