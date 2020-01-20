@@ -25,25 +25,25 @@
 		#set ( $contracts = $status.contracts )
 
 
-		Dobrý den,<br />
-		status CzechIdM:
+		<h1>Status CzechIdM:</h1>
+		<b>
 		#if($containsError)
-			FAILED
+			Operace obsahují chyby
 		#else
-			OK
-		#end<br />
+			Vše proběhlo v pořádku
+		#end</b><br />
 		<br />
-		uptime: $uptime
+		doba v provozu: $uptime
 
 		<br />
 		<br />
 		#if($errorDuringSend)
-			<strong>Chyba běheme odesílání notifikace: </strong>
+			<strong>Chyba běheme odesílání notifikace.</strong>
 		#end
 
 			#if($containsError)
 
-				<h1>Provisioning status:</h1>
+				<h2>Status propagací:</h2>
 				#if(!$provisioning.isEmpty())
 					#foreach( $prov in $provisioning )
 
@@ -55,7 +55,195 @@
 						#set ( $blockedNiceLabels = $prov.blockedNiceLabels )
 						#set ( $notExecutedNiceLabels = $prov.notExecutedNiceLabels )
 
-						<h3>$systemName</h3>
+						<h3>Systém $systemName</h3>
+						<ul>
+						  <li><b>Chybné:</b> $!error</li>
+						  #if($errorNiceLabels && !$errorNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $errorNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						  <li><b>Blokované:</b> $!blocked</li>
+						  #if($blockedNiceLabels && !$blockedNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $blockedNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						  <li><b>Neprovedené:</b> $!notExecuted</li>
+						  #if($notExecutedNiceLabels && !$notExecutedNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $notExecutedNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						</ul>
+					#end
+				#else
+					<strong>OK</strong>
+				#end
+
+				<h2>Status naplánovaných úloh:</h2>
+				#if(!$lrts.isEmpty())
+					#foreach( $lrt in $lrts )
+						#set ( $type = $lrt.type )
+						#set ( $result = $lrt.result )
+						#set ( $warningCount = $lrt.warningCount )
+						#set ( $failedCount = $lrt.failedCount )
+
+						<h4>$type</h4>
+						<ul>
+						  <li><b>Upozornění:</b> $!warningCount</li>
+						  <li><b>Nezdařené:</b> $!failedCount</li>
+						  <li><b>Výsledek:</b> $!result</li>
+						</ul>
+						<hr>
+					#end
+				#else
+					<strong>OK</strong>
+				#end
+
+				<h2>Status událostí:</h2>
+				#if($events)
+					#set ( $exceptions = $events.exceptions )
+					#set ( $notExecuted = $events.notExecuted )
+					#set ( $blocked = $events.blocked )
+					#set ( $exceptionsNiceLabels = $events.exceptionsNiceLabels )
+					#set ( $notExecutedNiceLabels = $events.notExecutedNiceLabels )
+					#set ( $blockedNiceLabels = $events.blockedNiceLabels )
+					<ul>
+					  <li><b>s výjimkou:</b> $!exceptions</li>
+					  #if($exceptionsNiceLabels && !$exceptionsNiceLabels.isEmpty())
+						  <ul>
+						  	#foreach( $niceLabel in $exceptionsNiceLabels )
+						  	<li>$niceLabel</li>
+						  	#end
+						  </ul>
+					  #end
+					  <li><b>Neprovedené:</b> $!notExecuted</li>
+					  #if($notExecutedNiceLabels && !$notExecutedNiceLabels.isEmpty())
+						  <ul>
+						  	#foreach( $niceLabel in $notExecutedNiceLabels )
+						  	<li>$niceLabel</li>
+						  	#end
+						  </ul>
+					  #end
+					  <li><b>Blokované:</b> $!blocked</li>
+					  #if($blockedNiceLabels && !$blockedNiceLabels.isEmpty())
+						  <ul>
+						  	#foreach( $niceLabel in $blockedNiceLabels )
+						  	<li>$niceLabel</li>
+						  	#end
+						  </ul>
+					  #end
+					</ul>
+				#else
+					<strong>OK</strong>
+				#end
+
+				<h2>Status synchronizací:</h2>
+				#if(!$syncs.isEmpty())
+					<ul>
+						#foreach( $sync in $syncs )
+							#set ( $systemName = $sync.systemName )
+							#set ( $syncsItems = $sync.syncs )
+							<li><h3>Systém $systemName</h3></li>
+							<ul>
+								#foreach( $syncsItem in $syncsItems )
+									#set ( $syncName = $syncsItem.syncName )
+									#set ( $containsError = $syncsItem.containsError )
+									#if($containsError)
+										<li>Synchronizace <b>$syncName:</b> obsahuje chybu!!</li>
+									#end
+								#end
+							</ul>
+						#end
+					</ul>
+				#else
+					<strong>OK</strong>
+				#end
+			#else
+				<strong>Celkový status: OK</strong>
+			#end
+
+		<br />
+		<h2>Přehled nástupů a odchodů:</h2>
+		#if($contracts && !$contracts.isEmpty())
+			<table>
+				<tr>
+					<th style="width:15%; text-align: left;">Uživatelské jméno</th>
+					<th style="width:10%; text-align: left;">Personální číslo</th>
+					<th style="width:8%; text-align: left;">Jméno</th>
+					<th style="width:8%; text-align: left;">Příjmení</th>
+					<th style="width:10%; text-align: left;">Stav</th>
+					<th style="width:20%; text-align: left;">Datum změny</th>
+				</tr>
+				#foreach( $contract in $contracts )
+					#if($contract.state == 'vyňat')
+						<tr bgcolor="#ffc299">
+					#elseif($contract.state == 'odchod')
+						<tr bgcolor="#ff6666">
+					#elseif($contract.state == 'nástup')
+						<tr bgcolor="#b3e6b3">
+					#else
+						<tr>
+					#end
+						<td>$!contract.username</td>
+						<td>$!contract.personalNumber</td>
+						<td>$!contract.firstName</td>
+						<td>$!contract.lastName</td>
+						<td>$!contract.state</td>
+						<td>$!contract.dateOfChange</td>
+					</tr>
+				#end
+			</table>
+		#end
+		<br />
+
+		<div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
+			CzechIdM © 2020&nbsp;BCV Solutions s.r.o.&nbsp;
+		</div>
+		
+		<div style="display: block; margin: 30px auto; max-width: 800px; text-align: center;">
+				----------------------------------------- English version -----------------------------------------
+		</div>
+		
+		
+			<h1>Status CzechIdM:</h1>
+		<b>
+		#if($containsError)
+			Operations contain errors
+		#else
+			All watched operations are OK.
+		#end</b><br />
+		<br />
+		uptime: $uptime
+
+		<br />
+		<br />
+		#if($errorDuringSend)
+			<strong>Error while sending notification.</strong>
+		#end
+
+			#if($containsError)
+
+				<h2>Provisioning status:</h2>
+				#if(!$provisioning.isEmpty())
+					#foreach( $prov in $provisioning )
+
+						#set ( $systemName = $prov.systemName )
+						#set ( $error = $prov.error )
+						#set ( $blocked = $prov.blocked )
+						#set ( $notExecuted = $prov.notExecuted )
+						#set ( $errorNiceLabels = $prov.errorNiceLabels )
+						#set ( $blockedNiceLabels = $prov.blockedNiceLabels )
+						#set ( $notExecutedNiceLabels = $prov.notExecutedNiceLabels )
+
+						<h3>System $systemName</h3>
 						<ul>
 						  <li><b>Errors:</b> $!error</li>
 						  #if($errorNiceLabels && !$errorNiceLabels.isEmpty())
@@ -87,7 +275,7 @@
 					<strong>OK</strong>
 				#end
 
-				<h1>Long running task status:</h1>
+				<h2>Long running task status:</h2>
 				#if(!$lrts.isEmpty())
 					#foreach( $lrt in $lrts )
 						#set ( $type = $lrt.type )
@@ -107,7 +295,7 @@
 					<strong>OK</strong>
 				#end
 
-				<h1>Events status:</h1>
+				<h2>Event status:</h2>
 				#if($events)
 					#set ( $exceptions = $events.exceptions )
 					#set ( $notExecuted = $events.notExecuted )
@@ -145,20 +333,24 @@
 					<strong>OK</strong>
 				#end
 
-				<h1>Sync status:</h1>
+				<h2>Synchronization status:</h2>
 				#if(!$syncs.isEmpty())
-					#foreach( $sync in $syncs )
-						#set ( $systemName = $sync.systemName )
-						#set ( $syncsItems = $sync.syncs )
-						<h3>$systemName</h3>
-						#foreach( $syncsItem in $syncsItems )
-							#set ( $syncName = $syncsItem.syncName )
-							#set ( $containsError = $syncsItem.containsError )
-							#if($containsError)
-								<b>$syncName:</b> contains error!!
-							#end
+					<ul>
+						#foreach( $sync in $syncs )
+							#set ( $systemName = $sync.systemName )
+							#set ( $syncsItems = $sync.syncs )
+							<li><h3>System $systemName</h3></li>
+							<ul>
+								#foreach( $syncsItem in $syncsItems )
+									#set ( $syncName = $syncsItem.syncName )
+									#set ( $containsError = $syncsItem.containsError )
+									#if($containsError)
+										<li>Synchronization <b>$syncName:</b> contains error!!</li>
+									#end
+								#end
+							</ul>
 						#end
-					#end
+					</ul>
 				#else
 					<strong>OK</strong>
 				#end
@@ -167,33 +359,37 @@
 			#end
 
 		<br />
-		<h1>Nástupy a odchody:</h1>
+		<h2>Report with starting/ending contracts of users:</h2>
 		#if($contracts && !$contracts.isEmpty())
 			<table>
 				<tr>
-					<th style="width:15%; text-align: left;">Uživatelské jméno</th>
-					<th style="width:10%; text-align: left;">Personální číslo</th>
-					<th style="width:8%; text-align: left;">Jméno</th>
-					<th style="width:8%; text-align: left;">Příjmení</th>
-					<th style="width:10%; text-align: left;">Stav</th>
-					<th style="width:20%; text-align: left;">Datum změny</th>
+					<th style="width:15%; text-align: left;">Username</th>
+					<th style="width:10%; text-align: left;">Personal number</th>
+					<th style="width:8%; text-align: left;">First name</th>
+					<th style="width:8%; text-align: left;">Surname</th>
+					<th style="width:10%; text-align: left;">State</th>
+					<th style="width:20%; text-align: left;">Modification date</th>
 				</tr>
 				#foreach( $contract in $contracts )
 					#if($contract.state == 'vyňat')
 						<tr bgcolor="#ffc299">
+						#set ( $state = 'Excluded' )
 					#elseif($contract.state == 'odchod')
 						<tr bgcolor="#ff6666">
+						#set ( $state = 'Left' )
 					#elseif($contract.state == 'nástup')
 						<tr bgcolor="#b3e6b3">
+						#set ( $state = 'Started working' )
 					#else
 						<tr>
+						#set ( $state = $contract.state )
 					#end
-						<td>$contract.username</td>
-						<td>$contract.personalNumber</td>
-						<td>$contract.firstName</td>
-						<td>$contract.lastName</td>
-						<td>$contract.state</td>
-						<td>$contract.dateOfChange</td>
+						<td>$!contract.username</td>
+						<td>$!contract.personalNumber</td>
+						<td>$!contract.firstName</td>
+						<td>$!contract.lastName</td>
+						<td>$!state</td>
+						<td>$!contract.dateOfChange</td>
 					</tr>
 				#end
 			</table>
@@ -201,7 +397,7 @@
 		<br />
 
 		<div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
-			CzechIdM © 2017&nbsp;BCV Solutions s.r.o.&nbsp;
+			CzechIdM © 2020&nbsp;BCV Solutions s.r.o.&nbsp;
 		</div>
 	</body>
 </html>
