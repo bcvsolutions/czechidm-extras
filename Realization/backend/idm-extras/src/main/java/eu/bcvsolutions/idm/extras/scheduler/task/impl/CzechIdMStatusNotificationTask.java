@@ -521,6 +521,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				List<SysSyncLogDto> logs = syncLongService.find(filter, PageRequest.of(0, 1, Sort.by(Direction.DESC,
 						SysSyncLog_.created.getName()))).getContent();
 
+				// if synchronization did not run yet
+				if (logs.isEmpty()) {
+					continue;
+				}
+				
 				// must be only one
 				SysSyncLogDto logDto = logs.get(0);
 
