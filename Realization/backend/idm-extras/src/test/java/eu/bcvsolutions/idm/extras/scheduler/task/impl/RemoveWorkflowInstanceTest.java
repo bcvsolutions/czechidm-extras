@@ -1,33 +1,10 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.activiti.engine.ProcessEngine;
-import org.activiti.engine.history.HistoricProcessInstance;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
 import eu.bcvsolutions.idm.core.api.domain.RoleRequestState;
 import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
-import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
-import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
-import eu.bcvsolutions.idm.core.api.service.IdmConceptRoleRequestService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
+import eu.bcvsolutions.idm.core.api.dto.*;
+import eu.bcvsolutions.idm.core.api.service.*;
 import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationConfigurationService;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
@@ -36,6 +13,19 @@ import eu.bcvsolutions.idm.core.workflow.model.dto.WorkflowFilterDto;
 import eu.bcvsolutions.idm.core.workflow.model.dto.WorkflowTaskInstanceDto;
 import eu.bcvsolutions.idm.core.workflow.service.WorkflowTaskInstanceService;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
+import org.activiti.engine.ProcessEngine;
+import org.activiti.engine.history.HistoricProcessInstance;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test for: Lrt, which removes historic workflow
@@ -179,8 +169,8 @@ public class RemoveWorkflowInstanceTest extends AbstractIntegrationTest {
 		assertEquals(RoleRequestState.IN_PROGRESS, request.getState());
 
 		WorkflowFilterDto taskFilter = new WorkflowFilterDto();
-		List<WorkflowTaskInstanceDto> tasks = (List<WorkflowTaskInstanceDto>) workflowTaskInstanceService
-				.search(taskFilter).getResources();
+		List<WorkflowTaskInstanceDto> tasks = workflowTaskInstanceService
+				.find(taskFilter, null).getContent();
 		assertEquals(0, tasks.size());
 
 		loginAsAdmin();
@@ -262,7 +252,7 @@ public class RemoveWorkflowInstanceTest extends AbstractIntegrationTest {
 	private void checkAndCompleteOneTask(WorkflowFilterDto taskFilter, String userName, String decision) {
 		IdmIdentityDto identity = identityService.getByUsername(userName);
 		List<WorkflowTaskInstanceDto> tasks;
-		tasks = (List<WorkflowTaskInstanceDto>) workflowTaskInstanceService.search(taskFilter).getResources();
+		tasks = (List<WorkflowTaskInstanceDto>) workflowTaskInstanceService.find(taskFilter, null).getContent();
 		assertEquals(1, tasks.size());
 		assertEquals(identity.getId().toString(), tasks.get(0).getApplicant());
 

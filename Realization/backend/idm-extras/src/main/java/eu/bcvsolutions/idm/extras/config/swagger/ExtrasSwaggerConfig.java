@@ -1,13 +1,12 @@
 package eu.bcvsolutions.idm.extras.config.swagger;
 
+import eu.bcvsolutions.idm.core.api.config.swagger.AbstractSwaggerConfig;
+import eu.bcvsolutions.idm.core.api.domain.ModuleDescriptor;
+import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import eu.bcvsolutions.idm.core.api.config.swagger.AbstractSwaggerConfig;
-import eu.bcvsolutions.idm.core.api.domain.ModuleDescriptor;
-import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import springfox.documentation.spring.web.plugins.Docket;
 
 /**

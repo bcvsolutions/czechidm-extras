@@ -1,27 +1,18 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.google.common.collect.ImmutableMap;
+import com.opencsv.*;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
-import com.google.common.collect.ImmutableMap;
-import com.opencsv.CSVParser;
-import com.opencsv.CSVParserBuilder;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-
-import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.*;
 
 /**
  * @author Petr Hanák
@@ -176,7 +167,7 @@ public class CSVToIdM {
 	 * @return
 	 */
 	private Maps parseCSV() {
-		CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
+		CSVParser parser = new CSVParserBuilder().withEscapeChar(ICSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
 		try {

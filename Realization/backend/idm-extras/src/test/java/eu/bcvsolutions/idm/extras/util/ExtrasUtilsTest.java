@@ -1,14 +1,10 @@
 package eu.bcvsolutions.idm.extras.util;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
+import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
+import static org.junit.Assert.*;
 
 /**
  * Tests for {@link ExtrasUtils}

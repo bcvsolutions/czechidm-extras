@@ -1,24 +1,28 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.TreeMap;
-import java.util.UUID;
-
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
-
-import org.joda.time.LocalDate;
+import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
+import eu.bcvsolutions.idm.core.api.domain.CoreResultCode;
+import eu.bcvsolutions.idm.core.api.domain.OperationState;
+import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
+import eu.bcvsolutions.idm.core.api.dto.*;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
+import eu.bcvsolutions.idm.core.api.entity.OperationResult;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.api.service.*;
+import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
+import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
+import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,37 +30,13 @@ import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-
-import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
-import eu.bcvsolutions.idm.core.eav.api.service.FormService;
-import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
-import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
-import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
-import eu.bcvsolutions.idm.core.api.domain.CoreResultCode;
-import eu.bcvsolutions.idm.core.api.domain.OperationState;
-import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
-import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
-import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
-import eu.bcvsolutions.idm.core.api.entity.OperationResult;
-import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.core.api.service.IdmConceptRoleRequestService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
-import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
-import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * @author Petr Hanák

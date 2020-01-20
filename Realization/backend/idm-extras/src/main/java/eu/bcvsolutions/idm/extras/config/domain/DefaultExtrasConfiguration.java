@@ -1,13 +1,11 @@
 package eu.bcvsolutions.idm.extras.config.domain;
 
-import java.util.List;
-
-import org.springframework.stereotype.Component;
-
 import com.google.common.collect.Lists;
-
 import eu.bcvsolutions.idm.core.api.config.domain.AbstractConfiguration;
 import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * Extras configuration - implementation

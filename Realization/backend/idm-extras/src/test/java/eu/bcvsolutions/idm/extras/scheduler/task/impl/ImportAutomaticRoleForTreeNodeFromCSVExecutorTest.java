@@ -1,34 +1,29 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import static org.junit.Assert.assertNotNull;
+import eu.bcvsolutions.idm.core.api.domain.OperationState;
+import eu.bcvsolutions.idm.core.api.domain.RecursionType;
+import eu.bcvsolutions.idm.core.api.dto.*;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleTreeNodeFilter;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleTreeNodeService;
+import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmProcessedTaskItemDto;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.filter.IdmProcessedTaskItemFilter;
+import eu.bcvsolutions.idm.core.scheduler.api.service.IdmProcessedTaskItemService;
+import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import org.junit.Assert;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
-import org.junit.Test;
-import org.junit.Assert;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import eu.bcvsolutions.idm.core.api.domain.RecursionType;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmProfileDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleTreeNodeDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleTreeNodeFilter;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleTreeNodeService;
-import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
-import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import static org.junit.Assert.assertNotNull;
 
 public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private static final String PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importAutomaticRolesTest.csv";
@@ -40,6 +35,8 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractR
 	private IdmRoleTreeNodeService roleTreeNodeService;
 	@Autowired
 	private IdmTreeNodeService treeNodeService;
+	@Autowired
+	private IdmProcessedTaskItemService taskItemService;
 	
 	
 	@Test
@@ -70,14 +67,14 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractR
 		lrt.init(properties);
 
 		lrtManager.executeSync(lrt);
-		
+
 		// check results
 		IdmRoleTreeNodeFilter filter = new IdmRoleTreeNodeFilter();
 		filter.setName("testtreenode");
 		
-		List<IdmRoleTreeNodeDto> found = roleTreeNodeService.find(filter, null, null).getContent();
+		List<IdmRoleTreeNodeDto> found = roleTreeNodeService.find(filter, null).getContent();
 		
-		// we should find one automatic role on tree node
+		// we should find two automatic roles on tree node
 		Assert.assertEquals(2, found.size());
 		
 		// they should have the test roles
@@ -92,6 +89,36 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractR
 		// they should have the recursion type UP
 		Assert.assertEquals(RecursionType.UP, foundRule.getRecursionType());
 		Assert.assertEquals(RecursionType.UP, foundRuleTwo.getRecursionType());
+		
+		// there is a line in the csv faketreenode;faketreenode;testroletwo;UP (the tree node does not exist)
+		// there is a line in the csv testtreenode;testtreenode;fakerole;UP (the role does not exist)
+		// there should be 2 processed items (two were not created)
+		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(lrt);
+		
+		long counter = task.getCount();
+		Assert.assertEquals(2L, counter);
+		
+		// check that the executed and not executed items are logged correctly
+		IdmProcessedTaskItemFilter ptif = new IdmProcessedTaskItemFilter();
+		ptif.setLongRunningTaskId(task.getId());
+		
+		List<IdmProcessedTaskItemDto> processed = taskItemService.find(ptif, null).getContent();
+		Assert.assertEquals(4, processed.size());
+		
+		List<OperationState> executed = new ArrayList<>();
+		List<OperationState> notExecuted = new ArrayList<>();
+		
+		for (IdmProcessedTaskItemDto item : processed) {
+			if (item.getOperationResult().getState().equals(OperationState.EXECUTED)) {
+				executed.add(item.getOperationResult().getState());
+			} 
+			if (item.getOperationResult().getState().equals(OperationState.NOT_EXECUTED)){
+				notExecuted.add(item.getOperationResult().getState());
+			}
+		}
+		
+		Assert.assertEquals(2, executed.size());
+		Assert.assertEquals(2, notExecuted.size());
 	}
 	
 	public IdmAttachmentDto createAttachment() {

@@ -1,10 +1,9 @@
 
 package eu.bcvsolutions.idm.extras.config;
 
-import org.junit.Test;
-
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.test.api.AbstractSwaggerTest;
+import org.junit.Test;
 
 
 /**

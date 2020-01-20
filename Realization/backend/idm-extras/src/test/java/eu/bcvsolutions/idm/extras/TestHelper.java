@@ -1,20 +1,13 @@
 package eu.bcvsolutions.idm.extras;
 
-import java.util.UUID;
-
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
-import eu.bcvsolutions.idm.acc.dto.AbstractSysSyncConfigDto;
-import eu.bcvsolutions.idm.acc.dto.AccAccountDto;
-import eu.bcvsolutions.idm.acc.dto.AccIdentityAccountDto;
-import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSchemaObjectClassDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemEntityDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
+import eu.bcvsolutions.idm.acc.dto.*;
 import eu.bcvsolutions.idm.acc.entity.SysSystem;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
+
+import java.util.UUID;
 
 /**
  * Reuses core TestHelper and adds acc spec. methods

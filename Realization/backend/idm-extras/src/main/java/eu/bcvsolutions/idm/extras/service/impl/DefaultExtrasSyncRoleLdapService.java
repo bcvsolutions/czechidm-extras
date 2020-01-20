@@ -1,39 +1,22 @@
 package eu.bcvsolutions.idm.extras.service.impl;
 
-import java.util.List;
-import java.util.UUID;
-
+import com.google.common.collect.ImmutableMap;
+import eu.bcvsolutions.idm.acc.domain.AccResultCode;
+import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType;
+import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
+import eu.bcvsolutions.idm.acc.dto.*;
+import eu.bcvsolutions.idm.acc.dto.filter.*;
+import eu.bcvsolutions.idm.acc.repository.SysRoleSystemAttributeRepository;
+import eu.bcvsolutions.idm.acc.service.api.*;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.extras.service.api.ExtrasSyncRoleLdapService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
-import com.google.common.collect.ImmutableMap;
-
-import eu.bcvsolutions.idm.acc.domain.AccResultCode;
-import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType;
-import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
-import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto;
-import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSchemaAttributeDto;
-import eu.bcvsolutions.idm.acc.dto.SysSchemaObjectClassDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
-import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemAttributeFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaObjectClassFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSystemAttributeMappingFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSystemMappingFilter;
-import eu.bcvsolutions.idm.acc.repository.SysRoleSystemAttributeRepository;
-import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService;
-import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
-import eu.bcvsolutions.idm.acc.service.api.SysSchemaAttributeService;
-import eu.bcvsolutions.idm.acc.service.api.SysSchemaObjectClassService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemAttributeMappingService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
-import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.extras.service.api.ExtrasSyncRoleLdapService;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Helping service for synchronization of roles from system ldap/AD with workflow

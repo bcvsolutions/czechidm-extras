@@ -1,13 +1,12 @@
 package eu.bcvsolutions.idm.extras.entity;
 
+import eu.bcvsolutions.idm.core.api.domain.DefaultFieldLengths;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-
-import org.joda.time.DateTime;
-
-import eu.bcvsolutions.idm.core.api.domain.DefaultFieldLengths;
+import java.time.ZonedDateTime;
 
 /**
  * Entity for test (role) table resource
@@ -33,7 +32,7 @@ public class TestRoleResource {
 	@Column(name = "APPROVE_REMOVE", length = DefaultFieldLengths.NAME)
 	private Boolean approveRemove = Boolean.FALSE;
 	@Column(name = "MODIFIED")
-	private DateTime modified;
+	private ZonedDateTime modified;
 	@Column(name = "STATUS", length = DefaultFieldLengths.NAME)
 	private String status;
 	@Column(name = "EAV_ATTRIBUTE", length = DefaultFieldLengths.NAME)
@@ -97,11 +96,11 @@ public class TestRoleResource {
 		this.approveRemove = approveRemove;
 	}
 
-	public DateTime getModified() {
+	public ZonedDateTime getModified() {
 		return modified;
 	}
 
-	public void setModified(DateTime modified) {
+	public void setModified(ZonedDateTime modified) {
 		this.modified = modified;
 	}
 

@@ -1,84 +1,16 @@
 package eu.bcvsolutions.idm.extras.sync;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import javax.persistence.EntityManager;
-import javax.persistence.Query;
-import javax.transaction.Transactional;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.FixMethodOrder;
-import org.junit.Test;
-import org.junit.runners.MethodSorters;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Service;
-
 import eu.bcvsolutions.idm.InitApplicationData;
-import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType;
-import eu.bcvsolutions.idm.acc.domain.OperationResultType;
-import eu.bcvsolutions.idm.acc.domain.ReconciliationMissingAccountActionType;
-import eu.bcvsolutions.idm.acc.domain.SynchronizationActionType;
-import eu.bcvsolutions.idm.acc.domain.SynchronizationLinkedActionType;
-import eu.bcvsolutions.idm.acc.domain.SynchronizationMissingEntityActionType;
-import eu.bcvsolutions.idm.acc.domain.SynchronizationUnlinkedActionType;
-import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
-import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
-import eu.bcvsolutions.idm.acc.dto.AbstractSysSyncConfigDto;
-import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto;
-import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSchemaAttributeDto;
-import eu.bcvsolutions.idm.acc.dto.SysSchemaObjectClassDto;
-import eu.bcvsolutions.idm.acc.dto.SysSyncActionLogDto;
-import eu.bcvsolutions.idm.acc.dto.SysSyncIdentityConfigDto;
-import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto;
-import eu.bcvsolutions.idm.acc.dto.SysSyncLogDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
-import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemAttributeFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSyncActionLogFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSyncConfigFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSyncItemLogFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSyncLogFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSystemAttributeMappingFilter;
-import eu.bcvsolutions.idm.acc.dto.filter.SysSystemMappingFilter;
-import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService;
-import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
-import eu.bcvsolutions.idm.acc.service.api.SysSchemaAttributeService;
-import eu.bcvsolutions.idm.acc.service.api.SysSyncActionLogService;
-import eu.bcvsolutions.idm.acc.service.api.SysSyncConfigService;
-import eu.bcvsolutions.idm.acc.service.api.SysSyncItemLogService;
-import eu.bcvsolutions.idm.acc.service.api.SysSyncLogService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemAttributeMappingService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
+import eu.bcvsolutions.idm.acc.domain.*;
+import eu.bcvsolutions.idm.acc.dto.*;
+import eu.bcvsolutions.idm.acc.dto.filter.*;
+import eu.bcvsolutions.idm.acc.service.api.*;
+import eu.bcvsolutions.idm.core.api.dto.*;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
-import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
+import eu.bcvsolutions.idm.core.api.service.*;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
@@ -92,6 +24,22 @@ import eu.bcvsolutions.idm.extras.entity.TestRoleResource;
 import eu.bcvsolutions.idm.extras.service.api.ExtrasSyncRoleLdapService;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 import groovy.json.StringEscapeUtils;
+import org.junit.*;
+import org.junit.runners.MethodSorters;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Service;
+
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
+import javax.transaction.Transactional;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Service
@@ -500,8 +448,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 		configurationService.setValue("idm.pub.acc.syncRole.identity.eav.externalIdentifier.code", nameOfEav);
 		configurationService.setValue("idm.pub.acc.syncRole.roles.attributeNameOfMembership", ATTRIBUTE_MEMBER);
 		configurationService.setBooleanValue("idm.pub.acc.syncRole.update.resolveMembership", true);
-		
-		
+
 		IdmIdentityDto identity = this.getHelper().createIdentity();
 		IdmFormAttributeDto attribute = helper.createEavAttribute(nameOfEav, IdmIdentity.class, PersistentType.SHORTTEXT);
 		helper.setEavValue(identity, attribute, IdmIdentity.class, valueOfMemberAtt, PersistentType.SHORTTEXT);
@@ -1211,7 +1158,7 @@ public class RoleWorkflowAdSyncTest  extends AbstractIntegrationTest{
 	}
 	
 	private RoleWorkflowAdSyncTest getBean() {
-		return applicationContext.getBean(this.getClass());
+		return applicationContext.getAutowireCapableBeanFactory().createBean(this.getClass());
 	}
 	
 	private IdmRoleCatalogueDto getCatalogueByCode(String code) {

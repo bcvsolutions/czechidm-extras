@@ -1,4 +1,4 @@
-<?xml version = "1.0" encoding = "UTF-8" standalone = "yes"?>
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes" ?>
 <!-- 
 	Notification to manager that contract is ending in future.
 parameters:
@@ -8,7 +8,8 @@ parameters:
     manager
  -->
 
-<template>
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
     <name>Contract end in future (extras)</name>
     <code>contractEndInFuture</code>
     <subject>IdM - Uživateli $!user bude v následujících dnech ukončen PPV</subject>

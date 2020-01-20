@@ -1,48 +1,14 @@
 package eu.bcvsolutions.idm.extras;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import javax.persistence.EntityManager;
-import javax.persistence.Query;
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.Assert;
-
 import com.google.common.collect.ImmutableMap;
+import com.zaxxer.hikari.HikariDataSource;
 import eu.bcvsolutions.idm.acc.domain.AccountType;
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
-import eu.bcvsolutions.idm.acc.dto.AbstractSysSyncConfigDto;
-import eu.bcvsolutions.idm.acc.dto.AccAccountDto;
-import eu.bcvsolutions.idm.acc.dto.AccIdentityAccountDto;
-import eu.bcvsolutions.idm.acc.dto.SysConnectorKeyDto;
-import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSchemaAttributeDto;
-import eu.bcvsolutions.idm.acc.dto.SysSchemaObjectClassDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemEntityDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
+import eu.bcvsolutions.idm.acc.dto.*;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
 import eu.bcvsolutions.idm.acc.scheduler.task.impl.SynchronizationSchedulableTaskExecutor;
-import eu.bcvsolutions.idm.acc.service.api.AccAccountService;
-import eu.bcvsolutions.idm.acc.service.api.AccIdentityAccountService;
-import eu.bcvsolutions.idm.acc.service.api.SynchronizationService;
-import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
-import eu.bcvsolutions.idm.acc.service.api.SysSchemaAttributeService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemAttributeMappingService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemEntityService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
+import eu.bcvsolutions.idm.acc.service.api.*;
 import eu.bcvsolutions.idm.acc.service.impl.DefaultSysSystemMappingService;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
@@ -52,20 +18,36 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity_;
 import joptsimple.internal.Strings;
+import org.flywaydb.core.internal.exception.FlywaySqlException;
+import org.flywaydb.core.internal.jdbc.JdbcUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
+
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
- *
  * Acc / Provisioning test helper
- * Copy from acc module
  *
- * @author Peter Sourek <peter.sourek@bcvsolutions.eu>
+ * @author Radek Tomiška
  */
 @Primary
 @Component("accTestHelper")
 public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTestHelper implements TestHelper {
 
-	@Autowired
-	private EntityManager entityManager;
+	@Autowired private EntityManager entityManager;
 	@Autowired private SysSystemService systemService;
 	@Autowired private SysSystemMappingService systemMappingService;
 	@Autowired private SysSystemAttributeMappingService systemAttributeMappingService;
@@ -136,7 +118,6 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 	@SuppressWarnings("deprecation")
 	public SysSystemDto createSystem(String tableName, String systemName, String statusColumnName, String keyColumnName) {
 		// create owner
-		org.apache.tomcat.jdbc.pool.DataSource tomcatDataSource = ((org.apache.tomcat.jdbc.pool.DataSource) dataSource);
 		SysSystemDto system = new SysSystemDto();
 		system.setName(systemName == null ? tableName + "_" + System.currentTimeMillis() : systemName);
 
@@ -149,57 +130,57 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 		List<IdmFormValueDto> values = new ArrayList<>();
 
 		IdmFormValueDto jdbcUrlTemplate = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("jdbcUrlTemplate"));
-		jdbcUrlTemplate.setValue(tomcatDataSource.getUrl());
+				savedFormDefinition.getMappedAttributeByCode("jdbcUrlTemplate"));
+		jdbcUrlTemplate.setValue(((HikariDataSource) dataSource).getJdbcUrl());
 		values.add(jdbcUrlTemplate);
 		IdmFormValueDto jdbcDriver = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("jdbcDriver"));
-		jdbcDriver.setValue(tomcatDataSource.getDriverClassName());
+				savedFormDefinition.getMappedAttributeByCode("jdbcDriver"));
+		jdbcDriver.setValue(((HikariDataSource) dataSource).getDriverClassName());
 		values.add(jdbcDriver);
 
 		IdmFormValueDto user = new IdmFormValueDto(savedFormDefinition.getMappedAttributeByCode("user"));
-		user.setValue(tomcatDataSource.getUsername());
+		user.setValue(((HikariDataSource) dataSource).getUsername());
 		values.add(user);
 		IdmFormValueDto password = new IdmFormValueDto(savedFormDefinition.getMappedAttributeByCode("password"));
-		password.setValue(tomcatDataSource.getPoolProperties().getPassword());
+		password.setValue(((HikariDataSource) dataSource).getPassword());
 		values.add(password);
 		IdmFormValueDto table = new IdmFormValueDto(savedFormDefinition.getMappedAttributeByCode("table"));
 		table.setValue(tableName);
 		values.add(table);
 		if(!Strings.isNullOrEmpty(keyColumnName)) {
 			IdmFormValueDto keyColumn = new IdmFormValueDto(
-				savedFormDefinition.getMappedAttributeByCode("keyColumn"));
+					savedFormDefinition.getMappedAttributeByCode("keyColumn"));
 			keyColumn.setValue(keyColumnName);
 			values.add(keyColumn);
 		}
 		IdmFormValueDto passwordColumn = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("passwordColumn"));
+				savedFormDefinition.getMappedAttributeByCode("passwordColumn"));
 		passwordColumn.setValue("password");
 		values.add(passwordColumn);
 		IdmFormValueDto allNative = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("allNative"));
+				savedFormDefinition.getMappedAttributeByCode("allNative"));
 		allNative.setValue(true);
 		values.add(allNative);
 		IdmFormValueDto rethrowAllSQLExceptions = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("rethrowAllSQLExceptions"));
+				savedFormDefinition.getMappedAttributeByCode("rethrowAllSQLExceptions"));
 		rethrowAllSQLExceptions.setValue(true);
 		values.add(rethrowAllSQLExceptions);
 		if(!Strings.isNullOrEmpty(statusColumnName)) {
 			IdmFormValueDto statusColumn = new IdmFormValueDto(
-				savedFormDefinition.getMappedAttributeByCode("statusColumn"));
+					savedFormDefinition.getMappedAttributeByCode("statusColumn"));
 			statusColumn.setValue(statusColumnName);
 			values.add(statusColumn);
 		}
 		IdmFormValueDto disabledStatusValue = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("disabledStatusValue"));
+				savedFormDefinition.getMappedAttributeByCode("disabledStatusValue"));
 		disabledStatusValue.setValue("disabled");
 		values.add(disabledStatusValue);
 		IdmFormValueDto enabledStatusValue = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("enabledStatusValue"));
+				savedFormDefinition.getMappedAttributeByCode("enabledStatusValue"));
 		enabledStatusValue.setValue("enabled");
 		values.add(enabledStatusValue);
 		IdmFormValueDto changeLogColumnValue = new IdmFormValueDto(
-			savedFormDefinition.getMappedAttributeByCode("changeLogColumn"));
+				savedFormDefinition.getMappedAttributeByCode("changeLogColumn"));
 		changeLogColumnValue.setValue(null);
 		values.add(changeLogColumnValue);
 
@@ -268,6 +249,7 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 				attributeMapping.setIdmPropertyName("password");
 				attributeMapping.setSchemaAttribute(schemaAttr.getId());
 				attributeMapping.setName(schemaAttr.getName());
+				attributeMapping.setPasswordAttribute(true);
 				attributeMapping.setSystemMapping(systemMapping.getId());
 				systemAttributeMappingService.save(attributeMapping);
 			} else if (ATTRIBUTE_MAPPING_FIRSTNAME.equalsIgnoreCase(schemaAttr.getName())) {
@@ -298,7 +280,7 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 
 	@Override
 	public SysSystemMappingDto getDefaultMapping(SysSystemDto system) {
-		Assert.notNull(system);
+		Assert.notNull(system, "System is required to get mapping.");
 		//
 		return getDefaultMapping(system.getId());
 	}
@@ -365,10 +347,41 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 
 	@Override
 	public void startSynchronization(AbstractSysSyncConfigDto config) {
-		Assert.notNull(config);
+		Assert.notNull(config, "Sync config is required to be start.");
 		SynchronizationSchedulableTaskExecutor lrt = context.getAutowireCapableBeanFactory()
-			.createBean(SynchronizationSchedulableTaskExecutor.class);
+				.createBean(SynchronizationSchedulableTaskExecutor.class);
 		lrt.init(ImmutableMap.of(SynchronizationService.PARAMETER_SYNCHRONIZATION_ID, config.getId().toString()));
 		lrt.process();
+	}
+
+	/**
+	 * Schema is generated in lower case for postgresql.
+	 *
+	 * @param columnName
+	 * @return
+	 */
+	public String getSchemaColumnName(String columnName) {
+		if (columnName.equals(ATTRIBUTE_MAPPING_NAME)
+				|| columnName.equals(ATTRIBUTE_MAPPING_ENABLE)
+				|| columnName.equals(ATTRIBUTE_MAPPING_PASSWORD)) {
+			// reserved names
+			return columnName;
+		}
+
+		Connection connection = JdbcUtils.openConnection(dataSource, 1);
+		//
+		try {
+			String dbName = JdbcUtils.getDatabaseMetaData(connection).getDatabaseProductName().toLowerCase();
+
+			if (dbName.equals("postgresql")) {
+				return columnName.toLowerCase();
+			}
+		} catch (SQLException ex) {
+			throw new FlywaySqlException("Error while determining database product name", ex);
+		} finally {
+			JdbcUtils.closeConnection(connection);
+		}
+		//
+		return columnName;
 	}
 }
