@@ -25,7 +25,7 @@
 		#set ( $contracts = $status.contracts )
 
 
-		<h1>Status CzechIdM:</h1>
+		<h1>Status CzechIdM</h1>
 		<b>
 		#if($containsError)
 			Operace obsahují chyby
@@ -43,7 +43,7 @@
 
 			#if($containsError)
 
-				<h2>Status propagací:</h2>
+				<h2>Status provisioningu:</h2>
 				#if(!$provisioning.isEmpty())
 					#foreach( $prov in $provisioning )
 
@@ -213,7 +213,7 @@
 		</div>
 		
 		
-			<h1>Status CzechIdM:</h1>
+			<h1>Status CzechIdM</h1>
 		<b>
 		#if($containsError)
 			Operations contain errors
