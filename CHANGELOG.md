@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [2.0.0]
+## [2.1.0]
 -  [#1939,#1938,#1869,#1940,#1870] Updated CzechIdMStatusNotificationTask and **template statusNotification**. Please update this template in IdM.
 
 ## [2.0.0]
