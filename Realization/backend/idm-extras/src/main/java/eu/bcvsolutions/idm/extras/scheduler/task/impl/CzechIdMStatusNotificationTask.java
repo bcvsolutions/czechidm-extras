@@ -19,9 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
-
 import com.google.common.collect.Lists;
-
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.dto.AbstractSysSyncConfigDto;
 import eu.bcvsolutions.idm.acc.dto.SysProvisioningOperationDto;
@@ -59,12 +57,7 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.IdmLongRunningTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateExecutor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.CompleteStatus;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.EventStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.LrtStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.ProvisioningStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SyncStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SystemSyncStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.*;
 
 /**
  * LRT send status about state of CzechIdM

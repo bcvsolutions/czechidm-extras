@@ -1,24 +1,18 @@
 package eu.bcvsolutions.idm.extras.event.processor.tree;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
+import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+import eu.bcvsolutions.idm.core.api.event.*;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.SaveAllNodesForSubtreeExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
 
-import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
-import eu.bcvsolutions.idm.core.api.event.CoreEvent;
-import eu.bcvsolutions.idm.core.api.event.CoreEventProcessor;
-import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
-import eu.bcvsolutions.idm.core.api.event.EntityEvent;
-import eu.bcvsolutions.idm.core.api.event.EventResult;
-import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
-import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
-import eu.bcvsolutions.idm.extras.event.processor.contract.IdentityContractSetEavTreesProcessor;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.SaveAllNodesForSubtreeExecutor;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Save all sub-nodes when some node is changed

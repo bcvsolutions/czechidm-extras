@@ -1,12 +1,11 @@
 package eu.bcvsolutions.idm.extras.domain;
 
-import java.util.Arrays;
-import java.util.List;
-
 import eu.bcvsolutions.idm.core.security.api.domain.BasePermission;
-import eu.bcvsolutions.idm.core.security.api.domain.IdmBasePermission;
 import eu.bcvsolutions.idm.core.security.api.domain.GroupPermission;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Aggregate base permission. Name can't contain character '_' - its used for joining to authority name.

@@ -1,13 +1,12 @@
 package eu.bcvsolutions.idm.extras.entity;
 
+import eu.bcvsolutions.idm.core.api.domain.DefaultFieldLengths;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-
 import java.time.ZonedDateTime;
-
-import eu.bcvsolutions.idm.core.api.domain.DefaultFieldLengths;
 
 /**
  * Entity for test (role) table resource

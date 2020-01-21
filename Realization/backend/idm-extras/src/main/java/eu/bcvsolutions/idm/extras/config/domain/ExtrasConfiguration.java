@@ -1,11 +1,11 @@
 package eu.bcvsolutions.idm.extras.config.domain;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.bcvsolutions.idm.core.api.service.Configurable;
 import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Extras configuration - interface

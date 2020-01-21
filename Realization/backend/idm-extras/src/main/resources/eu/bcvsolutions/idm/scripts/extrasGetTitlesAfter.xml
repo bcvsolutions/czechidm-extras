@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<script>
-    <body><![CDATA[return extrasUtils.getTitlesAfter(attributeValue);]]></body>
-    <category>TRANSFORM_FROM</category>
+<script  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="IdmScript.xsd">
     <code>extrasGetTitlesAfter</code>
-    <description><![CDATA[<p>Return titles after</p>]]></description>
     <name>extrasGetTitlesAfter</name>
+    <body><![CDATA[return extrasUtils.getTitlesAfter(attributeValue);]]></body>
+    <type>groovy</type>
+    <category>TRANSFORM_FROM</category>
+    <description><![CDATA[<p>Return titles after</p>]]></description>
     <services>
         <service>
             <name>extrasUtils</name>
+            <className>eu.bcvsolutions.idm.extras.util.ExtrasUtils</className>
         </service>
     </services>
-    <type>groovy</type>
 </script>
