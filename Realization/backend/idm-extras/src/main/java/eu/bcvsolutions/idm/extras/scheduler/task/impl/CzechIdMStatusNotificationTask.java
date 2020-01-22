@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -214,6 +215,9 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	public Boolean process() {
 		CompleteStatus status = new CompleteStatus();
 		status.setContainsError(false);
+		
+		RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+		status.setUptime(String.valueOf((runtimeMXBean.getUptime() / (1000 * 60 * 60 * 24))));
 
 		try {
 
@@ -223,6 +227,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+
+		try {
 
 			if (sendLrtStatus) {
 				status.setLrts(getLrtStatus());
@@ -230,6 +241,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+
+		try {
 
 			if (sendEventStatus) {
 				status.setEvents(getEventStatus());
@@ -237,6 +255,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+
+		try {
 
 			if (sendSyncStatus) {
 				status.setSyncs(getSyncStatus());
@@ -244,24 +269,30 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					status.setContainsError(true);
 				}
 			}
+			
+		} catch (Exception e) {
+			LOG.error("Error during send CzechIdM status.", e);
+			status.setErrorDuringSend(e.getMessage());
+		}
+
+		try {
 
 			if (sendContractsStatus) {
 				status.setContracts(getContractsStatus());
 			}
-
-			RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
-			status.setUptime(String.valueOf((runtimeMXBean.getUptime() / (1000 * 60 * 60 * 24))));
+			
 		} catch (Exception e) {
 			LOG.error("Error during send CzechIdM status.", e);
 			status.setErrorDuringSend(e.getMessage());
-		} finally {
-			notificationManager.send(ExtrasModuleDescriptor.TOPIC_STATUS,
-					new IdmMessageDto.Builder()
-							.setLevel(NotificationLevel.INFO)
-							.addParameter("status", status)
-							.build(),
-					recipients);
-		}
+		} 
+		
+		notificationManager.send(ExtrasModuleDescriptor.TOPIC_STATUS,
+				new IdmMessageDto.Builder()
+						.setLevel(NotificationLevel.INFO)
+						.addParameter("status", status)
+						.build(),
+				recipients);
+		
 		if (status.getErrorDuringSend() != null) {
 			return Boolean.FALSE;
 		}
@@ -338,9 +369,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 					// Deleted
 				} else {
 					niceLabel.append(identityDto.getUsername());
-					niceLabel.append(" (");
-					niceLabel.append(identityDto.getExternalCode());
-					niceLabel.append(')');
+					if (!StringUtils.isBlank(identityDto.getExternalCode())) {
+						niceLabel.append(" (");
+						niceLabel.append(identityDto.getExternalCode());
+						niceLabel.append(')');
+					}
 				}
 				String finalNiceLabel = niceLabel.toString();
 				if (!niceLabels.contains(finalNiceLabel)) {
@@ -452,9 +485,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 						// Deleted
 					} else {
 						niceLabel.append(identityDto.getUsername());
-						niceLabel.append(" (");
-						niceLabel.append(identityDto.getExternalCode());
-						niceLabel.append(')');
+						if (!StringUtils.isBlank(identityDto.getExternalCode())) {
+							niceLabel.append(" (");
+							niceLabel.append(identityDto.getExternalCode());
+							niceLabel.append(')');
+						}
 					}
 					String finalNiceLabel = niceLabel.toString();
 					if (!niceLabels.contains(finalNiceLabel)) {
@@ -515,6 +550,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				List<SysSyncLogDto> logs = syncLongService.find(filter, new PageRequest(0, 1, new Sort(Direction.DESC,
 						SysSyncLog_.created.getName()))).getContent();
 
+				// if synchronization did not run yet
+				if (logs.isEmpty()) {
+					continue;
+				}
+				
 				// must be only one
 				SysSyncLogDto logDto = logs.get(0);
 
