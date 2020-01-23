@@ -15,7 +15,13 @@ import org.springframework.stereotype.Service;
 
 import com.google.common.collect.ImmutableMap;
 
+import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto;
+import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
+import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemAttributeFilter;
+import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
 import eu.bcvsolutions.idm.acc.eav.domain.AccFaceType;
+import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService;
+import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
 import eu.bcvsolutions.idm.core.api.domain.ConfigurationMap;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.PriorityType;
@@ -53,6 +59,10 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 
 	@Autowired
 	private IdmRoleService roleService;
+	@Autowired
+	private SysRoleSystemAttributeService sysRoleSystemAttributeService;
+	@Autowired
+	private SysRoleSystemService sysRoleSystemService;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -71,26 +81,49 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 		roles.forEach(idmRole -> {
 			IdmRoleDto idmRoleDto = roleService.get(idmRole);
 
-			IdmRoleDto targetRole = new IdmRoleDto();
-			targetRole.setId(UUID.randomUUID());
-			targetRole.setBaseCode(idmRoleDto.getBaseCode());
-			targetRole.setEnvironment(environment);
+			IdmRoleDto byBaseCodeAndEnvironment = roleService.getByBaseCodeAndEnvironment(idmRoleDto.getBaseCode(), environment);
 
-			// TODO maybe need to add some properties into event we will see
-			EntityEvent<IdmRoleDto> event = new RoleEvent(RoleEvent.RoleEventType.DUPLICATE, targetRole, new ConfigurationMap(getProperties()).toMap());
-			event.setOriginalSource(idmRoleDto); // original source is the cloned role
-			event.setPriority(PriorityType.IMMEDIATE); // we want to be sync
-			roleService.publish(event, IdmBasePermission.CREATE, IdmBasePermission.UPDATE);
-			this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
-					ImmutableMap.of("message", "Role" + idmRoleDto.getName() + " duplicated"))).build());
+			if (byBaseCodeAndEnvironment == null) {
+				IdmRoleDto targetRole = new IdmRoleDto();
+				targetRole.setId(UUID.randomUUID());
+				targetRole.setBaseCode(idmRoleDto.getBaseCode());
+				targetRole.setEnvironment(environment);
+
+				EntityEvent<IdmRoleDto> event = new RoleEvent(RoleEvent.RoleEventType.DUPLICATE, targetRole, new ConfigurationMap(getProperties()).toMap());
+				event.setOriginalSource(idmRoleDto); // original source is the cloned role
+				event.setPriority(PriorityType.IMMEDIATE); // we want to be sync
+				roleService.publish(event, IdmBasePermission.CREATE, IdmBasePermission.UPDATE);
+				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+						ImmutableMap.of("message", "Role" + idmRoleDto.getName() + " duplicated"))).build());
+			} else {
+				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+						ImmutableMap.of("message", "Role" + idmRoleDto.getName() + " not duplicate, because role with this code and environment exists"))).build());
+			}
+
+			IdmRoleDto newRole = roleService.getByBaseCodeAndEnvironment(idmRoleDto.getBaseCode(), environment);
+
+			// get mapping from source role
+			SysRoleSystemFilter filter = new SysRoleSystemFilter();
+			filter.setRoleId(idmRoleDto.getId());
+			List<SysRoleSystemDto> source = sysRoleSystemService.find(filter, null).getContent();
+
+			if (source.size() == 1) {
+				SysRoleSystemDto sysRoleSystemDto = source.get(0);
+
+				SysRoleSystemAttributeFilter attributeFilter = new SysRoleSystemAttributeFilter();
+				attributeFilter.setRoleSystemId(sysRoleSystemDto.getId());
+				List<SysRoleSystemAttributeDto> sourceAttribute = sysRoleSystemAttributeService.find(attributeFilter, null).getContent();
+
+				if (sourceAttribute.size() == 1) {
+					SysRoleSystemAttributeDto attributeDto = sourceAttribute.get(0);
+					// create mapping to system and fill value
+					sysRoleSystemAttributeService.addRoleMappingAttribute(targetSystemUuid, newRole.getId(), attributeDto.getName(), attributeDto.getTransformScript(), "__ACCOUNT__");
+				}
+			}
 
 			++this.counter;
 		});
 
-		// TODO create system mapping
-		// get new created roles
-
-		// create mapping to system and fill value
 
 		return new OperationResult.Builder(OperationState.EXECUTED).build();
 	}
