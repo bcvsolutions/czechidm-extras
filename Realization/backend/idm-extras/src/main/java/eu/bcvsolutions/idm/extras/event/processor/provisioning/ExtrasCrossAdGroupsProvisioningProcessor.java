@@ -164,8 +164,11 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 				userDn = String.valueOf(existsConnectorObject.getAttributeByName("__NAME__").getValue());
 			}
 		} catch (Exception ex) {
-			LOG.info("Error during getting user, do nothing", ex);
-			return new DefaultEventResult<>(event, this);
+			LOG.info("Error during getting user: ", ex);
+			provisioningOperation = provisioningOperationService.handleFailed(provisioningOperation, ex);
+			// set back to event content
+			event.setContent(provisioningOperation);
+			return new DefaultEventResult<>(event, this, true);
 		}
 
 		// load grups
@@ -176,10 +179,18 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		// find all user's groups
 		if (userDn != null) {
 			String finalUserDn = userDn;
-			adSystems.forEach(adSystem -> {
-				SysSystemDto adSystemDto = systemService.get(adSystem);
-				userGroups.addAll(findUserGroupsOnSystem(adSystemDto, groupClass, finalUserDn));
-			});
+			try {
+				adSystems.forEach(adSystem -> {
+					SysSystemDto adSystemDto = systemService.get(adSystem);
+					userGroups.addAll(findUserGroupsOnSystem(adSystemDto, groupClass, finalUserDn));
+				});
+			} catch (Exception e) {
+				LOG.info("Error during getting user's groups: ", e);
+				provisioningOperation = provisioningOperationService.handleFailed(provisioningOperation, e);
+				// set back to event content
+				event.setContent(provisioningOperation);
+				return new DefaultEventResult<>(event, this, true);
+			}
 		}
 
 		// check if user has more roles then in IdM = that can happen if he has roles from other servers then the normal search will not return all of them
@@ -256,11 +267,11 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 
 		// prepare two list, roles to add and roles to remove so I dont need to search it again in connector
 		List<Object> idmValues = new ArrayList<>();
-		if (idmValue instanceof List) {
-			idmValues.addAll((List<?>) idmValue);
+		if (resultMerged instanceof List) {
+			idmValues.addAll((List<?>) resultMerged);
 		} else {
-			if (idmValue != null) {
-				idmValues.add(String.valueOf(idmValue));
+			if (resultMerged != null) {
+				idmValues.add(String.valueOf(resultMerged));
 			}
 		}
 		List<Object> systemValues = new ArrayList<>(userGroups);
@@ -293,19 +304,15 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 					ImmutableMap.of("system", system.getName()));
 		}
 		//
-		try {
-			IcAttribute membersAttribute = new IcAttributeImpl("member", dn);
-			IcFilter filter = new IcEqualsFilter(membersAttribute);
-			connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, filter, connectorObject -> {
-				IcAttribute groupDn = connectorObject.getAttributeByName("__NAME__");
-				if (groupDn != null && !StringUtils.isEmpty(groupDn.getValue())) {
-					result.add(String.valueOf(groupDn.getValue()));
-				}
-				return true;
-			});
-		} catch (Exception ex) {
-			LOG.info("Error during getting user", ex);
-		}
+		IcAttribute membersAttribute = new IcAttributeImpl("member", dn);
+		IcFilter filter = new IcEqualsFilter(membersAttribute);
+		connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, filter, connectorObject -> {
+			IcAttribute groupDn = connectorObject.getAttributeByName("__NAME__");
+			if (groupDn != null && !StringUtils.isEmpty(groupDn.getValue())) {
+				result.add(String.valueOf(groupDn.getValue()));
+			}
+			return true;
+		});
 		return result;
 	}
 
@@ -417,4 +424,8 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		return schemaAttributeService.find(schemaAttributeFilter, null).getContent();
 	}
 
+	@Override
+	public boolean isDisabled() {
+		return false;
+	}
 }
