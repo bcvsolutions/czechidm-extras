@@ -21,7 +21,6 @@ import org.springframework.util.StringUtils;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 
-import eu.bcvsolutions.idm.acc.AccModuleDescriptor;
 import eu.bcvsolutions.idm.acc.domain.AccResultCode;
 import eu.bcvsolutions.idm.acc.domain.ProvisioningEventType;
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
@@ -49,7 +48,6 @@ import eu.bcvsolutions.idm.core.api.event.AbstractEntityEventProcessor;
 import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
 import eu.bcvsolutions.idm.core.api.event.EventResult;
-import eu.bcvsolutions.idm.core.security.api.domain.Enabled;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 import eu.bcvsolutions.idm.ic.api.IcAttribute;
 import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
@@ -70,7 +68,6 @@ import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
  * @author Roman Kucera
  */
 @Component
-@Enabled(AccModuleDescriptor.MODULE_ID)
 @Description("In case of AD system we will search all available AD systems to get all user roles from different servers.")
 public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEventProcessor<SysProvisioningOperationDto> {
 
@@ -425,7 +422,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 	}
 
 	@Override
-	public boolean isDisabled() {
-		return false;
+	public boolean isDefaultDisabled() {
+		return true;
 	}
 }

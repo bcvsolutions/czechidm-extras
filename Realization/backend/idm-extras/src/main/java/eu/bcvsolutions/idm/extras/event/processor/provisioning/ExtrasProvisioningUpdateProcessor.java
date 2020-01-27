@@ -142,4 +142,9 @@ public class ExtrasProvisioningUpdateProcessor extends AbstractProvisioningProce
 		}
 		return ProvisioningEventType.UPDATE == ((ProvisioningOperation) entityEvent.getContent()).getOperationType();
 	}
+
+	@Override
+	public boolean isDefaultDisabled() {
+		return true;
+	}
 }

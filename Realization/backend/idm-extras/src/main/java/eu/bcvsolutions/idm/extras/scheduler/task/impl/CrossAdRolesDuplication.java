@@ -1,8 +1,5 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -26,11 +23,12 @@ import eu.bcvsolutions.idm.core.api.domain.ConfigurationMap;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.PriorityType;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
-import eu.bcvsolutions.idm.core.api.utils.EntityUtils;
 import eu.bcvsolutions.idm.core.eav.api.domain.BaseCodeList;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
@@ -52,10 +50,12 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 	private static String SYSTEMS_PARAM = "systems";
 	private static String ROLES_PARAM = "roles";
 	private static String ENV_PARAM = "environment";
+	private static String CATALOG_PARAM = "catalog";
 
 	private UUID targetSystemUuid;
 	private List<UUID> roles;
 	private String environment;
+	private UUID catalog;
 
 	@Autowired
 	private IdmRoleService roleService;
@@ -63,6 +63,8 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 	private SysRoleSystemAttributeService sysRoleSystemAttributeService;
 	@Autowired
 	private SysRoleSystemService sysRoleSystemService;
+	@Autowired
+	private IdmRoleCatalogueRoleService roleCatalogueRoleService;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -70,6 +72,7 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 		targetSystemUuid = getParameterConverter().toUuid(properties, SYSTEMS_PARAM);
 		roles = getParameterConverter().toUuids(properties, ROLES_PARAM);
 		environment = getParameterConverter().toString(properties, ENV_PARAM);
+		catalog = getParameterConverter().toUuid(properties, CATALOG_PARAM);
 	}
 
 	@Override
@@ -80,6 +83,8 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 		// duplicate each role
 		roles.forEach(idmRole -> {
 			IdmRoleDto idmRoleDto = roleService.get(idmRole);
+
+			LOG.info("Duplicating role [{}]", idmRoleDto.getCode());
 
 			IdmRoleDto byBaseCodeAndEnvironment = roleService.getByBaseCodeAndEnvironment(idmRoleDto.getBaseCode(), environment);
 
@@ -102,6 +107,7 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 
 			IdmRoleDto newRole = roleService.getByBaseCodeAndEnvironment(idmRoleDto.getBaseCode(), environment);
 
+			LOG.info("Add mapping to system to role [{}]", idmRoleDto.getCode());
 			// get mapping from source role
 			SysRoleSystemFilter filter = new SysRoleSystemFilter();
 			filter.setRoleId(idmRoleDto.getId());
@@ -118,7 +124,19 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 					SysRoleSystemAttributeDto attributeDto = sourceAttribute.get(0);
 					// create mapping to system and fill value
 					sysRoleSystemAttributeService.addRoleMappingAttribute(targetSystemUuid, newRole.getId(), attributeDto.getName(), attributeDto.getTransformScript(), "__ACCOUNT__");
+					LOG.info("Mapping for role [{}] created", idmRoleDto.getCode());
 				}
+			} else {
+				LOG.info("Role [{}] has more then one systems can't pick right one, new role will be without mapping", idmRoleDto.getCode());
+			}
+
+			// add role to catalogue
+			if (catalog != null) {
+				IdmRoleCatalogueRoleDto roleCatalogueRoleDto = new IdmRoleCatalogueRoleDto();
+				roleCatalogueRoleDto.setRole(newRole.getId());
+				roleCatalogueRoleDto.setRoleCatalogue(catalog);
+				roleCatalogueRoleService.save(roleCatalogueRoleDto);
+				LOG.info("Role [{}] assigned to role catalogue", newRole.getCode());
 			}
 
 			++this.counter;
@@ -153,37 +171,17 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 				BaseCodeList.ENVIRONMENT);
 		env.setRequired(true);
 
+		IdmFormAttributeDto catalogue = new IdmFormAttributeDto(
+				CATALOG_PARAM,
+				"Catalogue in which the new roles will be created",
+				PersistentType.UUID);
+		catalogue.setFaceType(AccFaceType.ROLE_CATALOGUE_SELECT);
+		catalogue.setRequired(true);
+
 		attributes.add(systems);
 		attributes.add(roles);
 		attributes.add(env);
+		attributes.add(catalogue);
 		return attributes;
-	}
-
-	/**
-	 * Get roles for duplication
-	 *
-	 * @return
-	 */
-	private List<IdmRoleDto> getRoles() {
-		Object rolesAsObject = this.getProperties().get(ROLES_PARAM);
-		//
-		if (rolesAsObject == null) {
-			return Collections.emptyList();
-		}
-		//
-		if (!(rolesAsObject instanceof Collection)) {
-			return Collections.emptyList();
-		}
-		List<IdmRoleDto> roles = new ArrayList<>();
-		((Collection<?>) rolesAsObject).forEach(role -> {
-			UUID uuid = EntityUtils.toUuid(role);
-			IdmRoleDto roleDto = roleService.get(uuid);
-			if (roleDto == null) {
-				LOG.warn("Role with id [{}] not found. The role will be skipped.", uuid);
-			} else {
-				roles.add(roleService.get(uuid));
-			}
-		});
-		return roles;
 	}
 }
