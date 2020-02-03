@@ -1,12 +1,9 @@
 package eu.bcvsolutions.idm.extras.event.processor.provisioning;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
-import org.identityconnectors.common.security.GuardedString;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
@@ -21,16 +18,13 @@ import eu.bcvsolutions.idm.acc.service.api.SysProvisioningOperationService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemEntityService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
-import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
+import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
-import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
-import eu.bcvsolutions.idm.extras.util.GuardedStringAccessor;
+import eu.bcvsolutions.idm.extras.service.api.ExtrasCrossDomainService;
 import eu.bcvsolutions.idm.ic.api.IcAttribute;
-import eu.bcvsolutions.idm.ic.api.IcConfigurationProperty;
 import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
 import eu.bcvsolutions.idm.ic.api.IcConnectorObject;
 import eu.bcvsolutions.idm.ic.api.IcUidAttribute;
-import eu.bcvsolutions.idm.ic.impl.IcConfigurationPropertyImpl;
 import eu.bcvsolutions.idm.ic.impl.IcUidAttributeImpl;
 import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
 
@@ -52,13 +46,14 @@ public class ExtrasProvisioningUpdateProcessor extends AbstractProvisioningProce
 	@Autowired
 	private ExtrasConfiguration extrasConfiguration;
 	@Autowired
-	private ExtrasUtils extrasUtils;
+	private ExtrasCrossDomainService additionalCredentialsService;
+	@Autowired
+	private CodeListManager codeListManager;
 
 	@Autowired
 	public ExtrasProvisioningUpdateProcessor(
 			IcConnectorFacade connectorFacade,
 			SysSystemService systemService,
-			NotificationManager notificationManager,
 			SysProvisioningOperationService provisioningOperationService,
 			SysSystemEntityService systemEntityService) {
 		super(connectorFacade, systemService, provisioningOperationService, systemEntityService,
@@ -79,49 +74,11 @@ public class ExtrasProvisioningUpdateProcessor extends AbstractProvisioningProce
 			SysSystemDto system = systemService.get(provisioningOperation.getSystem());
 			//
 			// load more config properties if this system is cross domain AD
-			List<UUID> adSystems = extrasConfiguration.getAdSystems();
+			List<UUID> adSystems = codeListManager.getItems(extrasConfiguration.getCrossAdCodeList(), null).stream()
+					.map(idmCodeListItemDto -> UUID.fromString(idmCodeListItemDto.getCode()))
+					.collect(Collectors.toList());
 			if (adSystems.contains(system.getId())) {
-				LOG.info("System is AD cross domain - get credentials from all cross ad systems and put them into config for connector");
-				List<GuardedString> creds = new ArrayList<>();
-
-				String ADDITIONAL_CREDS_NAME = "additionalCreds";
-				// Remove additionalCreds from config if its there, because we dont care about values on FE
-				connectorConfig.getConfigurationProperties().getProperties().stream()
-						.filter(icConfigurationProperty -> icConfigurationProperty.getName().equals(ADDITIONAL_CREDS_NAME))
-						.findFirst()
-						.ifPresent(icConfigurationProperty -> connectorConfig.getConfigurationProperties().getProperties().remove(icConfigurationProperty));
-
-				adSystems.forEach(systemId -> {
-					SysSystemDto sysSystemDto = systemService.get(systemId);
-					IcConnectorConfiguration config = systemService.getConnectorConfiguration(sysSystemDto);
-					AtomicReference<String> user = new AtomicReference<>();
-					AtomicReference<List<String>> containers = new AtomicReference<>();
-					AtomicReference<eu.bcvsolutions.idm.core.security.api.domain.GuardedString> password = new AtomicReference<>();
-					config.getConfigurationProperties().getProperties().forEach(icConfigurationProperty -> {
-						if (icConfigurationProperty.getName().equals("user")) {
-							user.set(String.valueOf(icConfigurationProperty.getValue()));
-						}
-						if (icConfigurationProperty.getName().equals("password")) {
-							GuardedStringAccessor accessor = new GuardedStringAccessor();
-							((GuardedString) icConfigurationProperty.getValue()).access(accessor);
-							password.set(new eu.bcvsolutions.idm.core.security.api.domain.GuardedString(new String(accessor.getArray())));
-							accessor.clearArray();
-						}
-						if (icConfigurationProperty.getName().equals("baseContextsToSynchronize")) {
-							containers.set(Arrays.asList((String[]) icConfigurationProperty.getValue()));
-						}
-					});
-
-					if (user.get() != null && password.get() != null && containers.get() != null && !containers.get().isEmpty()) {
-						containers.get().forEach(container -> {
-							creds.add(new GuardedString((container + "\\" + user + "\\" + password.get().asString()).toCharArray()));
-						});
-					}
-
-				});
-
-				IcConfigurationProperty cred = new IcConfigurationPropertyImpl(ADDITIONAL_CREDS_NAME, creds.toArray(new GuardedString[0]));
-				connectorConfig.getConfigurationProperties().getProperties().add(cred);
+				connectorConfig = additionalCredentialsService.getConfiguration(connectorConfig, adSystems);
 			}
 
 			// Transform last guarded string into classic string

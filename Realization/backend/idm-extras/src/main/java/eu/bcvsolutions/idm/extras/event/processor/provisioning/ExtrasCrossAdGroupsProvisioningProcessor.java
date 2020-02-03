@@ -10,13 +10,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -48,17 +49,16 @@ import eu.bcvsolutions.idm.core.api.event.AbstractEntityEventProcessor;
 import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
 import eu.bcvsolutions.idm.core.api.event.EventResult;
+import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
+import eu.bcvsolutions.idm.extras.service.api.ExtrasCrossDomainService;
 import eu.bcvsolutions.idm.ic.api.IcAttribute;
 import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
 import eu.bcvsolutions.idm.ic.api.IcConnectorObject;
 import eu.bcvsolutions.idm.ic.api.IcObjectClass;
 import eu.bcvsolutions.idm.ic.api.IcUidAttribute;
-import eu.bcvsolutions.idm.ic.filter.api.IcFilter;
-import eu.bcvsolutions.idm.ic.filter.impl.IcEqualsFilter;
 import eu.bcvsolutions.idm.ic.impl.IcAttributeImpl;
 import eu.bcvsolutions.idm.ic.impl.IcConnectorObjectImpl;
-import eu.bcvsolutions.idm.ic.impl.IcObjectClassImpl;
 import eu.bcvsolutions.idm.ic.impl.IcUidAttributeImpl;
 import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
 
@@ -89,6 +89,10 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 	private SysProvisioningAttributeService provisioningAttributeService;
 	@Autowired
 	private ExtrasConfiguration extrasConfiguration;
+	@Autowired
+	private ExtrasCrossDomainService crossDomainService;
+	@Autowired
+	private CodeListManager codeListManager;
 
 	@Autowired
 	public ExtrasCrossAdGroupsProvisioningProcessor(
@@ -132,7 +136,11 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		SysSystemDto system = systemService.get(provisioningOperation.getSystem());
 
 		// if system is not AD for cross domain we do nothing
-		List<UUID> adSystems = extrasConfiguration.getAdSystems();
+		List<UUID> adSystems = codeListManager.getItems(extrasConfiguration.getCrossAdCodeList(), null).stream()
+				.map(idmCodeListItemDto -> UUID.fromString(idmCodeListItemDto.getCode()))
+				.collect(Collectors.toList());
+
+
 		if (!adSystems.contains(system.getId())) {
 			LOG.info("It's not AD system which should be used for cross domain do nothing special");
 			return new DefaultEventResult<>(event, this);
@@ -169,18 +177,13 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		}
 
 		// load grups
-		IcObjectClass groupClass = new IcObjectClassImpl("__GROUP__");
 
 		Set<String> userGroups = new HashSet<>();
 
 		// find all user's groups
 		if (userDn != null) {
-			String finalUserDn = userDn;
 			try {
-				adSystems.forEach(adSystem -> {
-					SysSystemDto adSystemDto = systemService.get(adSystem);
-					userGroups.addAll(findUserGroupsOnSystem(adSystemDto, groupClass, finalUserDn));
-				});
+				userGroups = crossDomainService.getAllUsersGroups(adSystems, userDn);
 			} catch (Exception e) {
 				LOG.info("Error during getting user's groups: ", e);
 				provisioningOperation = provisioningOperationService.handleFailed(provisioningOperation, e);
@@ -282,35 +285,26 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		IcAttribute rolesToAdd = new IcAttributeImpl("ldapGroupsToAdd", toAdd, true);
 		IcAttribute rolesToRemove = new IcAttributeImpl("ldapGroupsToRemove", toRemove, true);
 
+		// If we are changing some user's groups we need to add __NAME__ into it, because we need to calculate domain in connector.
+		// Add __NAME__ only if is not already in connector object.
+		IcAttribute nameAttribute = connectorObject.getAttributeByName("__NAME__");
+		if (nameAttribute == null || nameAttribute.getValue() == null || String.valueOf(nameAttribute.getValue()).isEmpty()) {
+			AtomicReference<String> userDn = new AtomicReference<>();
+			provisioningOperation.getProvisioningContext().getAccountObject().forEach((provisioningAttributeDto, value) -> {
+				if (provisioningAttributeDto.getSchemaAttributeName().equals("__NAME__")) {
+					userDn.set(String.valueOf(value));
+				}
+			});
+
+			if (!StringUtils.isEmpty(userDn.get())) {
+				IcAttribute dn = new IcAttributeImpl("__NAME__", userDn.get());
+				attributesWithoutGroups.add(dn);
+			}
+		}
+
 		attributesWithoutGroups.add(rolesToAdd);
 		attributesWithoutGroups.add(rolesToRemove);
 		return attributesWithoutGroups;
-	}
-
-	private Set<String> findUserGroupsOnSystem(SysSystemDto system, IcObjectClass objectClass, String dn) {
-		Set<String> result = new HashSet<>();
-		// Find connector identification persisted in system
-		if (system.getConnectorKey() == null) {
-			throw new ProvisioningException(AccResultCode.CONNECTOR_KEY_FOR_SYSTEM_NOT_FOUND,
-					ImmutableMap.of("system", system.getName()));
-		}
-		// load connector configuration
-		IcConnectorConfiguration connectorConfig = systemService.getConnectorConfiguration(system);
-		if (connectorConfig == null) {
-			throw new ProvisioningException(AccResultCode.CONNECTOR_CONFIGURATION_FOR_SYSTEM_NOT_FOUND,
-					ImmutableMap.of("system", system.getName()));
-		}
-		//
-		IcAttribute membersAttribute = new IcAttributeImpl("member", dn);
-		IcFilter filter = new IcEqualsFilter(membersAttribute);
-		connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, filter, connectorObject -> {
-			IcAttribute groupDn = connectorObject.getAttributeByName("__NAME__");
-			if (groupDn != null && !StringUtils.isEmpty(groupDn.getValue())) {
-				result.add(String.valueOf(groupDn.getValue()));
-			}
-			return true;
-		});
-		return result;
 	}
 
 	@Override
