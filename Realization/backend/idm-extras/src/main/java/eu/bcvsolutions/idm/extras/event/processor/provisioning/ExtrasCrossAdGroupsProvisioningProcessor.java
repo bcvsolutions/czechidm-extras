@@ -140,7 +140,6 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 				.map(idmCodeListItemDto -> UUID.fromString(idmCodeListItemDto.getCode()))
 				.collect(Collectors.toList());
 
-
 		if (!adSystems.contains(system.getId())) {
 			LOG.info("It's not AD system which should be used for cross domain do nothing special");
 			return new DefaultEventResult<>(event, this);
