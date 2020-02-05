@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [2.1.0]
 -  [#1939,#1938,#1869,#1940,#1870] Updated CzechIdMStatusNotificationTask and **template statusNotification**. Please update this template in IdM.
+-  [#1977] Reports RoleAssignmentReport and CompareValueWithSystemReport was moved to reports module. Please use this version of extras module only with module reports of 2.1.0 and higher.
 
 ## [2.0.0]
 
