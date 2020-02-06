@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto</className>
+        </allowClass>
+        <allowClass>
+            <className>org.springframework.data.domain.PageImpl</className>
+        </allowClass>
+        <allowClass>
+            <className>java.util.Collections$UnmodifiableRandomAccessList</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
+
+def filter = new IdmIdentityFilter();
+filter.setExternalCode(attributeValue.toString());
+List<IdmIdentityDto> content = identityService.find(filter, null).getContent();
+if (content==null || content.size() != 1) return null;
+
+String userName = content.get(0).getUsername();
+
+return userName.toString();]]></body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasGetLoginFromPersonalNumber</code>
+    <description><![CDATA[<p>Get login from user's personal number.</p>]]></description>
+    <name>extrasGetLoginFromPersonalNumber</name>
+    <services>
+        <service>
+            <name>identityService</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>

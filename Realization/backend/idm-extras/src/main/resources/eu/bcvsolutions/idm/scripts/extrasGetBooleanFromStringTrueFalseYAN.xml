@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <body><![CDATA[
+		
+if ("Y".equals(attributeValue) || "y".equals(attributeValue) || "yes".equals(attributeValue)
+	|| "Yes".equals(attributeValue)) {
+    return true;
+} 
+if ("N".equals(attributeValue) || "n".equals(attributeValue) || "no".equals(attributeValue)
+	|| "No".equals(attributeValue)) {
+    return false;
+}
+return null;
+  		
+	]]></body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasGetBooleanFromStringTrueFalseYAN</code>
+    <description>Get Boolean from String (Y/y/Yes/yes x N/n/No/no)</description>
+    <name>extrasGetBooleanFromStringTrueFalseYAN</name>
+    <type>groovy</type>
+</script>
+

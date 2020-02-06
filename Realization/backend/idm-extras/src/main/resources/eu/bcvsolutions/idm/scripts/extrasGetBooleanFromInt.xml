@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <body><![CDATA[if (attributeValue == null) return Boolean.FALSE;
+if (attributeValue == 1) {
+    return Boolean.TRUE;    
+} else {
+    return Boolean.FALSE;    
+}]]></body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasGetBooleanFromInt</code>
+    <description><![CDATA[<p>Get Boolean from integer: returns true if the value is 1, false if 0.</p>]]></description>
+    <name>extrasGetBooleanFromInt</name>
+    <type>groovy</type>
+</script>

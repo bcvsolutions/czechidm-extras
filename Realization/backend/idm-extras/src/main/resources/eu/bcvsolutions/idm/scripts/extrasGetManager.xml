@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter</className>
+        </allowClass>
+        <allowClass>
+            <className>org.springframework.data.domain.PageImpl</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
+
+def contract = identityContractService.getPrimeContract(entity.getId())
+//
+if (contract == null) {
+    return null
+}
+//
+def filter = new IdmIdentityFilter()
+filter.setManagersFor(entity.id)
+filter.setManagersByContract(contract.id)
+//
+def managersPage = identityService.find(filter, null)
+for (def manager : managersPage) {
+    return manager
+}
+return null]]></body>
+    <category>TRANSFORM_TO</category>
+    <code>extrasGetManager</code>
+    <description><![CDATA[Returns manager (IdmIdentityDto) for main contract.]]></description>
+    <name>extrasGetManager</name>
+    <services>
+        <service>
+            <className>eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmIdentityService</className>
+            <name>identityService</name>
+        </service>
+	<service>
+            <className>eu.bcvsolutions.idm.core.model.service.impl.DefaultIdmIdentityContractService</className>
+            <name>identityContractService</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>

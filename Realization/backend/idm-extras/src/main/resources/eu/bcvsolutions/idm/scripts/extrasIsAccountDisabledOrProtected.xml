@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.acc.dto.AccAccountDto</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger("isAccountDisabled");
+
+log.info("Start 'isAccountDisabled' script.");
+
+if (entity != null && entity.isDisabled()) {
+    return true;
+}
+
+// Load account
+def account = uid != null ? accAccountService.getAccount(uid,system.getId()) : null;
+
+if(account){
+    // Account was found. Return protection state.
+    return account.isInProtection();
+}
+return false;]]></body>
+    <category>TRANSFORM_TO</category>
+    <code>extrasIsAccountDisabledOrProtected</code>
+    <description><![CDATA[<p>Return false if the account is not disabled and not protected.</p>]]></description>
+    <name>extrasIsAccountDisabledOrProtected</name>
+    <services>
+        <service>
+            <name>accAccountService</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>

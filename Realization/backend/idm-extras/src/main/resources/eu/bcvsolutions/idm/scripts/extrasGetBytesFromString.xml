@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>[B</className>
+        </allowClass>
+    </allowClasses>
+    <body>if (!attributeValue) {
+    return null
+}
+attributeValue.getBytes()</body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasGetBytesFromString</code>
+    <description>Get bytes from String</description>
+    <name>extrasGetBytesFromString</name>
+    <type>groovy</type>
+</script>

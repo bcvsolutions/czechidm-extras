@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <body><![CDATA[
+		
+if ("false".equals(attributeValue) || "true".equals(attributeValue)) {
+    return Boolean.valueOf(attributeValue);
+}
+return null;
+  		
+	]]></body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasGetBooleanFromStringTrueFalse</code>
+    <description>Get Boolean from String (true/false)</description>
+    <name>extrasGetBooleanFromStringTrueFalse</name>
+    <type>groovy</type>
+</script>

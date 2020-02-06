@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>java.text.Normalizer</className>
+        </allowClass>
+        <allowClass>
+            <className>java.text.Normalizer$Form</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[import java.text.Normalizer;
+
+String s = attributeValue;
+s = Normalizer.normalize(s, Normalizer.Form.NFD);
+s = s.replaceAll("\\p{M}", "");
+return s;]]></body>
+    <category>TRANSFORM_TO</category>
+    <code>extrasRemoveDiacritics</code>
+    <description><![CDATA[<p>Removes diacritics from a string.</p>]]></description>
+    <name>extrasRemoveDiacritics</name>
+    <type>groovy</type>
+</script>

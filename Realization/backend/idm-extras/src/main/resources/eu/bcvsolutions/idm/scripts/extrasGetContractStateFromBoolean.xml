@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+	<allowClasses>
+		<allowClass>
+			<className>eu.bcvsolutions.idm.core.api.domain.ContractState</className>
+		</allowClass>
+	</allowClasses>
+	<body>import eu.bcvsolutions.idm.core.api.domain.ContractState
+
+if (attributeValue) {
+    return null;
+} else {
+    return ContractState.EXCLUDED
+}
+
+	</body>
+	<category>TRANSFORM_FROM</category>
+	<code>extrasGetContractStateFromBoolean</code>
+	<name>extrasGetContractStateFromBoolean</name>
+	<description><![CDATA[<p>Get ContractState from Boolean: returns EXCLUDED state if attributeValue is false.</p>]]></description>
+	<type>groovy</type>
+</script>

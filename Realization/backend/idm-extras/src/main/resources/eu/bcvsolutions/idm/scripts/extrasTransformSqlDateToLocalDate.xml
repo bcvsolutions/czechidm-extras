@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+    </allowClasses>
+    <body><![CDATA[import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+if (attributeValue == null) {
+    return null;
+}
+DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS");
+LocalDate localDate = dateFormat.parseLocalDate(attributeValue);
+return localDate;]]></body>
+    <category>DEFAULT</category>
+    <code>extrasTransformSqlDateToLocalDate</code>
+    <description><![CDATA[<p>Transforms SQL date ("yyyy-MM-dd HH:mm:ss.SSSSSSS") to local date </p>]]></description>
+    <name>extrasTransformSqlDateToLocalDate</name>
+    <type>groovy</type>
+</script>

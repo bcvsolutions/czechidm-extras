@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <body><![CDATA[if (attributeValue != null){
+    return attributeValue.toString();
+}
+
+return null;]]></body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasIntegerToString</code>
+    <description><p>Convert integer to String</p></description>
+    <name>extrasIntegerToString</name>
+    <type>groovy</type>
+</script>

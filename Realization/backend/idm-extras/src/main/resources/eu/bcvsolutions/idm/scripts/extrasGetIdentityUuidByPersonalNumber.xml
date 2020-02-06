@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter</className>
+        </allowClass>
+        <allowClass>
+            <className>org.springframework.data.domain.PageImpl</className>
+        </allowClass>
+        <allowClass>
+            <className>java.util.Collections$UnmodifiableRandomAccessList</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
+import java.util.List;
+
+String externalCode = null;
+if (attributeValue == null || attributeValue instanceof String) {
+    externalCode = attributeValue;
+} else {
+    externalCode = attributeValue.toString();
+}
+
+IdmIdentityFilter filter = new IdmIdentityFilter();
+filter.setExternalCode(externalCode);
+//
+List<IdmIdentityDto> identities = identityService.find(filter, null).getContent();
+if (identities != null && !identities.isEmpty()) {
+    return identities.get(0).getId().toString();
+}
+return null;]]></body>
+    <category>TRANSFORM_FROM</category>
+    <code>extrasGetIdentityUuidByPersonalNumber</code>
+    <description><![CDATA[<p>Get identity ID from Personal Number</p>]]></description>
+    <name>extrasGetIdentityUuidByPersonalNumber</name>
+    <services>
+        <service>
+            <name>identityService</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
+
+org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("getHomeOrganisationName");
+
+IdmIdentityContractDto dto = identityContractService.getPrimeContract(entity.getId());
+if (dto == null) {
+    LOG.warn("User {} doesn't have any contract.", entity.getUsername());
+	return null;
+}
+
+UUID work = dto.getWorkPosition();
+if(work) {
+    IdmTreeNodeDto node = treeNodeService.get(work);
+    return node.getName();
+}
+return null;]]></body>
+    <category>TRANSFORM_TO</category>
+    <code>extrasGetWorkPositionName</code>
+    <description><![CDATA[<p>Returns the name of the prime contract's organization.</p>]]></description>
+    <name>extrasGetWorkPositionName</name>
+    <services>
+        <service>
+            <name>identityContractService</name>
+        </service>
+        <service>
+            <name>treeNodeService</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>

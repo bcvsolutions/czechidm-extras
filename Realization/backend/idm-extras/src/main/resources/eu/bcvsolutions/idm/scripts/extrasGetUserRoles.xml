@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>java.util.HashSet</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmRoleDto</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto</className>
+        </allowClass>
+        <allowClass>
+            <className>java.util.Collections$UnmodifiableRandomAccessList</className>
+        </allowClass>
+        <allowClass>
+            <className>org.springframework.data.domain.PageImpl</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("getUserRoles");
+def roleNames = [];
+def identityRoles = identityRoleService.findValidRole(entity.id, null).getContent();
+identityRoles.each { role -> roleNames.add(roleService.get(role.role).name) };
+List<String> roles = new ArrayList<String>();
+roles.addAll(roleNames.toSet());
+LOG.info("roles loaded");
+return roles;]]></body>
+    <category>TRANSFORM_TO</category>
+    <code>extrasGetUserRoles</code>
+    <description><![CDATA[<p>Returns a list of names of user's roles.</p>]]></description>
+    <name>extrasGetUserRoles</name>
+    <services>
+        <service>
+            <name>roleService</name>
+        </service>
+        <service>
+            <name>identityRoleService</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>
