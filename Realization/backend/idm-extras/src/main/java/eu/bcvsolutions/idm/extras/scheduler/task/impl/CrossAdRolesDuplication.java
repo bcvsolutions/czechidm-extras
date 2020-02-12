@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,12 +49,12 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CrossAdRolesDuplication.class);
 
 	private static String SYSTEMS_PARAM = "systems";
-	private static String ROLES_PARAM = "roles";
+	private static String ROLE_CATALOGUE_PARAM = "role_catalogue";
 	private static String ENV_PARAM = "environment";
 	private static String CATALOG_PARAM = "catalog";
 
 	private UUID targetSystemUuid;
-	private List<UUID> roles;
+	private UUID role_catalogue;
 	private String environment;
 	private UUID catalog;
 
@@ -70,13 +71,17 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 	public void init(Map<String, Object> properties) {
 		super.init(properties);
 		targetSystemUuid = getParameterConverter().toUuid(properties, SYSTEMS_PARAM);
-		roles = getParameterConverter().toUuids(properties, ROLES_PARAM);
+		role_catalogue = getParameterConverter().toUuid(properties, ROLE_CATALOGUE_PARAM);
 		environment = getParameterConverter().toString(properties, ENV_PARAM);
 		catalog = getParameterConverter().toUuid(properties, CATALOG_PARAM);
 	}
 
 	@Override
 	public OperationResult process() {
+		List<UUID> roles = roleCatalogueRoleService.findAllByRoleCatalogue(role_catalogue).stream()
+				.map(IdmRoleCatalogueRoleDto::getRole)
+				.collect(Collectors.toList());
+
 		this.count = (long) roles.size();
 		this.counter = 0L;
 
@@ -156,13 +161,12 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 		systems.setFaceType(AccFaceType.SYSTEM_SELECT);
 		systems.setRequired(true);
 
-		IdmFormAttributeDto roles = new IdmFormAttributeDto(
-				ROLES_PARAM,
-				"Roles which will be duplicated",
+		IdmFormAttributeDto roleCatalogue = new IdmFormAttributeDto(
+				ROLE_CATALOGUE_PARAM,
+				"Catalog from which all roles will be duplicated",
 				PersistentType.UUID);
-		roles.setFaceType(AccFaceType.ROLE_SELECT);
-		roles.setMultiple(true);
-		roles.setRequired(true);
+		roleCatalogue.setFaceType(AccFaceType.ROLE_CATALOGUE_SELECT);
+		roleCatalogue.setRequired(true);
 
 		IdmFormAttributeDto env = new IdmFormAttributeDto(
 				ENV_PARAM,
@@ -179,7 +183,7 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 		catalogue.setRequired(true);
 
 		attributes.add(systems);
-		attributes.add(roles);
+		attributes.add(roleCatalogue);
 		attributes.add(env);
 		attributes.add(catalogue);
 		return attributes;

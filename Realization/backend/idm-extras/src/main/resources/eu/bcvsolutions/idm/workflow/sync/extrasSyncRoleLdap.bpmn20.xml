@@ -347,6 +347,9 @@ removeLastItemFromCatalogue();
         import org.springframework.data.domain.Page;
         import java.text.MessageFormat;
         import groovy.json.StringEscapeUtils;
+        import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
+        import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
+        import java.util.UUID;
 
         final String roleName = "name"; // name of role
         String nameV = null;
@@ -396,11 +399,25 @@ removeLastItemFromCatalogue();
 
         // system for provisioning users
         String systemCodeForRoleMapping = configurationService.getValue("idm.pub.acc.syncRole.provisioningOfIdentities.system.code", null);
-        UUID systemId = defaultSysSystemService.getByCode(systemCodeForRoleMapping)?.getId();
-        if (systemId == null) {
-          throw new Exception(MessageFormat.format("System [{0}] was not found. Role will not processed.", systemCodeForRoleMapping));
+        String codeListForProvisioning = configurationService.getValue("idm.pub.acc.syncRole.provisioningOfIdentities.codeList", null);
+
+        // backward compatibility
+        if(codeListForProvisioning == null) {
+          UUID systemIdForMapping = defaultSysSystemService.getByCode(systemCodeForRoleMapping)?.getId();
+          if (systemIdForMapping == null) {
+            throw new Exception(MessageFormat.format("System [{0}] was not found. Role will not processed.", systemCodeForRoleMapping));
+          }
+          execution.setVariable("systemIdForProvisioningIdentities", systemIdForMapping);
+        } else {
+          // get code list items by id from property and get the correct item by systemId
+          IdmCodeListItemDto item = codeListManager.getItem(codeListForProvisioning, systemId.toString());
+          if (item != null) {
+            execution.setVariable("systemIdForProvisioningIdentities", UUID.fromString(item.getName()));
+          } else {
+            throw new Exception(MessageFormat.format("System [{0}] was not found. Role will not processed.", codeListForProvisioning));
+          }
         }
-        execution.setVariable("systemIdForProvisioningIdentities", systemId);
+
       </script>
     </scriptTask>
     <sequenceFlow id="flow14" sourceRef="exclusivegateway2" targetRef="scripttask13"></sequenceFlow>
