@@ -22,8 +22,9 @@
 		#set ( $events = $status.events )
 		#set ( $syncs = $status.syncs )
 		#set ( $contracts = $status.contracts )
-
-
+		#set ( $lrtRunningTooLong = $status.lrtRunningTooLong )
+		#set ( $numberOfEvents = $status.numberOfEvents )
+		
 		<h1>Status CzechIdM</h1>
 		<b>
 		#if($containsError)
@@ -32,7 +33,7 @@
 			Vše proběhlo v pořádku
 		#end</b><br />
 		<br />
-		doba v provozu: $uptime
+		počet dnů v provozu: $uptime
 
 		<br />
 		<br />
@@ -87,24 +88,36 @@
 				#end
 
 				<h2>Status naplánovaných úloh:</h2>
-				#if(!$lrts.isEmpty())
-					#foreach( $lrt in $lrts )
-						#set ( $type = $lrt.type )
-						#set ( $result = $lrt.result )
-						#set ( $warningCount = $lrt.warningCount )
-						#set ( $failedCount = $lrt.failedCount )
-
-						<h4>$type</h4>
+				#if(!$lrts.isEmpty() || !$lrtRunningTooLong.isEmpty())
+					#if(!$lrts.isEmpty())
+						#foreach( $lrt in $lrts )
+							#set ( $type = $lrt.type )
+							#set ( $result = $lrt.result )
+							#set ( $warningCount = $lrt.warningCount )
+							#set ( $failedCount = $lrt.failedCount )
+	
+							<h4>$type</h4>
+							<ul>
+							  <li><b>Upozornění:</b> $!warningCount</li>
+							  <li><b>Nezdařené:</b> $!failedCount</li>
+							  <li><b>Výsledek:</b> $!result</li>
+							</ul>
+							<br />
+						#end
+					#end
+					#if(!$lrtRunningTooLong.isEmpty())
+						<b>Tyto naplánované úlohy běží příliš dlouho:</b>
 						<ul>
-						  <li><b>Upozornění:</b> $!warningCount</li>
-						  <li><b>Nezdařené:</b> $!failedCount</li>
-						  <li><b>Výsledek:</b> $!result</li>
+						#foreach( $lrtTooLong in $lrtRunningTooLong )
+						 	 <li>$lrtTooLong.type, $lrtTooLong.result</li>
+						#end
 						</ul>
-						<hr>
 					#end
 				#else
 					<strong>OK</strong>
 				#end
+				
+				
 
 				<h2>Status událostí:</h2>
 				#if($events)
@@ -140,6 +153,9 @@
 						  </ul>
 					  #end
 					</ul>
+					#if($numberOfEvents)
+						<b>V IdM je vytvořeno příliš mnoho eventů:</b> $numberOfEvents
+					#end
 				#else
 					<strong>OK</strong>
 				#end
@@ -155,6 +171,10 @@
 								#foreach( $syncsItem in $syncsItems )
 									#set ( $syncName = $syncsItem.syncName )
 									#set ( $containsError = $syncsItem.containsError )
+									#set ( $runningTooLong = $syncsItem.runningTooLong )
+									#if($runningTooLong)
+										<li>Synchronizace <b>$syncName:</b> se zpracovává příliš dlouho!!</li>
+									#end
 									#if($containsError)
 										<li>Synchronizace <b>$syncName:</b> obsahuje chybu!!</li>
 									#end
@@ -220,7 +240,7 @@
 			All watched operations are OK.
 		#end</b><br />
 		<br />
-		uptime: $uptime
+		uptime days: $uptime
 
 		<br />
 		<br />
@@ -275,25 +295,35 @@
 				#end
 
 				<h2>Long running task status:</h2>
-				#if(!$lrts.isEmpty())
-					#foreach( $lrt in $lrts )
-						#set ( $type = $lrt.type )
-						#set ( $result = $lrt.result )
-						#set ( $warningCount = $lrt.warningCount )
-						#set ( $failedCount = $lrt.failedCount )
-
-						<h4>$type</h4>
+				#if(!$lrts.isEmpty() || !$lrtRunningTooLong.isEmpty())
+					#if(!$lrts.isEmpty())
+						#foreach( $lrt in $lrts )
+							#set ( $type = $lrt.type )
+							#set ( $result = $lrt.result )
+							#set ( $warningCount = $lrt.warningCount )
+							#set ( $failedCount = $lrt.failedCount )
+	
+							<h4>$type</h4>
+							<ul>
+							  <li><b>Warning:</b> $!warningCount</li>
+							  <li><b>Failed:</b> $!failedCount</li>
+							  <li><b>Result:</b> $!result</li>
+							</ul>
+							<br />
+						#end
+					#end
+					#if(!$lrtRunningTooLong.isEmpty())
+						<b>These scheduled tasks are runnig way too long:</b>
 						<ul>
-						  <li><b>Warning:</b> $!warningCount</li>
-						  <li><b>Failed:</b> $!failedCount</li>
-						  <li><b>Result:</b> $!result</li>
+						#foreach( $lrtTooLong in $lrtRunningTooLong )
+						  	<li>$lrtTooLong.type, $lrtTooLong.result</li>
+						#end
 						</ul>
-						<hr>
 					#end
 				#else
 					<strong>OK</strong>
 				#end
-
+				
 				<h2>Event status:</h2>
 				#if($events)
 					#set ( $exceptions = $events.exceptions )
@@ -328,6 +358,9 @@
 						  </ul>
 					  #end
 					</ul>
+					#if($numberOfEvents)
+						<b>In IdM there are too many created events:</b> $numberOfEvents
+					#end
 				#else
 					<strong>OK</strong>
 				#end
@@ -343,6 +376,10 @@
 								#foreach( $syncsItem in $syncsItems )
 									#set ( $syncName = $syncsItem.syncName )
 									#set ( $containsError = $syncsItem.containsError )
+									#set ( $runningTooLong = $syncsItem.runningTooLong )
+									#if($runningTooLong)
+										<li>Synchronization <b>$syncName:</b> runs too long!!</li>
+									#end
 									#if($containsError)
 										<li>Synchronization <b>$syncName:</b> contains error!!</li>
 									#end

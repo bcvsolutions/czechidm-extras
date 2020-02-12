@@ -1,8 +1,8 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo;
 
-import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
-
 import java.util.List;
+
+import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
 
 public class CompleteStatus {
 
@@ -14,6 +14,24 @@ public class CompleteStatus {
 	private boolean containsError = false;
 	private String errorDuringSend = null;
 	private List<IdentityStateReportDto> contracts = null;
+	private List<LrtStatusPojo> lrtRunningTooLong = null;
+	private Integer numberOfEvents = null;
+
+	public List<LrtStatusPojo> getLrtRunningTooLong() {
+		return lrtRunningTooLong;
+	}
+
+	public void setLrtRunningTooLong(List<LrtStatusPojo> lrtRunningTooLong) {
+		this.lrtRunningTooLong = lrtRunningTooLong;
+	}
+
+	public Integer getNumberOfEvents() {
+		return numberOfEvents;
+	}
+
+	public void setNumberOfEvents(Integer numberOfEvents) {
+		this.numberOfEvents = numberOfEvents;
+	}
 
 	public List<ProvisioningStatusPojo> getProvisioning() {
 		return provisioning;
