@@ -2,7 +2,8 @@
 <!-- 
 	Notification to role holders and optionally manager that the contract is ending today.
 parameters:
-    user - full name
+	userIdentity - full IdmIdentityDto
+    user - full name and login
     department -
     ppvEnd -
     manager
@@ -30,7 +31,7 @@ parameters:
         ]]>
     </bodyHtml>
     <bodyText></bodyText>
-    <parameter>user, department, ppvEnd, manager</parameter>
+    <parameter>user, userIdentity, department, ppvEnd, manager</parameter>
     <systemTemplate>false</systemTemplate>
     <moduleId>extras</moduleId>
 </template>

@@ -2,6 +2,7 @@
 <!-- 
 	Notification to manager that contract is ending in future.
 parameters:
+	userIdentity - full IdmIdentityDto
     user - full name
     department -
     ppvEnd -
@@ -29,7 +30,7 @@ parameters:
         ]]>
     </bodyHtml>
     <bodyText></bodyText>
-    <parameter>user, department, ppvEnd, manager</parameter>
+    <parameter>user, userIdentity, department, ppvEnd, manager</parameter>
     <systemTemplate>false</systemTemplate>
     <moduleId>extras</moduleId>
 </template>

@@ -1,7 +1,5 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import static org.junit.Assert.assertNotNull;
-
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,6 +18,7 @@ import org.springframework.stereotype.Service;
 import com.google.common.collect.ImmutableMap;
 
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
+import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
@@ -68,6 +67,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	private LocalDate currentDate = new LocalDate();
 	private LocalDate validMinusXDays = new LocalDate();
 	private String fullName;
+	private IdmIdentityDto identity;
 	private String position;
 	private String ppvEnd;
 	private UUID recipientRoleBefore = null;
@@ -142,9 +142,9 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
 		}
 		
-		IdmIdentityDto identityDto = DtoUtils.getEmbedded(dto, IdmIdentityContract_.identity, IdmIdentityDto.class);
-		fullName = identityDto.getFirstName() + " " + identityDto.getLastName() + " (" + 
-				identityDto.getUsername() + ")";
+		identity = DtoUtils.getEmbedded(dto, IdmIdentityContract_.identity, IdmIdentityDto.class);
+		fullName = identity.getFirstName() + " " + identity.getLastName() + " (" + 
+				identity.getUsername() + ")";
 
 		if (dto.getWorkPosition() != null) {
 			position = DtoUtils.getEmbedded(dto, IdmIdentityContract_.workPosition, IdmTreeNodeDto.class).getName();
@@ -152,14 +152,19 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		
 		ppvEnd = dto.getValidTill().toString("dd. MM. YYYY");
 
-		IdmIdentityDto guarantee = getManagerForContract(dto.getId(), identityDto.getId());
+		IdmIdentityDto guarantee = getManagerForContract(dto.getId(), identity.getId());
 		if (guarantee == null) {
-			LOG.info(String.format("ContractEndNotificationTask No manager for contract %s.", dto.getId()));
+			LOG.info("ContractEndNotificationTask No manager for contract [{}].", dto.getId());
 		}
 		
 		// end of contract today and daysBeforeEnd set to 0
 		if (daysBeforeEnd == 0L && currentDate.isEqual(validMinusXDays)) {
 			recipients = getRecipients(guarantee);
+			if (recipients.isEmpty()) {
+				return Optional.of(new OperationResult.Builder(OperationState.EXCEPTION).
+						setModel(new DefaultResultModel(ExtrasResultCode.NO_RECIPIENTS_FOUND)).
+						build()); 
+			}
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END, new ArrayList<>(recipients), guarantee);
 			return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
 		}
@@ -167,6 +172,11 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		// end of contract will be in daysBeforeEnd days
 		if (daysBeforeEnd > 0L) {
 			recipients = getRecipients(guarantee);
+			if (recipients.isEmpty()) {
+				return Optional.of(new OperationResult.Builder(OperationState.EXCEPTION).
+						setModel(new DefaultResultModel(ExtrasResultCode.NO_RECIPIENTS_FOUND)).
+						build());  
+			}
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END_IN_X_DAYS, new ArrayList<>(recipients), guarantee);
 			return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
 		} else {
@@ -180,6 +190,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 				new IdmMessageDto
 						.Builder()
 						.setLevel(NotificationLevel.INFO)
+						.addParameter("userIdentity", identity)
 						.addParameter("user", fullName)
 						.addParameter("department", position)
 						.addParameter("ppvEnd", ppvEnd)
