@@ -7,10 +7,14 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.LocalDateTime;
+
+import java.time.ZonedDateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
@@ -18,8 +22,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
-
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Ints;
 
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.dto.AbstractSysSyncConfigDto;
@@ -58,12 +62,7 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.IdmLongRunningTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateExecutor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.CompleteStatus;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.EventStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.LrtStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.ProvisioningStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SyncStatusPojo;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SystemSyncStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.*;
 
 /**
  * LRT send status about state of CzechIdM
@@ -90,6 +89,8 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	private static String SEND_CONTRACTS_STATUS_PARAM = "sendContractsStatusParam";
 	private static String RECIPIENTS_PARAM = "recipients";
 	private static String REGEX = ",";
+	private static String LRT_IS_RUNNING_TOO_LONG_PARAM = "lrtIsRunningTooLongParam";
+	private static String TOO_MANY_EVENTS_PARAM = "tooManyEventsParam";
 	@Autowired
 	private SysProvisioningOperationService provisioningOperationService;
 	@Autowired
@@ -123,6 +124,8 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 	private DateTime lastRun = null;
 	private DateTime started = null;
 	private List<IdmIdentityDto> recipients = null;
+	private Integer runningTooLong = 0;
+	private Integer numberOfEvents = 0;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -136,9 +139,9 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 		// first run, default run - 10days
 		if (lastRunAsString == null) {
-			lastRunAsString = DateTime.now().minusDays(10).toString();
+			lastRunAsString = ZonedDateTime.now().minusDays(10).toString();
 		}
-		lastRun = new DateTime(lastRunAsString);
+		lastRun = DateTime.parse(lastRunAsString);
 		//
 		sendProvisioningStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_PROVISIONING_STATUS_PARAM));
 		sendSyncStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_SYNC_STATUS_PARAM));
@@ -146,6 +149,10 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		sendEventStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_EVENT_STATUS_PARAM));
 		sendContractsStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_CONTRACTS_STATUS_PARAM));
 		recipients = getRecipients(properties.get(RECIPIENTS_PARAM));
+		runningTooLong = Optional.ofNullable((String)properties.get(LRT_IS_RUNNING_TOO_LONG_PARAM))
+				 .map(Ints::tryParse).orElse(0);
+		numberOfEvents = Optional.ofNullable((String)properties.get(TOO_MANY_EVENTS_PARAM))
+				 .map(Ints::tryParse).orElse(0);
 		//
 //		Object systemIdsAsObject = properties.get(SYSTEM_ID_PARAM);
 //		if (systemIdsAsObject != null) {
@@ -181,6 +188,8 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		props.put(SEND_EVENT_STATUS_PARAM, sendEventStatus);
 		props.put(SEND_CONTRACTS_STATUS_PARAM, sendContractsStatus);
 		props.put(RECIPIENTS_PARAM, recipients);
+		props.put(LRT_IS_RUNNING_TOO_LONG_PARAM, runningTooLong);
+		props.put(TOO_MANY_EVENTS_PARAM, numberOfEvents);
 		return props;
 	}
 
@@ -192,6 +201,8 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		attributes.add(createBooleanAttribute(SEND_EVENT_STATUS_PARAM, "Send event status"));
 		attributes.add(createBooleanAttribute(SEND_LRT_STATUS_PARAM, "Send LRT status"));
 		attributes.add(createBooleanAttribute(SEND_SYNC_STATUS_PARAM, "Send sync status"));
+		attributes.add(createIntAttribute(LRT_IS_RUNNING_TOO_LONG_PARAM, "Number of hours for LRTs running too long"));
+		attributes.add(createIntAttribute(TOO_MANY_EVENTS_PARAM, "Number of maximum events"));
 		//
 		IdmFormAttributeDto recipients = new IdmFormAttributeDto(
 				RECIPIENTS_PARAM,
@@ -207,6 +218,15 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				face,
 				name,
 				PersistentType.BOOLEAN);
+		attribute.setFaceType(null);
+		return attribute;
+	}
+	
+	private IdmFormAttributeDto createIntAttribute(String face, String name) {
+		IdmFormAttributeDto attribute = new IdmFormAttributeDto(
+				face,
+				name,
+				PersistentType.INT);
 		attribute.setFaceType(null);
 		return attribute;
 	}
@@ -232,12 +252,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 			LOG.error("Error during send CzechIdM status.", e);
 			status.setErrorDuringSend(e.getMessage());
 		}
-
+		
 		try {
 
 			if (sendLrtStatus) {
 				status.setLrts(getLrtStatus());
-				if (!status.getLrts().isEmpty()) {
+				status.setLrtRunningTooLong(getLongRunningLrt());
+				if (!status.getLrts().isEmpty() || !status.getLrtRunningTooLong().isEmpty()) {
 					status.setContainsError(true);
 				}
 			}
@@ -246,12 +267,13 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 			LOG.error("Error during send CzechIdM status.", e);
 			status.setErrorDuringSend(e.getMessage());
 		}
-
+		
 		try {
 
 			if (sendEventStatus) {
 				status.setEvents(getEventStatus());
-				if (status.getEvents() != null) {
+				status.setNumberOfEvents(getNumberOfTooManyEvents());
+				if (status.getEvents() != null || status.getNumberOfEvents() != null) {
 					status.setContainsError(true);
 				}
 			}
@@ -260,7 +282,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 			LOG.error("Error during send CzechIdM status.", e);
 			status.setErrorDuringSend(e.getMessage());
 		}
-
+		
 		try {
 
 			if (sendSyncStatus) {
@@ -274,17 +296,18 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 			LOG.error("Error during send CzechIdM status.", e);
 			status.setErrorDuringSend(e.getMessage());
 		}
-
+			
 		try {
 
 			if (sendContractsStatus) {
 				status.setContracts(getContractsStatus());
 			}
+
 			
 		} catch (Exception e) {
 			LOG.error("Error during send CzechIdM status.", e);
 			status.setErrorDuringSend(e.getMessage());
-		} 
+		}
 		
 		notificationManager.send(ExtrasModuleDescriptor.TOPIC_STATUS,
 				new IdmMessageDto.Builder()
@@ -557,12 +580,19 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				
 				// must be only one
 				SysSyncLogDto logDto = logs.get(0);
-
+				
+				boolean hasSyncRunTooLong = hasSyncRunTooLong(logDto);
+				
+				// synchronization was running too long
+				if(hasSyncRunTooLong) {
+					syncStatus.setRunningTooLong(true);
+				}
+				// sync contains error
 				if (logDto.isContainsError()) {
 					syncStatus.setContainsError(true);
 				}
 
-				if (syncStatus.isContainsError()) {
+				if (syncStatus.isContainsError() || hasSyncRunTooLong) {
 					systemSyncStatus.add(syncStatus);
 				}
 			}
@@ -594,6 +624,54 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		}
 		return recipients;
 	}
+	
+	/**
+	 * Return list of lrts, which are running too long, based on parameter 'runningTooLong'
+	 * @return
+	 */
+	private List<LrtStatusPojo> getLongRunningLrt() {
+		IdmLongRunningTaskFilter filter = new IdmLongRunningTaskFilter();
+		filter.setRunning(true);
+		List<IdmLongRunningTaskDto> runningTasks = longRunningTaskService.find(filter, null).getContent();
+		
+		List<LrtStatusPojo> runningTasksRunningTooLong = new ArrayList<LrtStatusPojo>();
+		for(IdmLongRunningTaskDto task : runningTasks) {
+			if(task.getTaskStarted().isBefore(started.minusHours(runningTooLong))) {
+				LrtStatusPojo lrt = new LrtStatusPojo();
+				lrt.setType(task.getTaskType());
+				lrt.setResult(task.getTaskDescription());
+				runningTasksRunningTooLong.add(lrt);
+			}
+		}
+		return runningTasksRunningTooLong;
+	}
+	
+	/**
+	 * If there are too many events in CREATED state, methods return number of CREATED events else null
+	 * @return
+	 */
+	private Integer getNumberOfTooManyEvents() {
+		IdmEntityEventFilter filter = new IdmEntityEventFilter();
+
+		filter.setStates(Lists.newArrayList(OperationState.CREATED));
+		List<IdmEntityEventDto> list = entityEventService.find(filter, null).getContent();
+		if (!list.isEmpty() && list.size() > numberOfEvents) {
+			return list.size();
+		}
+		return null;
+	}
+	
+	/**
+	 * Returns true if synchronization is running or runned too long, otherwise returns false
+	 * @param logDto
+	 * @return
+	 */
+	private boolean hasSyncRunTooLong(SysSyncLogDto logDto) {
+		if(logDto.isRunning()) {
+			return LocalDateTime.now().minusHours(runningTooLong).isAfter(logDto.getStarted());
+		} else {
+			return logDto.getEnded().minusHours(runningTooLong).isAfter(logDto.getStarted());
+		}
+	}
 
 }
-
