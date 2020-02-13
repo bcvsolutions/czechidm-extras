@@ -1,6 +1,8 @@
 package eu.bcvsolutions.idm.extras.event.processor.provisioning;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -146,6 +148,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		}
 
 		String userDn = null;
+		String userSid = null;
 
 		// load old DN, in event we have the new one but we need the old one for finding users groups
 		IcObjectClass objectClass = provisioningOperation.getProvisioningContext().getConnectorObject()
@@ -166,6 +169,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 					objectClass, uidAttribute);
 			if (existsConnectorObject != null) {
 				userDn = String.valueOf(existsConnectorObject.getAttributeByName("__NAME__").getValue());
+				userSid = convertSidToStr((byte[]) existsConnectorObject.getAttributeByName("objectSID").getValue());
 			}
 		} catch (Exception ex) {
 			LOG.info("Error during getting user: ", ex);
@@ -180,9 +184,9 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		Set<String> userGroups = new HashSet<>();
 
 		// find all user's groups
-		if (userDn != null) {
+		if (userDn != null && userSid != null) {
 			try {
-				userGroups = crossDomainService.getAllUsersGroups(adSystems, userDn);
+				userGroups = crossDomainService.getAllUsersGroups(adSystems, userDn, userSid);
 			} catch (Exception e) {
 				LOG.info("Error during getting user's groups: ", e);
 				provisioningOperation = provisioningOperationService.handleFailed(provisioningOperation, e);
@@ -412,6 +416,23 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		schemaAttributeFilter.setSystemId(system.getId());
 		schemaAttributeFilter.setObjectClassId(objectClass.getId());
 		return schemaAttributeService.find(schemaAttributeFilter, null).getContent();
+	}
+
+	private String convertSidToStr(byte[] sid) {
+		if (sid == null)
+			return null;
+		if (sid.length < 8 || sid.length % 4 != 0)
+			return "";
+		StringBuilder sb = new StringBuilder();
+		sb.append("S-").append(sid[0]);
+		int c = sid[1]; // Init with Subauthority Count.
+		ByteBuffer bb = ByteBuffer.wrap(sid);
+		sb.append("-").append(bb.getLong() & 0xFFFFFFFFFFFFL);
+		bb.order(ByteOrder.LITTLE_ENDIAN); // Now switch.
+		for (int i = 0; i < c; i++) { // Create Subauthorities.
+			sb.append("-").append((long) bb.getInt() & 0xFFFFFFFFL);
+		}
+		return sb.toString();
 	}
 
 	@Override

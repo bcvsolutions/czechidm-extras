@@ -27,6 +27,7 @@ import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
 import eu.bcvsolutions.idm.ic.api.IcObjectClass;
 import eu.bcvsolutions.idm.ic.filter.api.IcFilter;
 import eu.bcvsolutions.idm.ic.filter.impl.IcEqualsFilter;
+import eu.bcvsolutions.idm.ic.filter.impl.IcOrFilter;
 import eu.bcvsolutions.idm.ic.impl.IcAttributeImpl;
 import eu.bcvsolutions.idm.ic.impl.IcConfigurationPropertyImpl;
 import eu.bcvsolutions.idm.ic.impl.IcObjectClassImpl;
@@ -65,10 +66,10 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 			AtomicReference<List<String>> containers = new AtomicReference<>();
 			AtomicReference<eu.bcvsolutions.idm.core.security.api.domain.GuardedString> password = new AtomicReference<>();
 			config.getConfigurationProperties().getProperties().forEach(icConfigurationProperty -> {
-				if (icConfigurationProperty.getName().equals("user")) {
+				if (icConfigurationProperty.getName().equals("principal")) {
 					user.set(String.valueOf(icConfigurationProperty.getValue()));
 				}
-				if (icConfigurationProperty.getName().equals("password")) {
+				if (icConfigurationProperty.getName().equals("credentials")) {
 					GuardedStringAccessor accessor = new GuardedStringAccessor();
 					((GuardedString) icConfigurationProperty.getValue()).access(accessor);
 					password.set(new eu.bcvsolutions.idm.core.security.api.domain.GuardedString(new String(accessor.getArray())));
@@ -95,22 +96,23 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 
 	/**
 	 * Get groups from all system for user
+	 *
 	 * @param adSystems systems in which this method will search. In processor we use value of idm.sec.extras.configuration.cross.adSystems
-	 * @param userDn dn of user for which we will search
+	 * @param userDn    dn of user for which we will search
 	 * @return Set of groups DN
 	 */
 	@Override
-	public Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn) {
+	public Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn, String userSid) {
 		IcObjectClass groupClass = new IcObjectClassImpl("__GROUP__");
 		Set<String> userGroups = new HashSet<>();
 		adSystems.forEach(adSystem -> {
 			SysSystemDto adSystemDto = systemService.get(adSystem);
-			userGroups.addAll(findUserGroupsOnSystem(adSystemDto, groupClass, userDn));
+			userGroups.addAll(findUserGroupsOnSystem(adSystemDto, groupClass, userDn, userSid));
 		});
 		return userGroups;
 	}
 
-	private Set<String> findUserGroupsOnSystem(SysSystemDto system, IcObjectClass objectClass, String dn) {
+	private Set<String> findUserGroupsOnSystem(SysSystemDto system, IcObjectClass objectClass, String dn, String userSid) {
 		Set<String> result = new HashSet<>();
 		// Find connector identification persisted in system
 		if (system.getConnectorKey() == null) {
@@ -124,9 +126,29 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 					ImmutableMap.of("system", system.getName()));
 		}
 		//
+		List<IcFilter> filters = new ArrayList<>();
+
 		IcAttribute membersAttribute = new IcAttributeImpl("member", dn);
-		IcFilter filter = new IcEqualsFilter(membersAttribute);
-		connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, filter, connectorObject -> {
+		IcFilter dnFilter = new IcEqualsFilter(membersAttribute);
+		filters.add(dnFilter);
+
+		IcConfigurationProperty defaultPeopleContainer = connectorConfig.getConfigurationProperties().getProperties()
+				.stream()
+				.filter(icConfigurationProperty -> icConfigurationProperty.getName().equals("defaultPeopleContainer"))
+				.findFirst()
+				.orElse(null);
+
+		if (defaultPeopleContainer != null) {
+			String peopleContainer = (String) defaultPeopleContainer.getValue();
+			String systemDc = peopleContainer.substring(peopleContainer.indexOf("DC="));
+
+			IcAttribute membersSidAttribute = new IcAttributeImpl("member", "CN=" + userSid + ",CN=ForeignSecurityPrincipals," + systemDc);
+			IcFilter sidDnFilter = new IcEqualsFilter(membersSidAttribute);
+			filters.add(sidDnFilter);
+		}
+
+		IcFilter orFilter = new IcOrFilter(filters);
+		connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, orFilter, connectorObject -> {
 			IcAttribute groupDn = connectorObject.getAttributeByName("__NAME__");
 			if (groupDn != null && !StringUtils.isEmpty(groupDn.getValue())) {
 				result.add(String.valueOf(groupDn.getValue()));

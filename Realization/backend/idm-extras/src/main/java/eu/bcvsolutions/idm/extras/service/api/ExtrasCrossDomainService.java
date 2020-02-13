@@ -13,5 +13,5 @@ public interface ExtrasCrossDomainService {
 
 	IcConnectorConfiguration getConfiguration(IcConnectorConfiguration connectorConfig, List<UUID> adSystems);
 
-	Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn);
+	Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn, String userSid);
 }
