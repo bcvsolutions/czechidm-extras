@@ -170,12 +170,12 @@
 							<ul>
 								#foreach( $syncsItem in $syncsItems )
 									#set ( $syncName = $syncsItem.syncName )
-									#set ( $containsError = $syncsItem.containsError )
+									#set ( $syncContainsError = $syncsItem.containsError )
 									#set ( $runningTooLong = $syncsItem.runningTooLong )
 									#if($runningTooLong)
 										<li>Synchronizace <b>$syncName:</b> se zpracovává příliš dlouho!!</li>
 									#end
-									#if($containsError)
+									#if($syncContainsError)
 										<li>Synchronizace <b>$syncName:</b> obsahuje chybu!!</li>
 									#end
 								#end
@@ -375,12 +375,12 @@
 							<ul>
 								#foreach( $syncsItem in $syncsItems )
 									#set ( $syncName = $syncsItem.syncName )
-									#set ( $containsError = $syncsItem.containsError )
+									#set ( $syncContainsError = $syncsItem.containsError )
 									#set ( $runningTooLong = $syncsItem.runningTooLong )
 									#if($runningTooLong)
 										<li>Synchronization <b>$syncName:</b> runs too long!!</li>
 									#end
-									#if($containsError)
+									#if($syncContainsError)
 										<li>Synchronization <b>$syncName:</b> contains error!!</li>
 									#end
 								#end
