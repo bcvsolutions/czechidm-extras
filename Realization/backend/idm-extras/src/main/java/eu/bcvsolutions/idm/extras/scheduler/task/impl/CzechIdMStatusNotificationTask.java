@@ -257,8 +257,10 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 			if (sendLrtStatus) {
 				status.setLrts(getLrtStatus());
-				status.setLrtRunningTooLong(getLongRunningLrt());
-				if (!status.getLrts().isEmpty() || !status.getLrtRunningTooLong().isEmpty()) {
+				if(runningTooLong > 0) {
+					status.setLrtRunningTooLong(getLongRunningLrt());
+				}
+				if (!status.getLrts().isEmpty() || (status.getLrtRunningTooLong() != null && !status.getLrtRunningTooLong().isEmpty())) {
 					status.setContainsError(true);
 				}
 			}
@@ -272,7 +274,9 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 			if (sendEventStatus) {
 				status.setEvents(getEventStatus());
-				status.setNumberOfEvents(getNumberOfTooManyEvents());
+				if(numberOfEvents > 0) {
+					status.setNumberOfEvents(getNumberOfTooManyEvents());
+				}
 				if (status.getEvents() != null || status.getNumberOfEvents() != null) {
 					status.setContainsError(true);
 				}
@@ -581,7 +585,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				// must be only one
 				SysSyncLogDto logDto = logs.get(0);
 				
-				boolean hasSyncRunTooLong = hasSyncRunTooLong(logDto);
+				boolean hasSyncRunTooLong = runningTooLong > 0 ? hasSyncRunTooLong(logDto) : false;
 				
 				// synchronization was running too long
 				if(hasSyncRunTooLong) {
