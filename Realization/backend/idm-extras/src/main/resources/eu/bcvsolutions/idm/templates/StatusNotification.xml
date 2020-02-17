@@ -154,7 +154,7 @@
 					  #end
 					</ul>
 					#if($numberOfEvents)
-						<b>V IdM je vytvořeno příliš mnoho eventů:</b> $numberOfEvents
+						<b>V IdM je vytvořeno příliš mnoho událostí:</b> $numberOfEvents
 					#end
 				#else
 					<strong>OK</strong>
