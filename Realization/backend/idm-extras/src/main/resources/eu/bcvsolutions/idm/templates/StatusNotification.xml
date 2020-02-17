@@ -88,7 +88,7 @@
 				#end
 
 				<h2>Status naplánovaných úloh:</h2>
-				#if(!$lrts.isEmpty() || !$lrtRunningTooLong.isEmpty())
+				#if(!$lrts.isEmpty() || ($lrtRunningTooLong && !$lrtRunningTooLong.isEmpty()))
 					#if(!$lrts.isEmpty())
 						#foreach( $lrt in $lrts )
 							#set ( $type = $lrt.type )
@@ -105,7 +105,7 @@
 							<br />
 						#end
 					#end
-					#if(!$lrtRunningTooLong.isEmpty())
+					#if($lrtRunningTooLong && !$lrtRunningTooLong.isEmpty())
 						<b>Tyto naplánované úlohy běží příliš dlouho:</b>
 						<ul>
 						#foreach( $lrtTooLong in $lrtRunningTooLong )
@@ -295,7 +295,7 @@
 				#end
 
 				<h2>Long running task status:</h2>
-				#if(!$lrts.isEmpty() || !$lrtRunningTooLong.isEmpty())
+				#if(!$lrts.isEmpty() || ($lrtRunningTooLong && !$lrtRunningTooLong.isEmpty()))
 					#if(!$lrts.isEmpty())
 						#foreach( $lrt in $lrts )
 							#set ( $type = $lrt.type )
@@ -312,7 +312,7 @@
 							<br />
 						#end
 					#end
-					#if(!$lrtRunningTooLong.isEmpty())
+					#if($lrtRunningTooLong && !$lrtRunningTooLong.isEmpty())
 						<b>These scheduled tasks are runnig way too long:</b>
 						<ul>
 						#foreach( $lrtTooLong in $lrtRunningTooLong )
