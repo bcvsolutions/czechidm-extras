@@ -3,23 +3,21 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-
-import java.time.ZonedDateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
+
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
 
@@ -31,7 +29,6 @@ import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysProvisioningOperationFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSyncConfigFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSyncLogFilter;
-import eu.bcvsolutions.idm.acc.entity.SysSyncLog_;
 import eu.bcvsolutions.idm.acc.service.api.SysProvisioningOperationService;
 import eu.bcvsolutions.idm.acc.service.api.SysSyncConfigService;
 import eu.bcvsolutions.idm.acc.service.api.SysSyncLogService;
@@ -60,7 +57,12 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.IdmLongRunningTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateExecutor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.*;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.CompleteStatus;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.EventStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.LrtStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.ProvisioningStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SyncStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SystemSyncStatusPojo;
 
 /**
  * LRT send status about state of CzechIdM
@@ -148,9 +150,9 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		sendContractsStatus = BooleanUtils.toBoolean(getParameterConverter().toBoolean(properties, SEND_CONTRACTS_STATUS_PARAM));
 		recipients = getRecipients(properties.get(RECIPIENTS_PARAM));
 		runningTooLong = Optional.ofNullable((String)properties.get(LRT_IS_RUNNING_TOO_LONG_PARAM))
-				 .map(Ints::tryParse).orElse(0);
+				 .map(Ints::tryParse).orElse(-1);
 		numberOfEvents = Optional.ofNullable((String)properties.get(TOO_MANY_EVENTS_PARAM))
-				 .map(Ints::tryParse).orElse(0);
+				 .map(Ints::tryParse).orElse(-1);
 		//
 //		Object systemIdsAsObject = properties.get(SYSTEM_ID_PARAM);
 //		if (systemIdsAsObject != null) {
@@ -255,8 +257,11 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 			if (sendLrtStatus) {
 				status.setLrts(getLrtStatus());
-				status.setLrtRunningTooLong(getLongRunningLrt());
-				if (!status.getLrts().isEmpty() || !status.getLrtRunningTooLong().isEmpty()) {
+				// by default and with wrong values it is disabled
+				if(runningTooLong > 0) {
+					status.setLrtRunningTooLong(getLongRunningLrt());
+				}
+				if (!status.getLrts().isEmpty() || (status.getLrtRunningTooLong() != null && !status.getLrtRunningTooLong().isEmpty())) {
 					status.setContainsError(true);
 				}
 			}
@@ -270,7 +275,10 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 			if (sendEventStatus) {
 				status.setEvents(getEventStatus());
-				status.setNumberOfEvents(getNumberOfTooManyEvents());
+				// by default and with wrong values it is disabled
+				if(numberOfEvents > 0) {
+					status.setNumberOfEvents(getNumberOfTooManyEvents());
+				}
 				if (status.getEvents() != null || status.getNumberOfEvents() != null) {
 					status.setContainsError(true);
 				}
@@ -563,34 +571,34 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 				SystemSyncStatusPojo syncStatus = new SystemSyncStatusPojo();
 				syncStatus.setSyncName(sync.getName());
 
-				// BEWARE syncLog filter hasn't filter from
-				// for everytime we must load all
-
 				SysSyncLogFilter filter = new SysSyncLogFilter();
 				filter.setSynchronizationConfigId(sync.getId());
-				List<SysSyncLogDto> logs = syncLongService.find(filter, PageRequest.of(0, 1, Sort.by(Direction.DESC,
-						SysSyncLog_.created.getName()))).getContent();
+				filter.setFrom(lastRun);
+				List<SysSyncLogDto> logs = syncLongService.find(filter, null).getContent();
 
 				// if synchronization did not run yet
 				if (logs.isEmpty()) {
 					continue;
 				}
 				
-				// must be only one
-				SysSyncLogDto logDto = logs.get(0);
+				List<SysSyncLogDto> collectLogsWithErrors = logs.stream().filter(l -> l.isContainsError()).collect(Collectors.toList());
+				List<SysSyncLogDto> collectLogsRunningTooLong = null;
 				
-				boolean hasSyncRunTooLong = hasSyncRunTooLong(logDto);
+				// by default and with wrong values it is disabled
+				if(runningTooLong > 0) {
+					collectLogsRunningTooLong = logs.stream().filter(l -> hasSyncRunTooLong(l)).collect(Collectors.toList());
+				}
 				
 				// synchronization was running too long
-				if(hasSyncRunTooLong) {
+				if(collectLogsRunningTooLong != null && !collectLogsRunningTooLong.isEmpty()) {
 					syncStatus.setRunningTooLong(true);
 				}
 				// sync contains error
-				if (logDto.isContainsError()) {
+				if (!collectLogsWithErrors.isEmpty()) {
 					syncStatus.setContainsError(true);
 				}
 
-				if (syncStatus.isContainsError() || hasSyncRunTooLong) {
+				if (syncStatus.isContainsError() || syncStatus.isRunningTooLong()) {
 					systemSyncStatus.add(syncStatus);
 				}
 			}
