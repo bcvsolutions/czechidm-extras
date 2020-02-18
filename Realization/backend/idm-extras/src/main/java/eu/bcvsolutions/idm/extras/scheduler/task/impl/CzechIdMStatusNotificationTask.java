@@ -13,8 +13,6 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
-
-import java.time.ZonedDateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
@@ -22,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
+
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
 
@@ -62,7 +61,12 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.IdmLongRunningTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateExecutor;
 import eu.bcvsolutions.idm.extras.report.identity.IdentityStateReportDto;
-import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.*;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.CompleteStatus;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.EventStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.LrtStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.ProvisioningStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SyncStatusPojo;
+import eu.bcvsolutions.idm.extras.scheduler.task.impl.pojo.SystemSyncStatusPojo;
 
 /**
  * LRT send status about state of CzechIdM
@@ -139,7 +143,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 
 		// first run, default run - 10days
 		if (lastRunAsString == null) {
-			lastRunAsString = ZonedDateTime.now().minusDays(10).toString();
+			lastRunAsString = DateTime.now().minusDays(10).toString();
 		}
 		lastRun = DateTime.parse(lastRunAsString);
 		//
