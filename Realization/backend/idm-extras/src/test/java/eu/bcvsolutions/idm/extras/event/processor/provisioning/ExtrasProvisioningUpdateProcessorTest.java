@@ -222,6 +222,8 @@ public class ExtrasProvisioningUpdateProcessorTest extends AbstractIntegrationTe
 
 		Assert.assertFalse(allUsersGroups.isEmpty());
 		Assert.assertTrue(allUsersGroups.contains("role"));
+
+		systemService.delete(ad1);
 	}
 
 	@Transactional

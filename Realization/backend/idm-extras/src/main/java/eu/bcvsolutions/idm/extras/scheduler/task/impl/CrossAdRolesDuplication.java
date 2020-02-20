@@ -48,10 +48,10 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CrossAdRolesDuplication.class);
 
-	private static String SYSTEMS_PARAM = "systems";
-	private static String ROLE_CATALOGUE_PARAM = "role_catalogue";
-	private static String ENV_PARAM = "environment";
-	private static String CATALOG_PARAM = "catalog";
+	public static String SYSTEMS_PARAM = "systems";
+	public static String ROLE_CATALOGUE_PARAM = "role_catalogue";
+	public static String ENV_PARAM = "environment";
+	public static String CATALOG_PARAM = "catalog";
 
 	private UUID targetSystemUuid;
 	private UUID role_catalogue;
