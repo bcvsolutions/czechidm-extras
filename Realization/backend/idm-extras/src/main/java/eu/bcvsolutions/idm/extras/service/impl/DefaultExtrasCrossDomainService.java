@@ -30,7 +30,6 @@ import eu.bcvsolutions.idm.ic.filter.impl.IcEqualsFilter;
 import eu.bcvsolutions.idm.ic.filter.impl.IcOrFilter;
 import eu.bcvsolutions.idm.ic.impl.IcAttributeImpl;
 import eu.bcvsolutions.idm.ic.impl.IcConfigurationPropertyImpl;
-import eu.bcvsolutions.idm.ic.impl.IcObjectClassImpl;
 import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
 
 /**
@@ -102,8 +101,7 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 	 * @return Set of groups DN
 	 */
 	@Override
-	public Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn, String userSid) {
-		IcObjectClass groupClass = new IcObjectClassImpl("__GROUP__");
+	public Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn, String userSid, IcObjectClass groupClass) {
 		Set<String> userGroups = new HashSet<>();
 		adSystems.forEach(adSystem -> {
 			SysSystemDto adSystemDto = systemService.get(adSystem);

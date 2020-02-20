@@ -1,5 +1,7 @@
 package eu.bcvsolutions.idm.extras.util;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -11,6 +13,7 @@ import javax.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.google.common.collect.Lists;
 
@@ -27,7 +30,6 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.security.api.domain.AuthorizationPolicy;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
-import org.springframework.util.StringUtils;
 
 /**
  * Ultra mega awesome extra util for all projects by Roman Kucera
@@ -154,4 +156,22 @@ public class ExtrasUtils implements ScriptEnabled {
 
 		return String.join(", ", result);
 	}
+
+	public String convertSidToStr(byte[] sid) {
+		if (sid == null)
+			return null;
+		if (sid.length < 8 || sid.length % 4 != 0)
+			return "";
+		StringBuilder sb = new StringBuilder();
+		sb.append("S-").append(sid[0]);
+		int c = sid[1]; // Init with Subauthority Count.
+		ByteBuffer bb = ByteBuffer.wrap(sid);
+		sb.append("-").append(bb.getLong() & 0xFFFFFFFFFFFFL);
+		bb.order(ByteOrder.LITTLE_ENDIAN); // Now switch.
+		for (int i = 0; i < c; i++) { // Create Subauthorities.
+			sb.append("-").append((long) bb.getInt() & 0xFFFFFFFFL);
+		}
+		return sb.toString();
+	}
+
 }

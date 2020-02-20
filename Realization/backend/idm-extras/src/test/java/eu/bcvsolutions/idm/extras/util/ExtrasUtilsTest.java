@@ -1,5 +1,6 @@
 package eu.bcvsolutions.idm.extras.util;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -113,5 +114,19 @@ public class ExtrasUtilsTest extends AbstractIntegrationTest {
 		assertNotNull(titlesBefore);
 		assertFalse(titlesBefore.isEmpty());
 		assertTrue(titlesBefore.equals("Ing."));
+	}
+
+	@Test
+	public void testConvertSidToStr() {
+		String sid = "010500000000000515000000066B2507D7498B65E1393C925E040000";
+		int len = sid.length();
+		byte[] data = new byte[len / 2];
+		for (int i = 0; i < len; i += 2) {
+			data[i / 2] = (byte) ((Character.digit(sid.charAt(i), 16) << 4)
+					+ Character.digit(sid.charAt(i+1), 16));
+		}
+
+		String s = extrasUtils.convertSidToStr(data);
+		assertEquals("S-1-5-21-119892742-1703627223-2453420513-1118", s);
 	}
 }

@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
+import eu.bcvsolutions.idm.ic.api.IcObjectClass;
 
 /**
  * @author Roman Kucera
@@ -13,5 +14,5 @@ public interface ExtrasCrossDomainService {
 
 	IcConnectorConfiguration getConfiguration(IcConnectorConfiguration connectorConfig, List<UUID> adSystems);
 
-	Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn, String userSid);
+	Set<String> getAllUsersGroups(List<UUID> adSystems, String userDn, String userSid, IcObjectClass groupClass);
 }

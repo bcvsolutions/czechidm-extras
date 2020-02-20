@@ -1,8 +1,6 @@
 package eu.bcvsolutions.idm.extras.event.processor.provisioning;
 
 import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,6 +52,7 @@ import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 import eu.bcvsolutions.idm.extras.service.api.ExtrasCrossDomainService;
+import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 import eu.bcvsolutions.idm.ic.api.IcAttribute;
 import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
 import eu.bcvsolutions.idm.ic.api.IcConnectorObject;
@@ -61,6 +60,7 @@ import eu.bcvsolutions.idm.ic.api.IcObjectClass;
 import eu.bcvsolutions.idm.ic.api.IcUidAttribute;
 import eu.bcvsolutions.idm.ic.impl.IcAttributeImpl;
 import eu.bcvsolutions.idm.ic.impl.IcConnectorObjectImpl;
+import eu.bcvsolutions.idm.ic.impl.IcObjectClassImpl;
 import eu.bcvsolutions.idm.ic.impl.IcUidAttributeImpl;
 import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
 
@@ -95,6 +95,8 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 	private ExtrasCrossDomainService crossDomainService;
 	@Autowired
 	private CodeListManager codeListManager;
+	@Autowired
+	private ExtrasUtils extrasUtils;
 
 	@Autowired
 	public ExtrasCrossAdGroupsProvisioningProcessor(
@@ -169,7 +171,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 					objectClass, uidAttribute);
 			if (existsConnectorObject != null) {
 				userDn = String.valueOf(existsConnectorObject.getAttributeByName("__NAME__").getValue());
-				userSid = convertSidToStr((byte[]) existsConnectorObject.getAttributeByName("objectSID").getValue());
+				userSid = extrasUtils.convertSidToStr((byte[]) existsConnectorObject.getAttributeByName("objectSID").getValue());
 			}
 		} catch (Exception ex) {
 			LOG.info("Error during getting user: ", ex);
@@ -186,7 +188,8 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		// find all user's groups
 		if (userDn != null && userSid != null) {
 			try {
-				userGroups = crossDomainService.getAllUsersGroups(adSystems, userDn, userSid);
+				IcObjectClass groupClass = new IcObjectClassImpl("__GROUP__");
+				userGroups = crossDomainService.getAllUsersGroups(adSystems, userDn, userSid, groupClass);
 			} catch (Exception e) {
 				LOG.info("Error during getting user's groups: ", e);
 				provisioningOperation = provisioningOperationService.handleFailed(provisioningOperation, e);
@@ -416,23 +419,6 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		schemaAttributeFilter.setSystemId(system.getId());
 		schemaAttributeFilter.setObjectClassId(objectClass.getId());
 		return schemaAttributeService.find(schemaAttributeFilter, null).getContent();
-	}
-
-	private String convertSidToStr(byte[] sid) {
-		if (sid == null)
-			return null;
-		if (sid.length < 8 || sid.length % 4 != 0)
-			return "";
-		StringBuilder sb = new StringBuilder();
-		sb.append("S-").append(sid[0]);
-		int c = sid[1]; // Init with Subauthority Count.
-		ByteBuffer bb = ByteBuffer.wrap(sid);
-		sb.append("-").append(bb.getLong() & 0xFFFFFFFFFFFFL);
-		bb.order(ByteOrder.LITTLE_ENDIAN); // Now switch.
-		for (int i = 0; i < c; i++) { // Create Subauthorities.
-			sb.append("-").append((long) bb.getInt() & 0xFFFFFFFFL);
-		}
-		return sb.toString();
 	}
 
 	@Override
