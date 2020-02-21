@@ -642,7 +642,7 @@ public class CzechIdMStatusNotificationTask extends AbstractSchedulableTaskExecu
 		
 		List<LrtStatusPojo> runningTasksRunningTooLong = new ArrayList<LrtStatusPojo>();
 		for(IdmLongRunningTaskDto task : runningTasks) {
-			if(task.getTaskStarted().isBefore(started.minusHours(runningTooLong))) {
+			if(task.getTaskStarted() != null && task.getTaskStarted().isBefore(started.minusHours(runningTooLong))) {
 				LrtStatusPojo lrt = new LrtStatusPojo();
 				lrt.setType(task.getTaskType());
 				lrt.setResult(task.getTaskDescription());
