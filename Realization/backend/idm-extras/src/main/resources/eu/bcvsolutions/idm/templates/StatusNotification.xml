@@ -7,7 +7,7 @@
         xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
     <code>statusNotification</code>
     <name>Send status about CzechIdM</name>
-    <subject>#set ( $containsError = $status.containsError )CzechIdm status - #if($containsError)FAILED #else OK
+    <subject>#set ( $containsError = $status.containsError )CzechIdM status - #if($containsError)FAILED #else OK
         #end</subject>
     <bodyHtml>
         <![CDATA[
@@ -120,39 +120,41 @@
 				
 
 				<h2>Status událostí:</h2>
-				#if($events)
-					#set ( $exceptions = $events.exceptions )
-					#set ( $notExecuted = $events.notExecuted )
-					#set ( $blocked = $events.blocked )
-					#set ( $exceptionsNiceLabels = $events.exceptionsNiceLabels )
-					#set ( $notExecutedNiceLabels = $events.notExecutedNiceLabels )
-					#set ( $blockedNiceLabels = $events.blockedNiceLabels )
-					<ul>
-					  <li><b>s výjimkou:</b> $!exceptions</li>
-					  #if($exceptionsNiceLabels && !$exceptionsNiceLabels.isEmpty())
-						  <ul>
-						  	#foreach( $niceLabel in $exceptionsNiceLabels )
-						  	<li>$niceLabel</li>
-						  	#end
-						  </ul>
-					  #end
-					  <li><b>Neprovedené:</b> $!notExecuted</li>
-					  #if($notExecutedNiceLabels && !$notExecutedNiceLabels.isEmpty())
-						  <ul>
-						  	#foreach( $niceLabel in $notExecutedNiceLabels )
-						  	<li>$niceLabel</li>
-						  	#end
-						  </ul>
-					  #end
-					  <li><b>Blokované:</b> $!blocked</li>
-					  #if($blockedNiceLabels && !$blockedNiceLabels.isEmpty())
-						  <ul>
-						  	#foreach( $niceLabel in $blockedNiceLabels )
-						  	<li>$niceLabel</li>
-						  	#end
-						  </ul>
-					  #end
-					</ul>
+				#if($events || $numberOfEvents)
+          			#if($events)
+						#set ( $exceptions = $events.exceptions )
+						#set ( $notExecuted = $events.notExecuted )
+						#set ( $blocked = $events.blocked )
+						#set ( $exceptionsNiceLabels = $events.exceptionsNiceLabels )
+						#set ( $notExecutedNiceLabels = $events.notExecutedNiceLabels )
+						#set ( $blockedNiceLabels = $events.blockedNiceLabels )
+						<ul>
+						  <li><b>s výjimkou:</b> $!exceptions</li>
+						  #if($exceptionsNiceLabels && !$exceptionsNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $exceptionsNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						  <li><b>Neprovedené:</b> $!notExecuted</li>
+						  #if($notExecutedNiceLabels && !$notExecutedNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $notExecutedNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						  <li><b>Blokované:</b> $!blocked</li>
+						  #if($blockedNiceLabels && !$blockedNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $blockedNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						</ul>
+					#end
 					#if($numberOfEvents)
 						<b>V IdM je vytvořeno příliš mnoho událostí:</b> $numberOfEvents
 					#end
@@ -325,39 +327,41 @@
 				#end
 				
 				<h2>Event status:</h2>
-				#if($events)
-					#set ( $exceptions = $events.exceptions )
-					#set ( $notExecuted = $events.notExecuted )
-					#set ( $blocked = $events.blocked )
-					#set ( $exceptionsNiceLabels = $events.exceptionsNiceLabels )
-					#set ( $notExecutedNiceLabels = $events.notExecutedNiceLabels )
-					#set ( $blockedNiceLabels = $events.blockedNiceLabels )
-					<ul>
-					  <li><b>Exceptions:</b> $!exceptions</li>
-					  #if($exceptionsNiceLabels && !$exceptionsNiceLabels.isEmpty())
-						  <ul>
-						  	#foreach( $niceLabel in $exceptionsNiceLabels )
-						  	<li>$niceLabel</li>
-						  	#end
-						  </ul>
-					  #end
-					  <li><b>Not executed:</b> $!notExecuted</li>
-					  #if($notExecutedNiceLabels && !$notExecutedNiceLabels.isEmpty())
-						  <ul>
-						  	#foreach( $niceLabel in $notExecutedNiceLabels )
-						  	<li>$niceLabel</li>
-						  	#end
-						  </ul>
-					  #end
-					  <li><b>Blocked:</b> $!blocked</li>
-					  #if($blockedNiceLabels && !$blockedNiceLabels.isEmpty())
-						  <ul>
-						  	#foreach( $niceLabel in $blockedNiceLabels )
-						  	<li>$niceLabel</li>
-						  	#end
-						  </ul>
-					  #end
-					</ul>
+				#if($events || $numberOfEvents)
+         			#if($events)
+						#set ( $exceptions = $events.exceptions )
+						#set ( $notExecuted = $events.notExecuted )
+						#set ( $blocked = $events.blocked )
+						#set ( $exceptionsNiceLabels = $events.exceptionsNiceLabels )
+						#set ( $notExecutedNiceLabels = $events.notExecutedNiceLabels )
+						#set ( $blockedNiceLabels = $events.blockedNiceLabels )
+						<ul>
+						  <li><b>Exceptions:</b> $!exceptions</li>
+						  #if($exceptionsNiceLabels && !$exceptionsNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $exceptionsNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						  <li><b>Not executed:</b> $!notExecuted</li>
+						  #if($notExecutedNiceLabels && !$notExecutedNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $notExecutedNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						  <li><b>Blocked:</b> $!blocked</li>
+						  #if($blockedNiceLabels && !$blockedNiceLabels.isEmpty())
+							  <ul>
+							  	#foreach( $niceLabel in $blockedNiceLabels )
+							  	<li>$niceLabel</li>
+							  	#end
+							  </ul>
+						  #end
+						</ul>
+					#end
 					#if($numberOfEvents)
 						<b>In IdM there are too many created events:</b> $numberOfEvents
 					#end
