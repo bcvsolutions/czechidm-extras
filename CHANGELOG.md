@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 ## [2.1.0]
--  [#1939,#1938,#1869,#1940,#1870] Updated CzechIdMStatusNotificationTask and **template statusNotification**. Please update this template in IdM.
+-  [#1939,#1938,#1869,#1940,#1870,#2052] Updated CzechIdMStatusNotificationTask and **template statusNotification**. Please update this template in IdM. To status notification additional checks was added. Now events in CREATED state are checked, running lrt, if it is running too long and synchronizations are checked for run duration.
 
 ## [2.0.0]
 
