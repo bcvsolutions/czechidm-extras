@@ -1,6 +1,13 @@
 package eu.bcvsolutions.idm.extras.util;
 
 import com.google.common.collect.Lists;
+<<<<<<< HEAD
+=======
+
+import eu.bcvsolutions.idm.acc.dto.EntityAccountDto;
+import eu.bcvsolutions.idm.acc.dto.filter.EntityAccountFilter;
+import eu.bcvsolutions.idm.acc.service.api.EntityAccountService;
+>>>>>>> bcd6c72... [#2082] Implementation
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
@@ -151,9 +158,28 @@ public class ExtrasUtils implements ScriptEnabled {
 		return String.join(", ", result);
 	}
 
+
 	public static Date convertToDateViaInstant(LocalDate dateToConvert) {
 		return java.util.Date.from(dateToConvert.atStartOfDay()
 				.atZone(ZoneId.systemDefault())
 				.toInstant());
+	}
+
+	/**
+	 * Find entity by account
+	 *
+	 * @param accountId
+	 * @return
+	 */
+	public UUID getEntityByAccount(UUID accountId, EntityAccountFilter filter, EntityAccountService service) {
+		filter.setAccountId(accountId);
+		filter.setOwnership(Boolean.TRUE);
+		List<EntityAccountDto> entityAccounts = service
+				.find(filter, PageRequest.of(0, 1)).getContent();
+		if (entityAccounts.isEmpty()) {
+			return null;
+		} else {
+			return entityAccounts.get(0).getEntity();
+		}
 	}
 }
