@@ -16,6 +16,7 @@ public interface ExtrasConfiguration extends Configurable {
 
 	String EXTRAS_TITLES_AFTER = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesAfter";
 	String EXTRAS_TITLES_BEFORE = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesBefore";
+	String TREE_NODE_CREATE_ROLE = "treeNodeRecipient";
 
 	@Override
 	default String getConfigurableType() {
