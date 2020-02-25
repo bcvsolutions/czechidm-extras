@@ -162,8 +162,9 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * Find entity by account
 	 *
 	 * @param accountId
-	 * @return
+	 * @return UUID of an account or null if no entity was found
 	 */
+	@SuppressWarnings("unchecked")
 	public UUID getEntityByAccount(UUID accountId, EntityAccountFilter filter, EntityAccountService service) {
 		filter.setAccountId(accountId);
 		filter.setOwnership(Boolean.TRUE);
