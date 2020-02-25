@@ -1,13 +1,26 @@
 package eu.bcvsolutions.idm.extras.util;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.Predicate;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 import com.google.common.collect.Lists;
-<<<<<<< HEAD
-=======
 
 import eu.bcvsolutions.idm.acc.dto.EntityAccountDto;
 import eu.bcvsolutions.idm.acc.dto.filter.EntityAccountFilter;
 import eu.bcvsolutions.idm.acc.service.api.EntityAccountService;
->>>>>>> bcd6c72... [#2082] Implementation
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
@@ -21,16 +34,6 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.security.api.domain.AuthorizationPolicy;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.Predicate;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.*;
 
 /**
  * Ultra mega awesome extra util for all projects by Roman Kucera
@@ -169,8 +172,9 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * Find entity by account
 	 *
 	 * @param accountId
-	 * @return
+	 * @return UUID of an account or null if no entity was found
 	 */
+	@SuppressWarnings("unchecked")
 	public UUID getEntityByAccount(UUID accountId, EntityAccountFilter filter, EntityAccountService service) {
 		filter.setAccountId(accountId);
 		filter.setOwnership(Boolean.TRUE);
