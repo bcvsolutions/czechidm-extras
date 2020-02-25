@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Lists;
 
+import eu.bcvsolutions.idm.acc.dto.EntityAccountDto;
+import eu.bcvsolutions.idm.acc.dto.filter.EntityAccountFilter;
+import eu.bcvsolutions.idm.acc.service.api.EntityAccountService;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
@@ -153,5 +156,23 @@ public class ExtrasUtils implements ScriptEnabled {
 		}
 
 		return String.join(", ", result);
+	}
+
+	/**
+	 * Find entity by account
+	 *
+	 * @param accountId
+	 * @return
+	 */
+	public UUID getEntityByAccount(UUID accountId, EntityAccountFilter filter, EntityAccountService service) {
+		filter.setAccountId(accountId);
+		filter.setOwnership(Boolean.TRUE);
+		List<EntityAccountDto> entityAccounts = service
+				.find(filter, new PageRequest(0, 1)).getContent();
+		if (entityAccounts.isEmpty()) {
+			return null;
+		} else {
+			return entityAccounts.get(0).getEntity();
+		}
 	}
 }
