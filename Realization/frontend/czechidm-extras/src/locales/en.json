@@ -47,10 +47,6 @@
     "COLUMN_NOT_FOUND": {
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."
-    },
-    "TEMPLATE_NOT_FOUND": {
-      "title": "Template not found!",
-      "message": "Template with code [{{code}}] was not found."
     }
   }
 }
