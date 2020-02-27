@@ -45,7 +45,9 @@ public enum ExtrasResultCode implements ResultCode {
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]"),
 	IDENTITY_ROLE_CANNOT_BE_MODIFIED(HttpStatus.BAD_REQUEST, "Role [%s] cannot be modified, you are not guarantee of the role!"),
 	EMPTY_ATTACHMENT_ID(HttpStatus.BAD_REQUEST, "Choose file to import!"),
-	CONTRACT_END_NOTIFICATION_DAYS_BEFORE(HttpStatus.BAD_REQUEST, "'Days before contract end' parameter is required and has to be number greater or equal to zero, given [%s].");
+	CONTRACT_END_NOTIFICATION_DAYS_BEFORE(HttpStatus.BAD_REQUEST, "'Days before contract end' parameter is required " +
+			"and has to be number greater or equal to zero, given [%s]."),
+	TEMPLATE_NOT_FOUND(HttpStatus.BAD_REQUEST, "No template with code [%s] found!");
 	
 	private final HttpStatus status;
 	private final String message;

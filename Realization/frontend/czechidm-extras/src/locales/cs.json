@@ -47,6 +47,10 @@
     "COLUMN_NOT_FOUND": {
       "title": "Sloupec nenalezen.",
       "message": "Sloupec [{{name}}] nebyl nenalezen."
+    },
+    "TEMPLATE_NOT_FOUND": {
+      "title": "Šablona nalezena!",
+      "message": "Šablona s kódem [{{code}}] nebyla nalezena."
     }
   }
 }

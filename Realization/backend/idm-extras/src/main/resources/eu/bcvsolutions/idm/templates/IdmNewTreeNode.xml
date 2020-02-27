@@ -13,7 +13,7 @@ parameters:
 <template
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
-    <code>newTreeNode</code>
+    <code>extras:newTreeNode</code>
     <name>New Tree Node Created</name>
     <subject>CzechIdM - vytvořen nový uzel $treeNodeName</subject>
     <bodyHtml>
