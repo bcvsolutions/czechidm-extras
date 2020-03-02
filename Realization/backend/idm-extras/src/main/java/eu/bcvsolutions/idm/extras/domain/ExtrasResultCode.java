@@ -35,8 +35,7 @@ public enum ExtrasResultCode implements ResultCode {
 	SET_EAV_TREES_LRT_FAILED(HttpStatus.BAD_REQUEST, "Result of LRT is null!"),
 	SET_EAV_TREES_CONTRACT_IS_NULL(HttpStatus.BAD_REQUEST, "Contracts should not be null!"),
 	SET_EAV_TREES_MULTIPLE_CONTRACTS_FOUND(HttpStatus.BAD_REQUEST, "Multiple contracts were found!"),
-	SET_EAV_TREES_NO_DEFINITION_CODE(HttpStatus.BAD_REQUEST, "Property [%s] is not set or wrongly set. Please check " +
-			"it first."),
+	SET_EAV_TREES_NO_DEFINITION_CODE(HttpStatus.BAD_REQUEST, "Property [%s] is not set or wrongly set. Please check it first."),
 	COLUMN_NOT_FOUND(HttpStatus.BAD_REQUEST, "Column [%s] not found!"),
 	ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "Role[%s] not found!"),
 	ROLES_NOT_FOUND(HttpStatus.BAD_REQUEST, "No roles found!"),
@@ -45,8 +44,8 @@ public enum ExtrasResultCode implements ResultCode {
 	TEST_ITEM_COMPLETED(HttpStatus.OK, "[%s]"),
 	IDENTITY_ROLE_CANNOT_BE_MODIFIED(HttpStatus.BAD_REQUEST, "Role [%s] cannot be modified, you are not guarantee of the role!"),
 	EMPTY_ATTACHMENT_ID(HttpStatus.BAD_REQUEST, "Choose file to import!"),
-	CONTRACT_END_NOTIFICATION_DAYS_BEFORE(HttpStatus.BAD_REQUEST, "'Days before contract end' parameter is required " +
-			"and has to be number greater or equal to zero, given [%s].");
+	CONTRACT_END_NOTIFICATION_DAYS_BEFORE(HttpStatus.BAD_REQUEST, "'Days before contract end' parameter is required and has to be number greater or equal to zero, given [%s]."),
+	NO_RECIPIENTS_FOUND(HttpStatus.BAD_REQUEST, "No recipients found! Notification will not be sent!");
 	
 	private final HttpStatus status;
 	private final String message;

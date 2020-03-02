@@ -23,6 +23,7 @@ import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
 import eu.bcvsolutions.idm.acc.dto.AbstractSysSyncConfigDto;
 import eu.bcvsolutions.idm.acc.dto.AccAccountDto;
+import eu.bcvsolutions.idm.acc.dto.AccContractAccountDto;
 import eu.bcvsolutions.idm.acc.dto.AccIdentityAccountDto;
 import eu.bcvsolutions.idm.acc.dto.SysConnectorKeyDto;
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
@@ -33,8 +34,10 @@ import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemEntityDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
+import eu.bcvsolutions.idm.acc.entity.AccContractAccount;
 import eu.bcvsolutions.idm.acc.scheduler.task.impl.SynchronizationSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.acc.service.api.AccAccountService;
+import eu.bcvsolutions.idm.acc.service.api.AccContractAccountService;
 import eu.bcvsolutions.idm.acc.service.api.AccIdentityAccountService;
 import eu.bcvsolutions.idm.acc.service.api.SynchronizationService;
 import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
@@ -44,6 +47,7 @@ import eu.bcvsolutions.idm.acc.service.api.SysSystemEntityService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.acc.service.impl.DefaultSysSystemMappingService;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.exception.CoreException;
@@ -76,6 +80,7 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 	@Autowired private SysSystemEntityService systemEntityService;
 	@Autowired private AccAccountService accountService;
 	@Autowired private AccIdentityAccountService identityAccountService;
+	@Autowired private AccContractAccountService contractAccountService;
 	@Autowired private DefaultSysSystemMappingService mappingService;
 	@Autowired private ApplicationContext context;
 
@@ -349,6 +354,22 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 		accountIdentity.setAccount(account.getId());
 
 		return identityAccountService.save(accountIdentity);
+	}
+
+	public AccContractAccountDto createContractAccount(SysSystemDto system, IdmIdentityContractDto contract) {
+		AccAccountDto account = new AccAccountDto();
+		account.setSystem(system.getId());
+		account.setUid(contract.getPosition());
+		account.setAccountType(AccountType.PERSONAL);
+		account.setEntityType(SystemEntityType.CONTRACT);
+		account = accountService.save(account);
+
+		AccContractAccountDto accountIdentity = new AccContractAccountDto();
+		accountIdentity.setContract(contract.getId());
+		accountIdentity.setOwnership(true);
+		accountIdentity.setAccount(account.getId());
+
+		return contractAccountService.save(accountIdentity);
 	}
 
 	@Override
