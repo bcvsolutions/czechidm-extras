@@ -21,7 +21,6 @@ import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
 import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
-import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 
 /**
  * After creation of new tree node sends notification to authority
@@ -34,28 +33,17 @@ public class NewTreeNodeProcessor extends AbstractEntityEventProcessor<IdmTreeNo
 
 	public static final String PROCESSOR_NAME = "new-node-processor";
 	public static final String TREE_NODE_CREATE_ROLE =
-			IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID +
-					"treeNodeRecipient";
-
-	private final NotificationManager notificationManager;
-	private final IdmIdentityService identityService;
+			IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + "treeNodeRecipient";
 
 	@Autowired
-	ExtrasConfiguration extrasConfiguration;
+	private NotificationManager notificationManager;
+	@Autowired
+	private IdmIdentityService identityService;
 	@Autowired
 	private ConfigurationService configurationService;
 
-	@Autowired
-	public NewTreeNodeProcessor(NotificationManager notificationManager,
-								IdmIdentityService identityService, IdmConfigurationService configurationService) {
+	public NewTreeNodeProcessor() {
 		super(TreeNodeEvent.TreeNodeEventType.CREATE);
-		//
-		Assert.notNull(notificationManager);
-		Assert.notNull(identityService);
-		Assert.notNull(configurationService);
-		//
-		this.identityService = identityService;
-		this.notificationManager = notificationManager;
 	}
 
 	@Override
