@@ -1,0 +1,58 @@
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes"?>
+<!--
+Notification new tree node created
+
+parameters:
+	-	treeNodeName
+	-	treeNodeCode
+	-	created
+	-	uid
+	-	author
+ -->
+
+<template
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
+    <code>extras:newTreeNode</code>
+    <name>New Tree Node Created</name>
+    <subject>CzechIdM - vytvořen nový uzel $treeNodeName</subject>
+    <bodyHtml>
+        <![CDATA[
+<html>
+<body>
+Dobrý den,<br />
+<br />
+Na systému CzechIdM byl vytvořen nový uzel v organizační struktuře.<br />
+Bližší informace k danému uzlu:<br />
+<br />
+Jméno: $treeNodeName<br />
+Kód: $treeNodeCode<br />
+UID: $uid<br />
+Datum vytvoření: $created<br />
+<br />
+<br />
+S pozdravem BCV Solutions s.r.o.
+<br />
+<br />
+-------------------------------------------------------------------------------------<br />
+Hello,<br />
+<br />
+On CzechIdM system was created new node in organizational structure.<br />
+See information below:<br />
+<br />
+Name: $treeNodeName<br />
+Code: $treeNodeCode<br />
+UID: $uid<br />
+Created: $created<br />
+<br />
+<br />
+Regards BCV Solutions Ltd.
+</body>
+</html>
+]]>
+    </bodyHtml>
+    <bodyText></bodyText>
+    <parameter>treeNodeName, treeNodeCode, created, uid</parameter>
+    <systemTemplate>true</systemTemplate>
+    <moduleId>extras</moduleId>
+</template>
