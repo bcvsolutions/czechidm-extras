@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>eu.bcvsolutions.idm</groupId>
 		<artifactId>idm-parent</artifactId>
-		<version>9.7.14</version>
+		<version>9.7.15</version>
 	</parent>
 
 	<artifactId>czechidm-extras</artifactId>
@@ -15,11 +15,11 @@
 
 	<name>CzechIdM Module Extras</name>
 
-	<version>1.7.0-SNAPSHOT</version>
+	<version>1.7.0</version>
 	<description>CzechIdM Module Extras.</description>
 
 	<properties>
-		<czechidm-version>9.7.14</czechidm-version>
+		<czechidm-version>9.7.15</czechidm-version>
 	</properties>
 
 	<repositories>
@@ -83,12 +83,6 @@
 			<artifactId>idm-core-test-api</artifactId>
 			<version>${czechidm-version}</version>
 			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>eu.bcvsolutions.idm</groupId>
-			<artifactId>idm-rpt-impl</artifactId>
-			<version>${czechidm-version}</version>
-			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 
