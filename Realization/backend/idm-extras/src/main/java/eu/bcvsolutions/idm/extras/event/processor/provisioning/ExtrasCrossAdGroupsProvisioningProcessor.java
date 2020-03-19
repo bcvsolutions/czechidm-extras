@@ -35,7 +35,6 @@ import eu.bcvsolutions.idm.acc.dto.SysSystemEntityDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
 import eu.bcvsolutions.idm.acc.entity.SysSchemaAttribute;
-import eu.bcvsolutions.idm.acc.event.processor.provisioning.PrepareConnectorObjectProcessor;
 import eu.bcvsolutions.idm.acc.exception.ProvisioningException;
 import eu.bcvsolutions.idm.acc.service.api.ProvisioningService;
 import eu.bcvsolutions.idm.acc.service.api.SysProvisioningAttributeService;
@@ -75,7 +74,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 
 	public static final String PROCESSOR_NAME = "extras-cross-ad-groups-provisioning-processor";
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory
-			.getLogger(PrepareConnectorObjectProcessor.class);
+			.getLogger(ExtrasCrossAdGroupsProvisioningProcessor.class);
 
 	private final SysSystemMappingService systemMappingService;
 	private final SysSystemAttributeMappingService attributeMappingService;
@@ -149,22 +148,23 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 			return new DefaultEventResult<>(event, this);
 		}
 
-		String userDn = null;
-		String userSid = null;
 
 		// load old DN, in event we have the new one but we need the old one for finding users groups
-		IcObjectClass objectClass = provisioningOperation.getProvisioningContext().getConnectorObject()
-				.getObjectClass();
-		SysSystemEntityDto systemEntity = provisioningOperationService
-				.getByProvisioningOperation(provisioningOperation);
-		String uid = systemEntity.getUid();
 		// load connector configuration
 		IcConnectorConfiguration connectorConfig = systemService.getConnectorConfiguration(system);
 		if (connectorConfig == null) {
 			throw new ProvisioningException(AccResultCode.CONNECTOR_CONFIGURATION_FOR_SYSTEM_NOT_FOUND,
 					ImmutableMap.of("system", system.getName()));
 		}
+
+		IcObjectClass objectClass = provisioningOperation.getProvisioningContext().getConnectorObject()
+				.getObjectClass();
+		SysSystemEntityDto systemEntity = provisioningOperationService
+				.getByProvisioningOperation(provisioningOperation);
+		String uid = systemEntity.getUid();
 		IcConnectorObject existsConnectorObject;
+		String userDn = null;
+		String userSid = null;
 		try {
 			IcUidAttribute uidAttribute = new IcUidAttributeImpl(null, uid, null);
 			existsConnectorObject = connectorFacade.readObject(system.getConnectorInstance(), connectorConfig,
@@ -200,6 +200,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		}
 
 		// check if user has more roles then in IdM = that can happen if he has roles from other servers then the normal search will not return all of them
+		// get IdM value
 		Map<ProvisioningAttributeDto, Object> fullAccountObject = provisioningOperationService
 				.getFullAccountObject(provisioningOperation);
 
@@ -212,22 +213,13 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		}
 
 		ProvisioningAttributeDto provisioningAttribute = ldapGroups.get().getKey();
-		Object idmValue = fullAccountObject.get(provisioningAttribute);
-
-		// run same code for merge attribute as in prepare connector processor
-		Object resultMerged = resolveMergeValues(provisioningAttribute, idmValue,
-				new ArrayList<>(userGroups), provisioningOperation);
-
-		IcConnectorObject updateConnectorObject;
 
 		SysSystemMappingDto mapping = getMapping(system, provisioningOperation.getEntityType());
 		SysSchemaObjectClassDto schemaObjectClassDto = schemaObjectClassService.get(mapping.getObjectClass());
 		List<SysSchemaAttributeDto> schemaAttributes = findSchemaAttributes(system, schemaObjectClassDto);
-		Optional<SysSchemaAttributeDto> schemaAttributeOptional = schemaAttributes //
-				.stream() //
-				.filter(schemaAttribute -> { //
-					return provisioningAttribute.getSchemaAttributeName().equals(schemaAttribute.getName());
-				}) //
+		Optional<SysSchemaAttributeDto> schemaAttributeOptional = schemaAttributes
+				.stream()
+				.filter(schemaAttribute -> provisioningAttribute.getSchemaAttributeName().equals(schemaAttribute.getName()))
 				.findFirst();
 
 		if (!schemaAttributeOptional.isPresent()) {
@@ -235,11 +227,18 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 					ImmutableMap.of("attribute", provisioningAttribute.getSchemaAttributeName()));
 		}
 
+		Object idmValue = fullAccountObject.get(provisioningAttribute);
+
+		// run same code for merge attribute as in prepare connector processor
+		Object resultMerged = resolveMergeValues(provisioningAttribute, idmValue,
+				new ArrayList<>(userGroups), provisioningOperation);
+
 		SysSchemaAttributeDto schemaAttribute = schemaAttributeOptional.get();
+		IcConnectorObject updateConnectorObject;
 
 		// if roles are not same
 		if (!provisioningService.isAttributeValueEquals(resultMerged, new ArrayList<>(userGroups), schemaAttribute)) {
-			List<IcAttribute> attributesWithoutGroups = getIcAttributes(provisioningOperation, userGroups, idmValue, resultMerged, schemaAttribute);
+			List<IcAttribute> attributesWithoutGroups = getIcAttributes(provisioningOperation, userGroups, resultMerged, schemaAttribute);
 			updateConnectorObject = new IcConnectorObjectImpl(uid, objectClass, attributesWithoutGroups);
 		} else {
 			// remove ldapGroups from provisioning operation
@@ -260,7 +259,7 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		return new DefaultEventResult<>(event, this);
 	}
 
-	private List<IcAttribute> getIcAttributes(SysProvisioningOperationDto provisioningOperation, Set<String> userGroups, Object idmValue, Object resultMerged, SysSchemaAttributeDto schemaAttribute) {
+	private List<IcAttribute> getIcAttributes(SysProvisioningOperationDto provisioningOperation, Set<String> userGroups, Object resultMerged, SysSchemaAttributeDto schemaAttribute) {
 		// set correct value to ldapGroups attribute
 		IcAttribute updatedAttribute = attributeMappingService.createIcAttribute(schemaAttribute, resultMerged);
 

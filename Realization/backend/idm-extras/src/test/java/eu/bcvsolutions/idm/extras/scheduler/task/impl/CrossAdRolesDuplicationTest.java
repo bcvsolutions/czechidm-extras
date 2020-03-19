@@ -3,6 +3,7 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
@@ -24,6 +25,7 @@ import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
+import eu.bcvsolutions.idm.acc.entity.SysSystem;
 import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService;
 import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
 import eu.bcvsolutions.idm.acc.service.api.SysSchemaAttributeService;
@@ -36,8 +38,15 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
+import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
 import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.model.entity.IdmRole;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
 import eu.bcvsolutions.idm.ic.impl.IcConnectorKeyImpl;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
@@ -69,11 +78,17 @@ public class CrossAdRolesDuplicationTest extends AbstractIntegrationTest {
 	private IdmRoleCatalogueService roleCatalogueService;
 	@Autowired
 	private IdmRoleService roleService;
+	@Autowired
+	private FormService formService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
 
 	@Test
 	@Transactional
 	public void testDuplication() {
 		getHelper().loginAdmin();
+
+		IdmFormAttributeDto host = formAttributeService.findAttribute(SysSystem.class.getName(), "connId:net.tirasa.connid.bundles.ad.ADConnector:net.tirasa.connid.bundles.ad:1.3.4.27", "host");
 
 		IcConnectorKeyImpl key = new IcConnectorKeyImpl();
 		key.setFramework("connId");
@@ -85,11 +100,18 @@ public class CrossAdRolesDuplicationTest extends AbstractIntegrationTest {
 		ad1.setName("ad1");
 		ad1.setConnectorKey(new SysConnectorKeyDto(key));
 		ad1 = systemService.save(ad1);
+		// set hostname
+		setHostname(ad1);
 
 		SysSystemDto ad2 = new SysSystemDto();
 		ad2.setName("ad2");
 		ad2.setConnectorKey(new SysConnectorKeyDto(key));
 		ad2 = systemService.save(ad2);
+		// set hostname
+		setHostname(ad2);
+
+		// create eav for role
+		IdmFormAttributeDto groupType = getHelper().createEavAttribute("groupType", IdmRole.class, PersistentType.INT);
 
 		// create env code list
 		IdmCodeListDto environment = codeListManager.get("environment");
@@ -113,19 +135,25 @@ public class CrossAdRolesDuplicationTest extends AbstractIntegrationTest {
 
 		// create role
 		IdmRoleDto role = getHelper().createRole(null, "role", "ad1");
+		IdmRoleDto roleGlobal = getHelper().createRole(null, "roleGlobal", "ad1");
+		IdmRoleDto roleUniversal = getHelper().createRole(null, "roleUniversal", "ad1");
+		getHelper().setEavValue(role, groupType, IdmRole.class, -2147483644, PersistentType.INT);
+		getHelper().setEavValue(roleGlobal, groupType, IdmRole.class, -2147483646, PersistentType.INT);
+		getHelper().setEavValue(roleUniversal, groupType, IdmRole.class, -2147483640, PersistentType.INT);
 
 		// add to catalogue
 		getHelper().createRoleCatalogueRole(role, cat);
+		getHelper().createRoleCatalogueRole(roleGlobal, cat);
+		getHelper().createRoleCatalogueRole(roleUniversal, cat);
 
 		// assign system to role
-		SysRoleSystemDto roleSystemDto = new SysRoleSystemDto();
-		roleSystemDto.setForwardAccountManagemen(false);
-		roleSystemDto.setRole(role.getId());
-		roleSystemDto.setSystem(ad1.getId());
-		roleSystemDto.setSystemMapping(mapping.getId());
-		roleSystemDto = roleSystemService.save(roleSystemDto);
+		assignSystemToRole(ad1, mapping, role);
+		assignSystemToRole(ad1, mapping, roleGlobal);
+		assignSystemToRole(ad1, mapping, roleUniversal);
 
 		roleSystemAttributeService.addRoleMappingAttribute(ad1.getId(), role.getId(), "ldapGroups", "return \"CN=role\"", "__ACCOUNT__");
+		roleSystemAttributeService.addRoleMappingAttribute(ad1.getId(), roleGlobal.getId(), "ldapGroups", "return \"CN=role\"", "__ACCOUNT__");
+		roleSystemAttributeService.addRoleMappingAttribute(ad1.getId(), roleUniversal.getId(), "ldapGroups", "return \"CN=role\"", "__ACCOUNT__");
 
 		CrossAdRolesDuplication crossAdRolesDuplication = new CrossAdRolesDuplication();
 		crossAdRolesDuplication.init(ImmutableMap.of(CrossAdRolesDuplication.CATALOG_PARAM, cat1.getId(),
@@ -139,6 +167,12 @@ public class CrossAdRolesDuplicationTest extends AbstractIntegrationTest {
 		IdmRoleDto newRole = roleService.getByBaseCodeAndEnvironment("role", "ad2");
 		assertNotNull(newRole);
 
+		IdmRoleDto newRoleGlobal = roleService.getByBaseCodeAndEnvironment("roleGlobal", "ad2");
+		assertNotNull(newRoleGlobal);
+
+		IdmRoleDto newRoleUniversal = roleService.getByBaseCodeAndEnvironment("roleUniversal", "ad2");
+		assertNotNull(newRoleUniversal);
+
 		List<IdmRoleCatalogueDto> allByRole = roleCatalogueService.findAllByRole(newRole.getId());
 		assertFalse(allByRole.isEmpty());
 
@@ -149,6 +183,27 @@ public class CrossAdRolesDuplicationTest extends AbstractIntegrationTest {
 		assertFalse(content.isEmpty());
 
 		getHelper().logout();
+	}
+
+	private void assignSystemToRole(SysSystemDto system, SysSystemMappingDto mapping, IdmRoleDto role) {
+		SysRoleSystemDto roleSystemDto = new SysRoleSystemDto();
+		roleSystemDto.setForwardAccountManagemen(false);
+		roleSystemDto.setRole(role.getId());
+		roleSystemDto.setSystem(system.getId());
+		roleSystemDto.setSystemMapping(mapping.getId());
+		roleSystemDto = roleSystemService.save(roleSystemDto);
+	}
+
+	private void setHostname(SysSystemDto system) {
+		IdmFormDefinitionDto connectorFormDef = systemService
+				.getConnectorFormDefinition(system.getConnectorInstance());
+
+		List<IdmFormValueDto> values = new ArrayList<>();
+		IdmFormValueDto user = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("host"));
+		user.setValue("localhost");
+		values.add(user);
+
+		formService.saveValues(system, connectorFormDef, values);
 	}
 
 	private SysSystemMappingDto createMapping(SysSystemDto ad1, SysSchemaObjectClassDto schemaWithAttrAd1) {

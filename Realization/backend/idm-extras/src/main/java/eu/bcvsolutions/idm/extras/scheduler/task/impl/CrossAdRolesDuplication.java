@@ -3,6 +3,7 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -15,11 +16,13 @@ import com.google.common.collect.ImmutableMap;
 
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemAttributeDto;
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
+import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemAttributeFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
 import eu.bcvsolutions.idm.acc.eav.domain.AccFaceType;
 import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemAttributeService;
 import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
+import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.core.api.domain.ConfigurationMap;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.PriorityType;
@@ -33,10 +36,14 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.BaseCodeList;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.model.event.RoleEvent;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.core.security.api.domain.IdmBasePermission;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.ic.api.IcConfigurationProperty;
+import eu.bcvsolutions.idm.ic.api.IcConnectorConfiguration;
 
 /**
  * @author Roman Kucera
@@ -53,6 +60,10 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 	public static String ENV_PARAM = "environment";
 	public static String CATALOG_PARAM = "catalog";
 
+	private final int domainLocalSecurityGroupNumber = -2_147_483_644;
+	private final int globalSecurityGroupNumber = -2_147_483_646;
+	private final int universalSecurityGroupNumber = -2_147_483_640;
+
 	private UUID targetSystemUuid;
 	private UUID role_catalogue;
 	private String environment;
@@ -66,6 +77,10 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 	private SysRoleSystemService sysRoleSystemService;
 	@Autowired
 	private IdmRoleCatalogueRoleService roleCatalogueRoleService;
+	@Autowired
+	private FormService formService;
+	@Autowired
+	private SysSystemService systemService;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -89,6 +104,49 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 		roles.forEach(idmRole -> {
 			IdmRoleDto idmRoleDto = roleService.get(idmRole);
 
+			// check type of group, because we only want to duplicate domain local
+			Optional<IdmFormValueDto> groupType = formService.getValues(idmRoleDto.getId(), IdmRoleDto.class, "groupType").stream().findFirst();
+			if (!groupType.isPresent()) {
+				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.DUPLICATE_CROSS_AD_LRT_ERROR,
+						ImmutableMap.of("message", "Role " + idmRoleDto.getName() + " not duplicate, because role has empty groupType EAV."))).build());
+				return;
+			}
+			Integer groupTypeValue = (Integer) groupType.get().getValue();
+
+			// get mapping from source role
+			SysRoleSystemFilter filter = new SysRoleSystemFilter();
+			filter.setRoleId(idmRoleDto.getId());
+			List<SysRoleSystemDto> source = sysRoleSystemService.find(filter, null).getContent();
+
+			if (groupTypeValue.equals(domainLocalSecurityGroupNumber) || groupTypeValue.equals(universalSecurityGroupNumber)) {
+				LOG.info("Role [{}] is domain local or universal so we can duplicate it", idmRoleDto.getId());
+			} else if (groupTypeValue.equals(globalSecurityGroupNumber)) {
+				LOG.info("Role [{}] is global group, we can duplicate it only if the target system is in the same domain as this AD group", idmRoleDto.getId());
+				// Get source system
+				if (source.size() == 1) {
+					UUID sourceSystemUuid = source.get(0).getSystem();
+					String sourceHostname = getSystemHostname(sourceSystemUuid);
+
+					// Get target system
+					String targetHostname = getSystemHostname(targetSystemUuid);
+
+					// If domain is same we can duplicate role, otherwise we will not perform duplication
+					if (!sourceHostname.equals(targetHostname)) {
+						this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.DUPLICATE_CROSS_AD_LRT_ERROR,
+								ImmutableMap.of("message", "Source system and target system has different hostname so we can't duplicate role when groupType is global"))).build());
+						return;
+					}
+				} else {
+					this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.DUPLICATE_CROSS_AD_LRT_ERROR,
+							ImmutableMap.of("message", "Role " + idmRoleDto.getId() + " has no system, so we can't validate if hostname are same. Role will can't be duplicated"))).build());
+					return;
+				}
+			} else {
+				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.DUPLICATE_CROSS_AD_LRT_ERROR,
+						ImmutableMap.of("message", "Role " + idmRoleDto.getId() + " is not domain local, universal nor global we can't duplicate it."))).build());
+				return;
+			}
+
 			LOG.info("Duplicating role [{}]", idmRoleDto.getCode());
 
 			IdmRoleDto byBaseCodeAndEnvironment = roleService.getByBaseCodeAndEnvironment(idmRoleDto.getBaseCode(), environment);
@@ -103,20 +161,18 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 				event.setOriginalSource(idmRoleDto); // original source is the cloned role
 				event.setPriority(PriorityType.IMMEDIATE); // we want to be sync
 				roleService.publish(event, IdmBasePermission.CREATE, IdmBasePermission.UPDATE);
-				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
-						ImmutableMap.of("message", "Role" + idmRoleDto.getName() + " duplicated"))).build());
+				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.DUPLICATE_CROSS_AD_LRT,
+						ImmutableMap.of("message", "Role " + idmRoleDto.getName() + " duplicated"))).build());
 			} else {
-				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
-						ImmutableMap.of("message", "Role" + idmRoleDto.getName() + " not duplicate, because role with this code and environment exists"))).build());
+				this.logItemProcessed(idmRoleDto, new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.DUPLICATE_CROSS_AD_LRT_ERROR,
+						ImmutableMap.of("message", "Role " + idmRoleDto.getName() + " not duplicate, because role with this code and environment exists"))).build());
+				return;
 			}
 
 			IdmRoleDto newRole = roleService.getByBaseCodeAndEnvironment(idmRoleDto.getBaseCode(), environment);
 
 			LOG.info("Add mapping to system to role [{}]", idmRoleDto.getCode());
-			// get mapping from source role
-			SysRoleSystemFilter filter = new SysRoleSystemFilter();
-			filter.setRoleId(idmRoleDto.getId());
-			List<SysRoleSystemDto> source = sysRoleSystemService.find(filter, null).getContent();
+
 
 			if (source.size() == 1) {
 				SysRoleSystemDto sysRoleSystemDto = source.get(0);
@@ -149,6 +205,17 @@ public class CrossAdRolesDuplication extends AbstractSchedulableTaskExecutor<Ope
 
 
 		return new OperationResult.Builder(OperationState.EXECUTED).build();
+	}
+
+	private String getSystemHostname(UUID systemId) {
+		SysSystemDto systemDto = systemService.get(systemId);
+		IcConnectorConfiguration configuration = systemService.getConnectorConfiguration(systemDto);
+		List<IcConfigurationProperty> properties = configuration.getConfigurationProperties().getProperties();
+		Optional<IcConfigurationProperty> hostname = properties.stream().filter(icConfigurationProperty -> icConfigurationProperty.getName().equals("host")).findFirst();
+		if (hostname.isPresent()) {
+			return String.valueOf(hostname.get().getValue());
+		}
+		return "";
 	}
 
 	@Override

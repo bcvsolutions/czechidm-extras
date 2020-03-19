@@ -130,6 +130,7 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 		IcFilter dnFilter = new IcEqualsFilter(membersAttribute);
 		filters.add(dnFilter);
 
+		// TODO comments
 		IcConfigurationProperty defaultPeopleContainer = connectorConfig.getConfigurationProperties().getProperties()
 				.stream()
 				.filter(icConfigurationProperty -> icConfigurationProperty.getName().equals("defaultPeopleContainer"))

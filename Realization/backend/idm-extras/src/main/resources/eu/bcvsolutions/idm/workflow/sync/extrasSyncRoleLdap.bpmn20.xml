@@ -414,7 +414,7 @@ removeLastItemFromCatalogue();
           if (item != null) {
             execution.setVariable("systemIdForProvisioningIdentities", UUID.fromString(item.getName()));
           } else {
-            throw new Exception(MessageFormat.format("System [{0}] was not found. Role will not processed.", codeListForProvisioning));
+            throw new Exception(MessageFormat.format("Items in code list [{0}] was not found for system [{1}]. Role will not processed.", codeListForProvisioning, systemId.toString()));
           }
         }
 
