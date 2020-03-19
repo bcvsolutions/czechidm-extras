@@ -126,11 +126,12 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 		//
 		List<IcFilter> filters = new ArrayList<>();
 
+		// filter by member attribute
 		IcAttribute membersAttribute = new IcAttributeImpl("member", dn);
 		IcFilter dnFilter = new IcEqualsFilter(membersAttribute);
 		filters.add(dnFilter);
 
-		// TODO comments
+		// load attribute defaultPeopleContainer from system config, we need this value to build DN later
 		IcConfigurationProperty defaultPeopleContainer = connectorConfig.getConfigurationProperties().getProperties()
 				.stream()
 				.filter(icConfigurationProperty -> icConfigurationProperty.getName().equals("defaultPeopleContainer"))
@@ -138,14 +139,18 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 				.orElse(null);
 
 		if (defaultPeopleContainer != null) {
+			// create filter where member is identified by security object not by his samaccountName. This will happen when user is in different domain then group
 			String peopleContainer = (String) defaultPeopleContainer.getValue();
+			// Get only the DC part
 			String systemDc = peopleContainer.substring(peopleContainer.indexOf("DC="));
 
+			// Build DN for secure object which user SID + DC part of domain
 			IcAttribute membersSidAttribute = new IcAttributeImpl("member", "CN=" + userSid + ",CN=ForeignSecurityPrincipals," + systemDc);
 			IcFilter sidDnFilter = new IcEqualsFilter(membersSidAttribute);
 			filters.add(sidDnFilter);
 		}
 
+		// Searching by or filter
 		IcFilter orFilter = new IcOrFilter(filters);
 		connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, orFilter, connectorObject -> {
 			IcAttribute groupDn = connectorObject.getAttributeByName("__NAME__");
