@@ -31,6 +31,7 @@ import eu.bcvsolutions.idm.ic.service.api.IcConnectorFacade;
 /**
  * Projspec implementation which will send more credentials in system configuration, which is needed for cross domain support
  * Provisioning - update operation
+ * It's based on ProvisioningUpdateProcessor only difference is loading more config via ExtrasCrossDomainService
  *
  * @author Roman Kucera
  */

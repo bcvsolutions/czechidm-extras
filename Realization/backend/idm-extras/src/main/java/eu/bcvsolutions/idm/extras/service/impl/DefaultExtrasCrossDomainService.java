@@ -148,17 +148,24 @@ public class DefaultExtrasCrossDomainService implements ExtrasCrossDomainService
 			IcAttribute membersSidAttribute = new IcAttributeImpl("member", "CN=" + userSid + ",CN=ForeignSecurityPrincipals," + systemDc);
 			IcFilter sidDnFilter = new IcEqualsFilter(membersSidAttribute);
 			filters.add(sidDnFilter);
+			// Searching by or filter
+			IcFilter orFilter = new IcOrFilter(filters);
+			findGroups(system, objectClass, result, connectorConfig, orFilter);
+		} else {
+			// Searching by equals filter by dn
+			findGroups(system, objectClass, result, connectorConfig, dnFilter);
 		}
 
-		// Searching by or filter
-		IcFilter orFilter = new IcOrFilter(filters);
-		connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, orFilter, connectorObject -> {
+		return result;
+	}
+
+	private void findGroups(SysSystemDto system, IcObjectClass objectClass, Set<String> result, IcConnectorConfiguration connectorConfig, IcFilter filter) {
+		connectorFacade.search(system.getConnectorInstance(), connectorConfig, objectClass, filter, connectorObject -> {
 			IcAttribute groupDn = connectorObject.getAttributeByName("__NAME__");
 			if (groupDn != null && !StringUtils.isEmpty(groupDn.getValue())) {
 				result.add(String.valueOf(groupDn.getValue()));
 			}
 			return true;
 		});
-		return result;
 	}
 }
