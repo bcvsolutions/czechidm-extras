@@ -6,6 +6,7 @@ import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Extras configuration - interface
@@ -16,6 +17,9 @@ public interface ExtrasConfiguration extends Configurable {
 
 	String EXTRAS_TITLES_AFTER = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesAfter";
 	String EXTRAS_TITLES_BEFORE = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesBefore";
+	String EXTRAS_SYSTEM_EXCHANGE_ID =
+			IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID +
+					".configuration.systemId";
 
 	@Override
 	default String getConfigurableType() {
@@ -42,4 +46,6 @@ public interface ExtrasConfiguration extends Configurable {
 	 * @return
 	 */
 	List<String> getTitlesBefore();
+
+	UUID getSystemId();
 }

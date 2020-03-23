@@ -6,6 +6,7 @@ import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Extras configuration - implementation
@@ -36,6 +37,15 @@ public class DefaultExtrasConfiguration
 		}
 
 		return splitStringByComma(value);
+	}
+
+	@Override
+	public UUID getSystemId() {
+		String value =  getConfigurationService().getValue(EXTRAS_SYSTEM_EXCHANGE_ID);
+		if (value != null) {
+			return UUID.fromString(value);
+		}
+		return null;
 	}
 
 	/**
