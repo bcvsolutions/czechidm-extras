@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:activiti="http://activiti.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="eu.bcvsolutions.sync.action">
+    <process id="extrasDisableMissingContract" name="Disable contract" isExecutable="true">
+        <documentation>Workflow for disabling contract in synchronization.
+
+            Input variables:
+            - uid (String),
+            - entityType (enum SystemEntityType),
+            + icAttributes (List of IcAttribute),
+            - syncConfigId (UUID for SysSyncConfig),
+            - actionType (String)
+            - situation(String),
+            + accountId(UUID),
+            + entityId(UUID)
+        </documentation>
+        <startEvent id="startevent1" name="Start"></startEvent>
+        <sequenceFlow sourceRef="startevent1" targetRef="scripttask1"/>
+        <scriptTask id="scripttask1" name="Missing account" scriptFormat="groovy" activiti:autoStoreVariables="false">
+            <script>
+                import eu.bcvsolutions.idm.acc.dto.SysSyncItemLogDto
+                import eu.bcvsolutions.idm.core.api.domain.ContractState
+                import eu.bcvsolutions.idm.acc.dto.filter.AccContractAccountFilter
+
+                def contractId = extrasUtils.getEntityByAccount(accountId, new AccContractAccountFilter(), defaultAccContractAccountService)
+                def contract = identityContractService.get(contractId)
+                contract.setState(ContractState.DISABLED)
+                identityContractService.save(contract)
+
+                def itemLog = new SysSyncItemLogDto();
+                return itemLog
+            </script>
+        </scriptTask>
+        <sequenceFlow sourceRef="scripttask1" targetRef="endevent1"/>
+        <endEvent id="endevent1" name="End"></endEvent>
+
+    </process>
+    <bpmndi:BPMNDiagram id="BPMNDiagram_extrasSyncRoleLdap">
+        <bpmndi:BPMNPlane bpmnElement="extrasDisableMissingContract" id="BPMNPlane_extrasDisableMissingContract">
+            <bpmndi:BPMNShape bpmnElement="scripttask1" id="BPMNShape_scripttask1">
+                <omgdc:Bounds height="77.0" width="161.0" x="1048.0" y="120.0"></omgdc:Bounds>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="endevent1" id="BPMNShape_endevent1">
+                <omgdc:Bounds height="35.0" width="35.0" x="1585.0" y="110.0"></omgdc:Bounds>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape bpmnElement="startevent1" id="BPMNShape_startevent1">
+                <omgdc:Bounds height="35.0" width="35.0" x="36.0" y="60.0"></omgdc:Bounds>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+                <omgdi:waypoint x="1209.0" y="290.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1270.0" y="309.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+                <omgdi:waypoint x="1209.0" y="158.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1278.0" y="158.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow4" id="BPMNEdge_flow4">
+                <omgdi:waypoint x="1210.0" y="385.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1330.0" y="351.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6">
+                <omgdi:waypoint x="938.0" y="271.0"></omgdi:waypoint>
+                <omgdi:waypoint x="938.0" y="158.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1048.0" y="158.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
+                <omgdi:waypoint x="958.0" y="291.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1048.0" y="290.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8">
+                <omgdi:waypoint x="938.0" y="311.0"></omgdi:waypoint>
+                <omgdi:waypoint x="937.0" y="385.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1048.0" y="385.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow9" id="BPMNEdge_flow9">
+                <omgdi:waypoint x="53.0" y="307.0"></omgdi:waypoint>
+                <omgdi:waypoint x="53.0" y="496.0"></omgdi:waypoint>
+                <omgdi:waypoint x="897.0" y="496.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1048.0" y="496.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10">
+                <omgdi:waypoint x="893.0" y="291.0"></omgdi:waypoint>
+                <omgdi:waypoint x="918.0" y="291.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow12" id="BPMNEdge_flow12">
+                <omgdi:waypoint x="575.0" y="287.0"></omgdi:waypoint>
+                <omgdi:waypoint x="608.0" y="291.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow13" id="BPMNEdge_flow13">
+                <omgdi:waypoint x="746.0" y="291.0"></omgdi:waypoint>
+                <omgdi:waypoint x="768.0" y="291.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow14" id="BPMNEdge_flow14">
+                <omgdi:waypoint x="73.0" y="287.0"></omgdi:waypoint>
+                <omgdi:waypoint x="118.0" y="287.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow15" id="BPMNEdge_flow15">
+                <omgdi:waypoint x="403.0" y="287.0"></omgdi:waypoint>
+                <omgdi:waypoint x="428.0" y="287.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow16" id="BPMNEdge_flow16">
+                <omgdi:waypoint x="1128.0" y="458.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1602.0" y="340.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow17" id="BPMNEdge_flow17">
+                <omgdi:waypoint x="53.0" y="95.0"></omgdi:waypoint>
+                <omgdi:waypoint x="53.0" y="180.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow18" id="BPMNEdge_flow18">
+                <omgdi:waypoint x="1391.0" y="309.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1482.0" y="264.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow19" id="BPMNEdge_flow19">
+                <omgdi:waypoint x="1383.0" y="158.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1482.0" y="196.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow20" id="BPMNEdge_flow20">
+                <omgdi:waypoint x="53.0" y="235.0"></omgdi:waypoint>
+                <omgdi:waypoint x="53.0" y="267.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow21" id="BPMNEdge_flow21">
+                <omgdi:waypoint x="1602.0" y="285.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1602.0" y="145.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow22" id="BPMNEdge_flow22">
+                <omgdi:waypoint x="256.0" y="287.0"></omgdi:waypoint>
+                <omgdi:waypoint x="298.0" y="287.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge bpmnElement="flow23" id="BPMNEdge_flow23">
+                <omgdi:waypoint x="1482.0" y="264.0"></omgdi:waypoint>
+                <omgdi:waypoint x="1602.0" y="285.0"></omgdi:waypoint>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</definitions>
