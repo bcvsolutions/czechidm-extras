@@ -45,7 +45,6 @@ import eu.bcvsolutions.idm.extras.entity.TestRoleResource;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 @Component
-@ContextConfiguration(classes = {ExtrasDisableMissingAccountTest.class})
 public class ExtrasDisableMissingAccountTest extends AbstractIntegrationTest {
 
 	public static final String SYS_NAME = "extras_contract_disable_test";
