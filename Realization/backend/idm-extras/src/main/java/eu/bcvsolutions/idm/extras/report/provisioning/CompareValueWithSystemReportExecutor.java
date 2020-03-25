@@ -74,12 +74,16 @@ import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormInstanceDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
+import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.security.api.domain.Enabled;
 import eu.bcvsolutions.idm.core.security.api.domain.GuardedString;
 import eu.bcvsolutions.idm.core.security.api.domain.IdmBasePermission;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
+import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
+import eu.bcvsolutions.idm.extras.service.api.ExtrasCrossDomainService;
+import eu.bcvsolutions.idm.extras.util.ExtrasUtils;
 import eu.bcvsolutions.idm.ic.api.IcAttribute;
 import eu.bcvsolutions.idm.ic.api.IcConnectorObject;
 import eu.bcvsolutions.idm.ic.api.IcObjectClass;
@@ -94,6 +98,7 @@ import eu.bcvsolutions.idm.rpt.api.executor.AbstractReportExecutor;
  * Report for compare values in IdM and system
  *
  * @author Ondrej Kopr
+ * @author Roman Kucera
  *
  */
 
@@ -140,6 +145,16 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 	private ConfidentialStorage confidentialStorage;
 	@Autowired
 	private SysAttributeControlledValueService attributeControlledValueService;
+	@Autowired
+	private ExtrasCrossDomainService crossDomainService;
+	@Autowired
+	private CodeListManager codeListManager;
+	@Autowired
+	private ExtrasConfiguration extrasConfiguration;
+	@Autowired
+	private ExtrasUtils extrasUtils;
+	@Autowired
+	private SysSystemAttributeMappingService attributeMappingService;
 
 	/*
 	 * Temporary cache for controlled value
@@ -202,7 +217,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 
 		// list identities is only for testing purpose
 		List<UUID> identities = getIdentities(report);
-		
+
 		File temp = null;
 		FileOutputStream outputStream = null;
 
@@ -232,9 +247,9 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 				SysSchemaAttributeFilter filter = new SysSchemaAttributeFilter();
 				filter.setSystemId(systemDto.getId());
 				List<SysSchemaAttributeDto> schemaAttributes = schemaAttributeService.find(filter, null).getContent();
-				
+
 				counter = 0l;
-				
+
 				AccAccountFilter filterAccount = new AccAccountFilter();
 				filterAccount.setSystemId(systemDto.getId());
 				filterAccount.setEntityType(SystemEntityType.IDENTITY);
@@ -327,7 +342,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 				rows.add(row);
 				++counter;
 			}
-			
+
 			canContinue = updateState();
 			if (!canContinue) {
 				break;
@@ -359,13 +374,13 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 		}
 
 		IdmIdentityDto identity = identityService.get(targetEntityId);
-		
+
 		if (identity == null) {
 			LOG.info("Identity id [{}] not found", targetEntityId);
 			return null;
 		}
 
-		
+
 		IcObjectClass objectClass = new IcObjectClassImpl(
 				schemaObjectClassDto.getObjectClassName());
 		SysSystemEntityDto systemEntityDto = DtoUtils.getEmbedded(account, AccAccount_.systemEntity,
@@ -391,7 +406,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 		// read
 		IcConnectorObject connectorObject = systemService.readConnectorObject(systemDto.getId(),
 				uid, objectClass);
-		
+
 		if (connectorObject == null) {
 			// entity doesn't exists in system
 			row.setExistEntityOnSystem(false);
@@ -399,14 +414,36 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 			// first remove and sort attributes by given order in report
 			List<IcAttribute> unsortedAttributes = connectorObject.getAttributes();
 
+			// get all groups in case system is cross AD
+			// load more config properties if this system is cross domain AD
+			List<UUID> adSystems = codeListManager.getItems(extrasConfiguration.getCrossAdCodeList(), null).stream()
+					.map(idmCodeListItemDto -> UUID.fromString(idmCodeListItemDto.getCode()))
+					.collect(Collectors.toList());
+
+			List<String> allUsersGroups = null;
+			if (adSystems.contains(systemDto.getId())) {
+				String userDn = String.valueOf(connectorObject.getAttributeByName("__NAME__").getValue());
+				String userSid = extrasUtils.convertSidToStr((byte[]) connectorObject.getAttributeByName("objectSID").getValue());
+				IcObjectClass groupClass = new IcObjectClassImpl("__GROUP__");
+
+				allUsersGroups = new ArrayList<>(crossDomainService.getAllUsersGroups(adSystems, userDn, userSid, groupClass));
+			}
+
 			List<IcAttribute> sortedAttributes = new ArrayList<>();
 			for (SysSystemAttributeMappingDto att : attributes) {
 				SysSchemaAttributeDto schemaAttributeDto = getSchemaAttribute(schemaAttributes, att);
 				IcAttribute attribute = unsortedAttributes.stream().filter(unsortedAtt -> {
 					return unsortedAtt.getName().equals(schemaAttributeDto.getName());
 				}).findFirst().orElse(null);
+
+
 				if (attribute != null) {
-					sortedAttributes.add(attribute);
+					if (allUsersGroups != null && attribute.getName().equals("ldapGroups")) {
+						IcAttribute ldapGroups = attributeMappingService.createIcAttribute(schemaAttributeDto, allUsersGroups);
+						sortedAttributes.add(ldapGroups);
+					} else {
+						sortedAttributes.add(attribute);
+					}
 				} else {
 					// Attribute doesn't exists on system
 					IcAttributeImpl nonExisting = new IcAttributeImpl(schemaAttributeDto.getName(), null);
@@ -422,13 +459,13 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 					SysSchemaAttributeDto schemaAttributeDto = getSchemaAttribute(schemaAttributes, mappedAtt);
 					return schemaAttributeDto.getName().equals(icAttribute.getName());
 				}).findFirst().orElse(null);
-	
+
 				SysSchemaAttributeDto schemaAttributeDto = getSchemaAttribute(schemaAttributes, attributeMapping);
-				
+
 				if (attributeMapping == null) {
 					continue;
 				}
-				
+
 				Object transformValueToResource = null;
 
 				// if attribute is multivalued is needed iterate over all attributes in roles
@@ -458,7 +495,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 				} else {
 					// attribute is single value
 					Object attributeValue = getAttributeValue(uid, identity, attributeMapping, schemaAttributeDto);
-					
+
 					// check script and transform
 					IdmScriptDto overrideScript = getOverrideScript(report, attributeMapping);
 					if (overrideScript != null) {
@@ -468,7 +505,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 						transformValueToResource = systemAttributeMappingService
 								.transformValueToResource(uid, attributeValue, attributeMapping, identity);
 					}
-					
+
 				}
 
 				// create cell and set additional information
@@ -491,7 +528,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 						if (controlledValues == null) {
 							// Get controlled values
 							SysAttributeControlledValueFilter filter = new SysAttributeControlledValueFilter();
-							
+
 							filter.setAttributeMappingId(systemAttributeMappingId); // This must exists
 							filter.setHistoricValue(Boolean.FALSE); // Actually controlled
 							// We need them all
@@ -504,9 +541,9 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 					newCell.setSystemValue(icAttribute.getValue());
 				}
 				cells.add(newCell);
-				
+
 			}
-			
+
 		}
 
 		// set generated cells and return new row
@@ -524,7 +561,11 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 	 */
 	private Collection<?> removeNotControlledValues(List<Object> values, List<SysAttributeControlledValueDto> controlledValues) {
 		List<Object> valuesAfterCheck = new ArrayList<Object>();
-		
+
+		if (values == null) {
+			return valuesAfterCheck;
+		}
+
 		values.forEach(val -> {
 			SysAttributeControlledValueDto existingValue = controlledValues.stream().filter(controlledValue -> {
 				return ObjectUtils.equals(String.valueOf(controlledValue.getValue()), String.valueOf(val));
@@ -685,18 +726,18 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 		}
 		for (String attribute : attributesAsSerializable.toString().split(REGEX)) {
 			attribute = attribute.trim();
-			
+
 			if (attribute == null || !attribute.contains(attributeMapping.getId().toString())) {
 				continue;
 			}
-			
+
 			String scriptCode = null;
 			if (attribute.contains(ATT_SCRIPT_SPLIT)) {
 				String[] splited = attribute.split(ATT_SCRIPT_SPLIT);
 				attribute = splited[0];
 				scriptCode = splited[1];
 			}
-			
+
 			if (scriptCode != null) {
 				return scriptService.getByCode(scriptCode);
 			}
