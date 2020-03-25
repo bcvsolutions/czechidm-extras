@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.data.domain.Page;
@@ -416,17 +417,19 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 
 			// get all groups in case system is cross AD
 			// load more config properties if this system is cross domain AD
-			List<UUID> adSystems = codeListManager.getItems(extrasConfiguration.getCrossAdCodeList(), null).stream()
-					.map(idmCodeListItemDto -> UUID.fromString(idmCodeListItemDto.getCode()))
-					.collect(Collectors.toList());
-
+			String crossAdCodeListUuid = extrasConfiguration.getCrossAdCodeList();
 			List<String> allUsersGroups = null;
-			if (adSystems.contains(systemDto.getId())) {
-				String userDn = String.valueOf(connectorObject.getAttributeByName("__NAME__").getValue());
-				String userSid = extrasUtils.convertSidToStr((byte[]) connectorObject.getAttributeByName("objectSID").getValue());
-				IcObjectClass groupClass = new IcObjectClassImpl("__GROUP__");
+			if (!StringUtils.isEmpty(crossAdCodeListUuid)) {
+				List<UUID> adSystems = codeListManager.getItems(crossAdCodeListUuid, null).stream()
+						.map(idmCodeListItemDto -> UUID.fromString(idmCodeListItemDto.getCode()))
+						.collect(Collectors.toList());
+				if (adSystems.contains(systemDto.getId())) {
+					String userDn = String.valueOf(connectorObject.getAttributeByName("__NAME__").getValue());
+					String userSid = extrasUtils.convertSidToStr((byte[]) connectorObject.getAttributeByName("objectSID").getValue());
+					IcObjectClass groupClass = new IcObjectClassImpl("__GROUP__");
 
-				allUsersGroups = new ArrayList<>(crossDomainService.getAllUsersGroups(adSystems, userDn, userSid, groupClass));
+					allUsersGroups = new ArrayList<>(crossDomainService.getAllUsersGroups(adSystems, userDn, userSid, groupClass));
+				}
 			}
 
 			List<IcAttribute> sortedAttributes = new ArrayList<>();
