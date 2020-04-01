@@ -1,11 +1,31 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
+
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
 import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
@@ -28,18 +48,6 @@ import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 import eu.bcvsolutions.idm.extras.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Component;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.*;
 
 /**
  * This LRT imports all roles definitions from CSV to IdM
@@ -53,6 +61,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleAttributesFromCSVExecutor.class);
 	
 	static final String PARAM_CSV_ATTACHMENT = "Import csv file";
+	static final String PARAM_CSV_ATTACHMENT_ENCODING = "Import file encoding";
 	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
 	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
@@ -66,6 +75,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
 
 	private UUID attachmentId;
+	private String encoding;
 	private String rolesColumnName;
 	private String columnSeparator;
 	private String multiValueSeparator;
@@ -252,7 +262,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		CSVReader reader = null;
 		try {
 			InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
-			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
+			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData, StringUtils.isEmpty(encoding) ? Charset.defaultCharset() : Charset.forName(encoding)));
 			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
 			String[] header = reader.readNext();
 			
@@ -343,6 +353,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		LOG.debug("Start init");
 		super.init(properties);
 		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
+		encoding = getParameterConverter().toString(properties, PARAM_CSV_ATTACHMENT_ENCODING);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
@@ -366,6 +377,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		LOG.debug("Start getProperties");
 		Map<String, Object> props = super.getProperties();
 		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
+		props.put(PARAM_CSV_ATTACHMENT_ENCODING, encoding);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
@@ -381,6 +393,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		IdmFormAttributeDto csvAttachment = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT, PARAM_CSV_ATTACHMENT,
 				PersistentType.ATTACHMENT);
 		csvAttachment.setRequired(true);
+		IdmFormAttributeDto encodingAttr = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT_ENCODING, PARAM_CSV_ATTACHMENT_ENCODING,
+				PersistentType.SHORTTEXT);
+		encodingAttr.setRequired(true);
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
@@ -405,7 +420,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 				PersistentType.SHORTTEXT);
 		columnSecondContractEavAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, columnFirstAttrAttribute, columnFirstContractEavAttribute, columnSecondAttrAttribute, columnSecondContractEavAttribute);
+		return Lists.newArrayList(csvAttachment, encodingAttr, rolesColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, columnFirstAttrAttribute, columnFirstContractEavAttribute, columnSecondAttrAttribute, columnSecondContractEavAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {

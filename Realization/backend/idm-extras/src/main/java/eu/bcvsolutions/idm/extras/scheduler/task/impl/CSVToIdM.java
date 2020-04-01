@@ -1,18 +1,29 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import com.google.common.collect.ImmutableMap;
-import com.opencsv.*;
-import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
+
+import com.google.common.collect.ImmutableMap;
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.ICSVParser;
+
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
 /**
  * @author Petr Hanák
@@ -42,6 +53,7 @@ public class CSVToIdM {
 	private Boolean hasCatalogues;
 	private Boolean hasSubRoles;
 	private Boolean hasRoleCodes;
+	private String encoding;
 	
 	private Map<String, String> roleDescriptions;
 	private Map<String, List<String>> roleAttributes;
@@ -125,7 +137,7 @@ public class CSVToIdM {
 			String columnSeparator, String multiValueSeparator,
 			Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, 
 			Boolean hasGuarantees, Boolean hasGuaranteeRoles, Boolean hasCatalogues, Boolean hasSubRoles,
-			Boolean hasRoleCodes) {
+			Boolean hasRoleCodes, String encoding) {
 		
 		this.attachmentData = attachmentData;
 		this.rolesColumnName = rolesColumnName;
@@ -147,6 +159,7 @@ public class CSVToIdM {
 		this.hasCatalogues = hasCatalogues;
 		this.hasSubRoles = hasSubRoles;
 		this.hasRoleCodes = hasRoleCodes;
+		this.encoding = encoding;
 		
 		Maps maps = parseCSV();
 		
@@ -171,7 +184,7 @@ public class CSVToIdM {
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
 		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
+			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData, StringUtils.isEmpty(encoding) ? Charset.defaultCharset() : Charset.forName(encoding)));
 			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
 			
 			header = reader.readNext();

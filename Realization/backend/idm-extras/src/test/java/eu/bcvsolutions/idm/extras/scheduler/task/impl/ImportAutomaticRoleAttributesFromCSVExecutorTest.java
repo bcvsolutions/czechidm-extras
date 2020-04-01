@@ -60,6 +60,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_CSV_ATTACHMENT, attachment.getId());
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_ROLES_COLUMN_NAME, ROLE_ROW);
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_COLUMN_SEPARATOR, ';');
+		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_CSV_ATTACHMENT_ENCODING, "utf-8");
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_COLUMN_FIRST_ATTRIBUTE, "position");
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_FIRST_CONTRACT_EAV_NAME, eavNameNode);
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_COLUMN_SECOND_ATTRIBUTE, "organizational unit");

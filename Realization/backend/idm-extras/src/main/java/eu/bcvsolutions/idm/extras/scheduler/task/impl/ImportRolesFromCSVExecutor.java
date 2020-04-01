@@ -1,7 +1,22 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import java.io.InputStream;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Component;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
 import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
@@ -13,11 +28,31 @@ import eu.bcvsolutions.idm.acc.service.api.SysRoleSystemService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemMappingService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
-import eu.bcvsolutions.idm.core.api.dto.*;
-import eu.bcvsolutions.idm.core.api.dto.filter.*;
+import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCompositionDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueRoleFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.core.api.service.*;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueRoleService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCompositionService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
@@ -29,19 +64,6 @@ import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Component;
-
-import java.io.InputStream;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 
 /**
@@ -78,7 +100,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public static final String PARAM_MEMBER_OF_ATTRIBUTE = "MemberOf attribute name";
 	public static final String PARAM_ENVIRONMENT = "Role environment";
 	public static final String PARAM_CAN_BE_REQUESTED = "Can be requested";
-	
+	private static final String PARAM_ENCODING = "File encoding";
+
 	private List<UUID> cataloguesUuid = new ArrayList<>();
 	private List<String> oldFormAttributesNames = new ArrayList<>();
 	
@@ -116,6 +139,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private Boolean hasMemberOf;
 	private Boolean hasCatalogue;
 	private Boolean hasSubRoles;
+	private String encoding;
 		
 	@Autowired
 	private AttachmentManager attachmentManager;
@@ -169,7 +193,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, roleCodesColumnName, descriptionColumnName, 
 				attributesColumnName, criticalityColumnName, guaranteeColumnName, 
 				guaranteeRoleColumnName, catalogueColumnName, subRoleColumnName, columnSeparator, multiValueSeparator, hasDescription, 
-				hasAttribute, hasCriticality, hasGuarantees, hasGuaranteeRoles, hasCatalogue, hasSubRoles, hasRoleCodes);
+				hasAttribute, hasCriticality, hasGuarantees, hasGuaranteeRoles, hasCatalogue, hasSubRoles, hasRoleCodes, encoding);
 		Map<String, String> roleDescriptions = myParser.getRoleDescriptions();
 		Map<String, String> roleCodes = myParser.getRoleCodes();
 		Map<String, List<String>> roleAttributes = myParser.getRoleAttributes();
@@ -816,6 +840,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		environmentName = getParameterConverter().toString(properties, PARAM_ENVIRONMENT);
 		memberOfAttribute = getParameterConverter().toString(properties, PARAM_MEMBER_OF_ATTRIBUTE);
 		canBeRequested = getParameterConverter().toBoolean(properties, PARAM_CAN_BE_REQUESTED);
+		encoding = getParameterConverter().toString(properties, PARAM_ENCODING);
 		// if not filled, init multiValueSeparator and check if csv has description
 		if (multiValueSeparator == null) {
 			multiValueSeparator = MULTI_VALUE_SEPARATOR;
@@ -898,6 +923,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		props.put(PARAM_ENVIRONMENT, environmentName);
 		props.put(PARAM_MEMBER_OF_ATTRIBUTE, memberOfAttribute);
 		props.put(PARAM_CAN_BE_REQUESTED, canBeRequested);
+		props.put(PARAM_ENCODING, encoding);
 		return props;
 	}
 
@@ -916,6 +942,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
 		rolesColumnNameAttribute.setPlaceholder("The name of the column with the names of roles to import");
+
+		IdmFormAttributeDto encodingAttr = new IdmFormAttributeDto(PARAM_ENCODING, PARAM_ENCODING,
+				PersistentType.SHORTTEXT);
+		encodingAttr.setRequired(true);
+		encodingAttr.setPlaceholder("Encoding of input file");
 		
 		IdmFormAttributeDto roleCodeColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLE_CODE_COLUMN_NAME, PARAM_ROLE_CODE_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
@@ -994,7 +1025,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		canBeRequestedAttribute.setFaceType(BaseFaceType.BOOLEAN_SELECT);
 		canBeRequestedAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, roleCodeColumnNameAttribute, descriptionColumnNameAttribute, 
+		return Lists.newArrayList(csvAttachment, encodingAttr, rolesColumnNameAttribute, roleCodeColumnNameAttribute, descriptionColumnNameAttribute,
 				attributesColumnNameAttribute, criticalityColumnNameAttribute, guaranteeColumnNameAttribute, 
 				guaranteeRolesColumnNameAttribute, cataloguesColumnNameAttribute, subRolesColumnNameAttribute, 
 				formDefinitionAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, 
