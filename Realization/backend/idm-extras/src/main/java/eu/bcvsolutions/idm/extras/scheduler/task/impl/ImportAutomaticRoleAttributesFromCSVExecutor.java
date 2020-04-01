@@ -45,7 +45,6 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
-import eu.bcvsolutions.idm.core.model.entity.IdmAutomaticRoleAttribute;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 import eu.bcvsolutions.idm.extras.utils.Pair;
