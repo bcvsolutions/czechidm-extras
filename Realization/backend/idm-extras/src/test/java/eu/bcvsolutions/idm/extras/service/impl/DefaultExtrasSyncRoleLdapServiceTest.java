@@ -1,4 +1,4 @@
-package eu.bcvsolutions.idm.extras.event.processor.provisioning;
+package eu.bcvsolutions.idm.extras.service.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,8 +50,7 @@ import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
  * @author Roman Kucera
  */
 @Service
-public class ExtrasProvisioningUpdateProcessorTest extends AbstractIntegrationTest {
-
+public class DefaultExtrasSyncRoleLdapServiceTest extends AbstractIntegrationTest {
 	private static final String ATTRIBUTE_NAME = "__NAME__";
 	private static final String ATTRIBUTE_DN = "EAV_ATTRIBUTE";
 	private static final String ATTRIBUTE_MEMBER = "MEMBER";
@@ -234,7 +233,7 @@ public class ExtrasProvisioningUpdateProcessorTest extends AbstractIntegrationTe
 		entityManager.persist(resourceUserOne);
 	}
 
-	private ExtrasProvisioningUpdateProcessorTest getBean() {
+	private DefaultExtrasSyncRoleLdapServiceTest getBean() {
 		return applicationContext.getBean(this.getClass());
 	}
 }

@@ -171,7 +171,9 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 					objectClass, uidAttribute);
 			if (existsConnectorObject != null) {
 				userDn = String.valueOf(existsConnectorObject.getAttributeByName("__NAME__").getValue());
-				userSid = extrasUtils.convertSidToStr((byte[]) existsConnectorObject.getAttributeByName("objectSID").getValue());
+				if (existsConnectorObject.getAttributeByName("objectSID") != null) {
+					userSid = extrasUtils.convertSidToStr((byte[]) existsConnectorObject.getAttributeByName("objectSID").getValue());
+				}
 			}
 		} catch (Exception ex) {
 			LOG.info("Error during getting user: ", ex);

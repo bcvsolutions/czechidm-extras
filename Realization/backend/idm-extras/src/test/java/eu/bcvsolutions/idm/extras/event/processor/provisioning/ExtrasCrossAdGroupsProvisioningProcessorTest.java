@@ -1,5 +1,8 @@
 package eu.bcvsolutions.idm.extras.event.processor.provisioning;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -7,11 +10,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+
+import com.unboundid.ldap.listener.InMemoryDirectoryServer;
+import com.unboundid.ldap.listener.InMemoryDirectoryServerConfig;
+import com.unboundid.ldap.sdk.Entry;
+import com.unboundid.ldap.sdk.LDAPConnection;
+import com.unboundid.ldap.sdk.LDAPException;
+import com.unboundid.ldap.sdk.schema.Schema;
+import com.unboundid.ldif.LDIFException;
+import com.unboundid.ldif.LDIFReader;
 
 import eu.bcvsolutions.idm.acc.domain.AttributeMappingStrategyType;
 import eu.bcvsolutions.idm.acc.domain.ProvisioningContext;
@@ -56,7 +67,6 @@ import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
  * @author Roman Kucera
  */
 @Service
-@Ignore
 public class ExtrasCrossAdGroupsProvisioningProcessorTest extends AbstractIntegrationTest {
 
 	@Autowired
@@ -82,14 +92,47 @@ public class ExtrasCrossAdGroupsProvisioningProcessorTest extends AbstractIntegr
 	@Autowired
 	private LongRunningTaskManager lrtManager;
 
-
 	@Test
 	public void process() {
+		InMemoryDirectoryServer ds = null;
+		LDAPConnection conn = null;
+		String dn = "uid=admin";
+		String adminPassword = "password";
+		String context = "dc=bcv,dc=cz";
+		try {
+			// Create the configuration to use for the server.
+			InMemoryDirectoryServerConfig config = new InMemoryDirectoryServerConfig(context);
+
+			// load schema
+			config.addAdditionalBindCredentials(dn, adminPassword);
+			InputStream inputStream = new FileInputStream("src/test/resources/event.processor.provisioning/schema.ldif");
+			final LDIFReader ldifReader = new LDIFReader(inputStream);
+			final Entry schemaEntry = ldifReader.readEntry();
+			ldifReader.close();
+
+			Schema newSchema = new Schema(schemaEntry);
+			config.setSchema(newSchema);
+
+			// Create the directory server instance, populate it with data from the
+			// "crossLdapDemoData.ldif" file, and start listening for client connections.
+			ds = new InMemoryDirectoryServer(config);
+			ds.importFromLDIF(true, "src/test/resources/event.processor.provisioning/crossLdapDemoData.ldif");
+			ds.startListening();
+
+			// Get a client connection to the server and use it to perform various
+			// operations.
+			conn = ds.getConnection();
+		} catch (LDAPException | IOException | LDIFException e) {
+			e.printStackTrace();
+			Assert.fail();
+		}
+
 		IcConnectorKeyImpl key = new IcConnectorKeyImpl();
+
 		key.setFramework("connId");
-		key.setConnectorName("net.tirasa.connid.bundles.ad.ADConnector");
-		key.setBundleName("net.tirasa.connid.bundles.ad");
-		key.setBundleVersion("1.3.4.27");
+		key.setConnectorName("net.tirasa.connid.bundles.ldap.LdapConnector");
+		key.setBundleName("net.tirasa.connid.bundles.ldap");
+		key.setBundleVersion("1.5.1");
 
 		SysSystemDto ad1 = new SysSystemDto();
 		ad1.setName("ad1");
@@ -107,41 +150,37 @@ public class ExtrasCrossAdGroupsProvisioningProcessorTest extends AbstractIntegr
 		values.add(ssl);
 
 		IdmFormValueDto host = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("host"));
-		host.setValue("HOSTNAME");
+		host.setValue(conn.getConnectedIPAddress());
 		values.add(host);
 
 		IdmFormValueDto port = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("port"));
-		port.setValue("389");
+		port.setValue(conn.getConnectedPort());
 		values.add(port);
 
 		IdmFormValueDto user = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("principal"));
-		user.setValue("PRINCIPAL");
+		user.setValue(dn);
 		values.add(user);
 
 		IdmFormValueDto password = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("credentials"));
-		password.setValue("PASSWORD");
+		password.setValue(adminPassword);
 		password.setConfidential(true);
 		values.add(password);
 
 		IdmFormValueDto baseContextsToSynchronize = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("baseContextsToSynchronize"));
-		baseContextsToSynchronize.setValue("OU=crossTest,DC=piskoviste,DC=bcv");
+		baseContextsToSynchronize.setValue(context);
 		values.add(baseContextsToSynchronize);
 
-		IdmFormValueDto userBaseContexts = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("userBaseContexts"));
-		userBaseContexts.setValue("OU=crossTest,DC=piskoviste,DC=bcv");
+		IdmFormValueDto userBaseContexts = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("baseContexts"));
+		userBaseContexts.setValue(context);
 		values.add(userBaseContexts);
 
 		IdmFormValueDto vlv = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("useVlvControls"));
 		vlv.setBooleanValue(true);
 		values.add(vlv);
 
-		IdmFormValueDto page = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("pageSize"));
-		page.setLongValue(100L);
-		values.add(page);
-
-		IdmFormValueDto vlvSortAttribute = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("vlvSortAttribute"));
-		vlvSortAttribute.setValue("sAMAccountName");
-		values.add(vlvSortAttribute);
+		IdmFormValueDto uidAttribute = new IdmFormValueDto(connectorFormDef.getMappedAttributeByCode("uidAttribute"));
+		uidAttribute.setValue("uid");
+		values.add(uidAttribute);
 
 		formService.saveValues(ad1, connectorFormDef, values);
 
@@ -163,6 +202,19 @@ public class ExtrasCrossAdGroupsProvisioningProcessorTest extends AbstractIntegr
 		schemaAttributeDto.setNativeName("ldapGroups");
 		schemaAttributeDto.setObjectClass(schemaObjectClassDto.getId());
 		schemaAttributeDto = schemaAttributeService.save(schemaAttributeDto);
+
+		SysSchemaAttributeDto schemaAttributeDtoName = new SysSchemaAttributeDto();
+		schemaAttributeDtoName.setClassType("java.lang.String");
+		schemaAttributeDtoName.setReadable(true);
+		schemaAttributeDtoName.setMultivalued(false);
+		schemaAttributeDtoName.setCreateable(true);
+		schemaAttributeDtoName.setUpdateable(true);
+		schemaAttributeDtoName.setReturnedByDefault(true);
+		schemaAttributeDtoName.setRequired(true);
+		schemaAttributeDtoName.setName("__NAME__");
+		schemaAttributeDtoName.setNativeName("__NAME__");
+		schemaAttributeDtoName.setObjectClass(schemaObjectClassDto.getId());
+		schemaAttributeDtoName = schemaAttributeService.save(schemaAttributeDtoName);
 
 		// create provisioning mapping
 		createMapping(ad1, schemaObjectClassDto);
@@ -212,6 +264,9 @@ public class ExtrasCrossAdGroupsProvisioningProcessorTest extends AbstractIntegr
 		lrtManager.executeSync(cancelProvisioningQueueTaskExecutor);
 
 		systemService.delete(ad1);
+
+		conn.close();
+		ds.shutDown(true);
 	}
 
 	private SysProvisioningOperationDto prepareContent(SysSystemDto ad1, SysSystemEntityDto systemEntityDto, List<Object> values) {
