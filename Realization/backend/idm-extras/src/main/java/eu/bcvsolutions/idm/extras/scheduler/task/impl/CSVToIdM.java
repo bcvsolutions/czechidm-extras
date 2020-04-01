@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -51,6 +52,7 @@ public class CSVToIdM {
 	private Boolean hasCatalogues;
 	private Boolean hasSubRoles;
 	private Boolean hasRoleCodes;
+	private String encoding;
 	
 	private Map<String, String> roleDescriptions;
 	private Map<String, List<String>> roleAttributes;
@@ -134,7 +136,7 @@ public class CSVToIdM {
 			String columnSeparator, String multiValueSeparator,
 			Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, 
 			Boolean hasGuarantees, Boolean hasGuaranteeRoles, Boolean hasCatalogues, Boolean hasSubRoles,
-			Boolean hasRoleCodes) {
+			Boolean hasRoleCodes, String encoding) {
 		
 		this.attachmentData = attachmentData;
 		this.rolesColumnName = rolesColumnName;
@@ -156,6 +158,7 @@ public class CSVToIdM {
 		this.hasCatalogues = hasCatalogues;
 		this.hasSubRoles = hasSubRoles;
 		this.hasRoleCodes = hasRoleCodes;
+		this.encoding = encoding;
 		
 		Maps maps = parseCSV();
 		
@@ -180,7 +183,7 @@ public class CSVToIdM {
 				.withSeparator(columnSeparator.charAt(0)).build();
 		CSVReader reader = null;
 		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
+			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData, StringUtils.isEmpty(encoding) ? Charset.defaultCharset() : Charset.forName(encoding)));
 			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
 			
 			header = reader.readNext();
