@@ -65,20 +65,40 @@ public class RoleAssignmentReportRenderer
                     RoleAssignmentReportDto auditDto = getMapper().readValue(jParser, RoleAssignmentReportDto.class);
 
                     row = sheet.createRow(rowNum++);
-                    cell = row.createCell(0);
-                    cell.setCellValue(auditDto.getRelatedIdentity().getUsername());
+                    if(auditDto.getRelatedIdentity()==null){
+                        cell = row.createCell(0);
+                        cell.setCellValue("User deleted!");
 
-                    cell = row.createCell(1);
-                    cell.setCellValue(auditDto.getRelatedIdentity().getFirstName());
+                        cell = row.createCell(1);
+                        cell.setCellValue("");
 
-                    cell = row.createCell(2);
-                    cell.setCellValue(auditDto.getRelatedIdentity().getLastName());
+                        cell = row.createCell(2);
+                        cell.setCellValue("");
+                    } else {
+                        cell = row.createCell(0);
+                        cell.setCellValue(auditDto.getRelatedIdentity().getUsername());
 
-                    cell = row.createCell(3);
-                    cell.setCellValue(auditDto.getRelatedRole().getCode());
+                        cell = row.createCell(1);
+                        cell.setCellValue(auditDto.getRelatedIdentity().getFirstName());
 
-                    cell = row.createCell(4);
-                    cell.setCellValue(auditDto.getRelatedContract().getPosition());
+                        cell = row.createCell(2);
+                        cell.setCellValue(auditDto.getRelatedIdentity().getLastName());
+                    }
+                    if(auditDto.getRelatedRole()==null){
+                        cell = row.createCell(3);
+                        cell.setCellValue("Role deleted!");
+                    } else {
+                        cell = row.createCell(3);
+                        cell.setCellValue(auditDto.getRelatedRole().getCode());
+                    }
+
+                    if(auditDto.getRelatedContract()!=null){
+                        cell = row.createCell(4);
+                        cell.setCellValue(auditDto.getRelatedContract().getPosition());
+                    } else {
+                        cell = row.createCell(4);
+                        cell.setCellValue("Contract deleted!");
+                    }
 
                     cell = row.createCell(5);
                     cell.setCellValue(DateFormat.getDateTimeInstance().format(auditDto.getRevisionDate()));

@@ -155,7 +155,12 @@ import eu.bcvsolutions.idm.rpt.api.executor.AbstractReportExecutor;
         private RoleAssignmentReportDto getReportDto(IdmAuditEntityDto next) {
             Map<String, Object> embedded = next.getEntity();
             IdmIdentityContractDto contractDto = getContract(embedded.get(IdmIdentityRole_.identityContract.getName()));
-            IdmIdentityDto identityDto = getIdentity(contractDto.getIdentity());
+            IdmIdentityDto identityDto;
+            if(contractDto==null){
+                identityDto = null;
+            } else {
+                identityDto = getIdentity(contractDto.getIdentity());
+            }
             IdmRoleDto roleDto = getRole(embedded.get(IdmIdentityRole_.role.getName()));
             String system = getSystem(roleDto);
 
@@ -165,6 +170,9 @@ import eu.bcvsolutions.idm.rpt.api.executor.AbstractReportExecutor;
         }
 
         private String getSystem(IdmRoleDto roleDto) {
+            if(roleDto==null){
+                return "Role have been deleted - no system info!";
+            }
             SysRoleSystemFilter filter = new SysRoleSystemFilter();
             filter.setRoleId(roleDto.getId());
             List<SysRoleSystemDto> systems = roleSystemService.find(filter, null, null).getContent();
