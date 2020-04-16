@@ -40,6 +40,11 @@ public class DefaultExtrasConfiguration
 		return splitStringByComma(value);
 	}
 
+	@Override
+	public String getCrossAdCodeList() {
+		return getConfigurationService().getValue(EXTRAS_CROSS_AD_CODE_LIST);
+	}
+
 	/**
 	 * Return string split by comma
 	 *

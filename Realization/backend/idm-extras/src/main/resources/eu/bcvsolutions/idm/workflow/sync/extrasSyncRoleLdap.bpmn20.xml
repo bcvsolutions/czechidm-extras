@@ -98,6 +98,8 @@ import org.springframework.data.domain.Page;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleCatalogueFilter;
 import java.lang.StringBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
+import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
 
   IdmRoleCatalogueDto getCatalogueByCode(String code) {
     if(code != null &amp;&amp; !code.isEmpty())
@@ -219,14 +221,33 @@ UUID resolveCatalogue(String distinguishedName){ // TODO overwrite- edit creatin
     execution.setVariable("catalogueId", null);
     return;
   }
-  logItem.addToLog("create catalogue into one ctlg: " + createAllRolesToOneCatalogue);
-  if(createAllRolesToOneCatalogue == null){
-    logItem.addToLog("Catalog will be created based on role identificatior");
-    execution.setVariable("catalogueId", createCatalogLikeDistinguishedName(distinguishedName));
+
+  // do this to be backward compatible
+  if (createCatalogueBasedOnCodeList == null) {
+      logItem.addToLog("create catalogue into one ctlg: " + createAllRolesToOneCatalogue);
+      if(createAllRolesToOneCatalogue == null){
+          logItem.addToLog("Catalog will be created based on role identificatior");
+          execution.setVariable("catalogueId", createCatalogLikeDistinguishedName(distinguishedName));
+      } else {
+          logItem.addToLog("Catalog will be created based on aplication property");
+          execution.setVariable("catalogueId", createOneCatalogForAllRoles());
+      }
   } else {
-    logItem.addToLog("Catalog will be created based on aplication property");
-    execution.setVariable("catalogueId", createOneCatalogForAllRoles());
+      logItem.addToLog("code list property found. We will create catalog by it.");
+      // get code list items by id from property and get the correct item by systemId
+      IdmCodeListItemDto item = codeListManager.getItem(createCatalogueBasedOnCodeList, systemId.toString());
+      if (item != null) {
+          logItem.addToLog("create catalog for system");
+          String externalId = getCatalogueExternalId(item.getName());
+          def catalog = getCatalogueByExternalId(externalId);
+          if (catalog != null) {
+            execution.setVariable("catalogueId", catalog.getId());
+          } else {
+            execution.setVariable("catalogueId", createCatalogue(item.getName(), null, externalId).getId());
+          }
+      }
   }
+
 }
 
  def removeLastItemFromCatalogue(){ // TODO override - how to find name of catalogue, which will be erased from role
@@ -326,6 +347,9 @@ removeLastItemFromCatalogue();
         import org.springframework.data.domain.Page;
         import java.text.MessageFormat;
         import groovy.json.StringEscapeUtils;
+        import eu.bcvsolutions.idm.core.eav.api.service.CodeListManager;
+        import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
+        import java.util.UUID;
 
         final String roleName = "name"; // name of role
         String nameV = null;
@@ -375,11 +399,25 @@ removeLastItemFromCatalogue();
 
         // system for provisioning users
         String systemCodeForRoleMapping = configurationService.getValue("idm.pub.acc.syncRole.provisioningOfIdentities.system.code", null);
-        UUID systemId = defaultSysSystemService.getByCode(systemCodeForRoleMapping)?.getId();
-        if (systemId == null) {
-          throw new Exception(MessageFormat.format("System [{0}] was not found. Role will not processed.", systemCodeForRoleMapping));
+        String codeListForProvisioning = configurationService.getValue("idm.pub.acc.syncRole.provisioningOfIdentities.codeList", null);
+
+        // backward compatibility
+        if(codeListForProvisioning == null) {
+          UUID systemIdForMapping = defaultSysSystemService.getByCode(systemCodeForRoleMapping)?.getId();
+          if (systemIdForMapping == null) {
+            throw new Exception(MessageFormat.format("System [{0}] was not found. Role will not processed.", systemCodeForRoleMapping));
+          }
+          execution.setVariable("systemIdForProvisioningIdentities", systemIdForMapping);
+        } else {
+          // get code list items by id from property and get the correct item by systemId
+          IdmCodeListItemDto item = codeListManager.getItem(codeListForProvisioning, systemId.toString());
+          if (item != null) {
+            execution.setVariable("systemIdForProvisioningIdentities", UUID.fromString(item.getName()));
+          } else {
+            throw new Exception(MessageFormat.format("Items in code list [{0}] was not found for system [{1}]. Role will not processed.", codeListForProvisioning, systemId.toString()));
+          }
         }
-        execution.setVariable("systemIdForProvisioningIdentities", systemId);
+
       </script>
     </scriptTask>
     <sequenceFlow id="flow14" sourceRef="exclusivegateway2" targetRef="scripttask13"></sequenceFlow>
@@ -957,6 +995,7 @@ execution.setVariable("logItem", logItem);
         execution.setVariable("isResolveCatalogEnabled", configurationService.getBooleanValue("idm.pub.acc.syncRole.roleCatalog.ResolveCatalog", true));
         execution.setVariable("resolveMembershipInSituationUpdateRole", configurationService.getBooleanValue("idm.pub.acc.syncRole.update.resolveMembership", false));
         execution.setVariable("createAllRolesToOneCatalogue", configurationService.getValue("idm.pub.acc.syncRole.roles.allToOneCatalog", null));
+        execution.setVariable("createCatalogueBasedOnCodeList", configurationService.getValue("idm.pub.acc.syncRole.roles.catalogByCodeList", null));
         execution.setVariable("attributeNameOfMembership", configurationService.getValue("idm.pub.acc.syncRole.roles.attributeNameOfMembership", "member"));
         execution.setVariable("mainRootCatalogue", configurationService.getValue("idm.pub.acc.syncRole.roleCatalog.catalogueTreeInOneCatalog", null));
         execution.setVariable("forwardManagement", configurationService.getBooleanValue("idm.pub.acc.syncRole.roleSystem.forwardManagement.value", false));
