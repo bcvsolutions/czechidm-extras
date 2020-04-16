@@ -15,7 +15,7 @@
 
 	<name>CzechIdM Module Extras</name>
 
-	<version>1.8.0-SNAPSHOT</version>
+	<version>1.8.0</version>
 	<description>CzechIdM Module Extras.</description>
 
 	<properties>
