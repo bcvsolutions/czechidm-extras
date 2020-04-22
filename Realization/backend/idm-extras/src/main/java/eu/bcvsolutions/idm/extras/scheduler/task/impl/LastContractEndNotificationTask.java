@@ -1,18 +1,23 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +49,11 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole_;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
 import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmScheduledTaskDto;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.filter.IdmLongRunningTaskFilter;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableStatefulExecutor;
+import eu.bcvsolutions.idm.core.scheduler.api.service.IdmScheduledTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
@@ -54,6 +63,7 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  * ends.
  * 
  * @author Tomáš Doischer
+ * @author Marek Klement
  */
 @Service
 @DisallowConcurrentExecution
@@ -65,12 +75,19 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected static final String PARAMETER_DAYS_BEFORE = "How many days before the end of the contract should the notification be sent";
 	protected static final String RECIPIENT_ROLE_BEFORE_PARAM = "Recipient role of notification";
 	protected static final String SEND_TO_MANAGER_BEFORE_PARAM = "Should the manager of the contract receive the notification?";
-	
+	protected static final String PREFIX_TECHNICAL_IDENTITY = "Identity is owner of technical account with this prefix";
+	protected static final String PREFIX_ADMIN_IDENTITY = "Identity is owner of admin account with this prefix";
+	protected static final String SEND_INVALID_CONTRACTS = "Send invalid contracts - for example if task does not run" +
+			" for couple days and it is necessary to notify, that someone already left";
+
 	private Long daysBeforeEnd;
 	private LocalDate currentDate = new LocalDate();
 	private LocalDate validMinusXDays = new LocalDate();
 	private UUID recipientRoleBefore = null;
 	private Boolean sendToManagerBefore;
+	private String prefixTechnical;
+	private Boolean prefixAdmin;
+	private Boolean sendInvalid;
 	
 	@Autowired
 	private IdmIdentityService identityService;
@@ -84,6 +101,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	private IdmIdentityRoleService identityRoleService;
 	@Autowired
 	private ConfigurationService configurationService;
+	@Autowired
+	private IdmScheduledTaskService scheduledTaskService;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -99,6 +118,9 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 			throw new ResultCodeException(ExtrasResultCode.CONTRACT_END_NOTIFICATION_DAYS_BEFORE,
 					ImmutableMap.of("daysBeforeEnd", daysBeforeEnd == null ? "null" : daysBeforeEnd));
 		}
+		prefixTechnical = getParameterConverter().toString(properties, PREFIX_TECHNICAL_IDENTITY);
+		prefixAdmin = getParameterConverter().toBoolean(properties, PREFIX_ADMIN_IDENTITY);
+		sendInvalid = getParameterConverter().toBoolean(properties, SEND_INVALID_CONTRACTS);
 	}
 	
 	@Override
@@ -107,40 +129,80 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		props.put(PARAMETER_DAYS_BEFORE, daysBeforeEnd);
 		props.put(RECIPIENT_ROLE_BEFORE_PARAM, recipientRoleBefore);
 		props.put(SEND_TO_MANAGER_BEFORE_PARAM, sendToManagerBefore);
+		props.put(PREFIX_TECHNICAL_IDENTITY, prefixTechnical);
+		props.put(PREFIX_ADMIN_IDENTITY, prefixAdmin);
+		props.put(SEND_INVALID_CONTRACTS, sendInvalid);
 		return props;
 	}
 	
 	@Override
 	public Page<IdmIdentityContractDto> getItemsToProcess(Pageable pageable) {
-		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
-		if (daysBeforeEnd == 0) {
-			identityContractFilter.setValidTill(currentDate);
-		} else {
-			identityContractFilter.setValid(Boolean.TRUE);
+		Stream<IdmIdentityContractDto> filtered = filterByDate();
+		if(prefixTechnical!=null && !prefixTechnical.equals("")){
+			if(prefixAdmin){
+				filtered = handleTechnicalAndPrefix(filtered);
+			} else {
+				filtered = handleTechnical(filtered);
+			}
 		}
-		return identityContractService.find(identityContractFilter, pageable);
+		List<IdmIdentityContractDto> collect = filtered.collect(Collectors.toList());
+		return new PageImpl<>(collect, pageable, collect.size());
 	}
-	
+
+	private Stream<IdmIdentityContractDto> filterByDate() {
+		IdmIdentityContractFilter filter = new IdmIdentityContractFilter();
+		if(sendInvalid != null && !sendInvalid){
+			filter.setValid(true);
+		}
+		List<IdmIdentityContractDto> content =
+				identityContractService.find(filter, null).getContent();
+		return content.stream()
+				.filter(this::isGoingToEnd)
+				.filter(this::isLastContract);
+	}
+
+	private boolean isGoingToEnd(IdmIdentityContractDto contractDto) {
+		if(Objects.isNull(contractDto.getValidTill())){
+			return false;
+		}
+		LocalDate dateOfNotification = contractDto.getValidTill().minusDays(Math.toIntExact(daysBeforeEnd));
+
+		// this we are interested in contracts which end in x days or sooner
+		return currentDate.isAfter(dateOfNotification.minusDays(1));
+	}
+
+	private Stream<IdmIdentityContractDto> handleTechnicalAndPrefix(Stream<IdmIdentityContractDto> idmIdentityContractDtos) {
+		return idmIdentityContractDtos.filter(f -> hasTechnicalIdentity(f.getIdentity()));
+	}
+
+	private boolean hasTechnicalIdentity(UUID identity){
+		IdmIdentityDto identityDto = identityService.get(identity);
+		String username = identityDto.getUsername();
+		IdmIdentityDto byUsername = identityService.getByUsername(prefixTechnical + username);
+		return !Objects.isNull(byUsername);
+	}
+
+	private Stream<IdmIdentityContractDto> handleTechnical(Stream<IdmIdentityContractDto> idmIdentityContractDtos) {
+		return idmIdentityContractDtos.flatMap(this::filterOwnersofTechnicalIdentities);
+	}
+
+	private Stream<IdmIdentityContractDto> filterOwnersofTechnicalIdentities(IdmIdentityContractDto guarantee){
+		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
+		identityContractFilter.setSubordinatesFor(guarantee.getIdentity());
+		List<IdmIdentityContractDto> subordinates = identityContractService.find(identityContractFilter, null).getContent();
+		return subordinates.stream().filter(s -> isManagerForTechnicalIdentity(s.getIdentity()));
+	}
+
+	private boolean isManagerForTechnicalIdentity(UUID id){
+		IdmIdentityDto identityDto = identityService.get(id);
+		if(Objects.isNull(identityDto)){
+			throw new IllegalArgumentException("Identity doesn't exist!");
+		}
+		return identityDto.getUsername().startsWith(prefixTechnical);
+	}
+
 	@Override
 	public Optional<OperationResult> processItem(IdmIdentityContractDto dto) {
-		if (dto.getValidTill() == null) {
-			// the contract has infinite validity, leave alone
-			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
-		}
-
-		validMinusXDays = dto.getValidTill().minusDays(Math.toIntExact(daysBeforeEnd));
-		
-		// this we are interested in contracts which end in x days or sooner 
-		if (!currentDate.isAfter(validMinusXDays.minusDays(1))) {
-			// the contract ends on different times than specified, leave alone
-			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
-		}
-		
-		if (!isLastContract(dto)) {
-			// the contract owner has more contracts valid in the future and is not leaving, leave alone
-			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
-		}
-		
 		IdmIdentityDto identity = DtoUtils.getEmbedded(dto, IdmIdentityContract_.identity, IdmIdentityDto.class);
 		String fullName = identity.getFirstName() + " " + identity.getLastName() + " (" + 
 				identity.getUsername() + ")";
@@ -161,7 +223,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		}
 		
 		// end of contract today and daysBeforeEnd set to 0
-		if (daysBeforeEnd == 0L && currentDate.isEqual(validMinusXDays)) {
+		if (daysBeforeEnd == 0L) {
 			return getRecipientsAndSend(guarantee, false, fullName, identity, position, ppvEnd);
 		} 
 
@@ -213,6 +275,25 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 				SEND_TO_MANAGER_BEFORE_PARAM,
 				PersistentType.BOOLEAN);
 		attributes.add(sendToManagerBeforeAttr);
+
+		IdmFormAttributeDto technicalIdentity = new IdmFormAttributeDto(
+				PREFIX_TECHNICAL_IDENTITY,
+				PREFIX_TECHNICAL_IDENTITY,
+				PersistentType.TEXT);
+		technicalIdentity.setPlaceholder("For example prefix_name - name will be taken");
+		attributes.add(technicalIdentity);
+
+		IdmFormAttributeDto adminIdentity = new IdmFormAttributeDto(
+				PREFIX_ADMIN_IDENTITY,
+				PREFIX_ADMIN_IDENTITY,
+				PersistentType.BOOLEAN);
+		attributes.add(adminIdentity);
+
+		IdmFormAttributeDto invalid = new IdmFormAttributeDto(
+				SEND_INVALID_CONTRACTS,
+				SEND_INVALID_CONTRACTS,
+				PersistentType.BOOLEAN);
+		attributes.add(invalid);
 
 		return attributes;
 	}

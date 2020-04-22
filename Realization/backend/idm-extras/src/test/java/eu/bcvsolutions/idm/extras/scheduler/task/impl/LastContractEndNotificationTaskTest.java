@@ -144,7 +144,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	@Test
 	public void getFormAttributesTest() {
 		List<IdmFormAttributeDto> attributes = notification.getFormAttributes();
-		Assert.assertEquals(3, attributes.size());
+		Assert.assertEquals(6, attributes.size());
 	}
 	
 	@After
@@ -230,10 +230,10 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 		LastContractEndNotificationTask notificationTwo = new LastContractEndNotificationTask();
 		
-		notificationTwo.init(propertiesTwo); 
-		
+		notificationTwo.init(propertiesTwo);
+
 		lrtManager.executeSync(notificationTwo);
-		
+
 		IdmNotificationFilter filterThree = new IdmNotificationFilter();
 		filterThree.setRecipient("alternateRecipient");
 		filterThree.setNotificationType(IdmEmailLog.class);
