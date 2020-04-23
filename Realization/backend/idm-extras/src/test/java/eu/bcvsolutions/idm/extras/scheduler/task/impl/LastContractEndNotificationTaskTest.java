@@ -205,6 +205,92 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		
 		getHelper().deleteIdentity(subject.getId());
 	}
+
+	@Test
+	public void testTechnicalInFuture() {
+		IdmIdentityDto subject = getHelper().createIdentity("tec_username_to_test");
+		IdmIdentityContractDto subjectContract = getHelper().getPrimeContract(subject);
+
+		IdmIdentityDto manager = getHelper().createIdentity("ts-managerTec");
+		getHelper().createContractGuarantee(subjectContract, manager);
+		IdmIdentityContractDto managerContract = getHelper().getPrimeContract(manager);
+		managerContract.setValidTill(new LocalDate().plusDays(6));
+		managerContract = identityContractService.saveInternal(managerContract);
+
+		// recipient guarantee of manager
+		IdmIdentityDto managerForManager = getHelper().createIdentity("ts-managerForManagerTec");
+		getHelper().createContractGuarantee(managerContract, managerForManager);
+
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "6");
+		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
+		properties.put(LastContractEndNotificationTask.PREFIX_TECHNICAL_IDENTITY, "tec_");
+		properties.put(LastContractEndNotificationTask.SEND_INVALID_CONTRACTS, false);
+		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITY, false);
+
+		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
+		notificationThree.init(properties);
+
+		lrtManager.executeSync(notificationThree);
+
+		IdmNotificationFilter filterTwo = new IdmNotificationFilter();
+		filterTwo.setRecipient("ts-managerForManagerTec");
+		filterTwo.setNotificationType(IdmEmailLog.class);
+
+		// we should find 1 email notification on manager
+		long count2 = notificationLogService.count(filterTwo);
+		IdmNotificationTemplateDto usedTemplateTwo = notificationLogService.find(filterTwo, null).getContent().
+				get(0).getMessage().getTemplate();
+
+		Assert.assertEquals(1, count2);
+		Assert.assertEquals(templateFuture, usedTemplateTwo);
+
+		getHelper().deleteIdentity(subject.getId());
+		getHelper().deleteIdentity(manager.getId());
+		getHelper().deleteIdentity(managerForManager.getId());
+	}
+
+	@Test
+	public void testAdminInFuture() {
+		IdmIdentityDto admin = getHelper().createIdentity("adm_usernameTest");
+
+		IdmIdentityDto identity = getHelper().createIdentity("usernameTest");
+		IdmIdentityContractDto identityContract = getHelper().getPrimeContract(identity);
+		identityContract.setValidTill(new LocalDate().plusDays(8));
+		identityContract = identityContractService.saveInternal(identityContract);
+
+		// recipient guarantee of manager
+		IdmIdentityDto managerForAdmin = getHelper().createIdentity("adm-guarantee");
+		getHelper().createContractGuarantee(identityContract, managerForAdmin);
+
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "8");
+		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
+		properties.put(LastContractEndNotificationTask.PREFIX_TECHNICAL_IDENTITY, "adm_");
+		properties.put(LastContractEndNotificationTask.SEND_INVALID_CONTRACTS, false);
+		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITY, true);
+
+		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
+		notificationThree.init(properties);
+
+		lrtManager.executeSync(notificationThree);
+
+		IdmNotificationFilter filterTwo = new IdmNotificationFilter();
+		filterTwo.setRecipient("adm-guarantee");
+		filterTwo.setNotificationType(IdmEmailLog.class);
+
+		// we should find 1 email notification on manager
+		long count2 = notificationLogService.count(filterTwo);
+		IdmNotificationTemplateDto usedTemplateTwo = notificationLogService.find(filterTwo, null).getContent().
+				get(0).getMessage().getTemplate();
+
+		Assert.assertEquals(1, count2);
+		Assert.assertEquals(templateFuture, usedTemplateTwo);
+
+		getHelper().deleteIdentity(admin.getId());
+		getHelper().deleteIdentity(identity.getId());
+		getHelper().deleteIdentity(managerForAdmin.getId());
+	}
 	
 	@Test
 	public void testLrtEndsToday() {

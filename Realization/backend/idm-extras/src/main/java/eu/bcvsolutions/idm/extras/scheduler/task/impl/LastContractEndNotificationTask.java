@@ -1,7 +1,6 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +10,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,11 +47,7 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole_;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
 import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
-import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
-import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmScheduledTaskDto;
-import eu.bcvsolutions.idm.core.scheduler.api.dto.filter.IdmLongRunningTaskFilter;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableStatefulExecutor;
-import eu.bcvsolutions.idm.core.scheduler.api.service.IdmScheduledTaskService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
@@ -61,6 +55,8 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  * This task sends a notification to those with a specified role and optionally the manager of the contract. The
  * notifications says that the user is leaving in a specified number of days, i. e., the user's last contract
  * ends.
+ *
+ * Also it can filter technical identities.
  * 
  * @author Tomáš Doischer
  * @author Marek Klement
@@ -101,8 +97,6 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	private IdmIdentityRoleService identityRoleService;
 	@Autowired
 	private ConfigurationService configurationService;
-	@Autowired
-	private IdmScheduledTaskService scheduledTaskService;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -139,7 +133,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	public Page<IdmIdentityContractDto> getItemsToProcess(Pageable pageable) {
 		Stream<IdmIdentityContractDto> filtered = filterByDate();
 		if(prefixTechnical!=null && !prefixTechnical.equals("")){
-			if(prefixAdmin){
+			if(prefixAdmin!= null && prefixAdmin){
 				filtered = handleTechnicalAndPrefix(filtered);
 			} else {
 				filtered = handleTechnical(filtered);
@@ -149,6 +143,11 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		return new PageImpl<>(collect, pageable, collect.size());
 	}
 
+	/**
+	 * This method filter contracts which are in the time of ending set by user in task and also finds out if this is
+	 * last contract
+	 * @return
+	 */
 	private Stream<IdmIdentityContractDto> filterByDate() {
 		IdmIdentityContractFilter filter = new IdmIdentityContractFilter();
 		if(sendInvalid != null && !sendInvalid){
@@ -161,6 +160,11 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 				.filter(this::isLastContract);
 	}
 
+	/**
+	 * Checks for ending of contract in interval set by user in this task
+	 * @param contractDto
+	 * @return
+	 */
 	private boolean isGoingToEnd(IdmIdentityContractDto contractDto) {
 		if(Objects.isNull(contractDto.getValidTill())){
 			return false;
@@ -171,10 +175,21 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		return currentDate.isAfter(dateOfNotification.minusDays(1));
 	}
 
+	/**
+	 * This function handle technical identities - it looks for identity with given prefix and if that exist for
+	 * identity with ending contract
+	 * @param idmIdentityContractDtos
+	 * @return
+	 */
 	private Stream<IdmIdentityContractDto> handleTechnicalAndPrefix(Stream<IdmIdentityContractDto> idmIdentityContractDtos) {
 		return idmIdentityContractDtos.filter(f -> hasTechnicalIdentity(f.getIdentity()));
 	}
 
+	/**
+	 * Finds identity with given prefix in idm
+	 * @param identity
+	 * @return
+	 */
 	private boolean hasTechnicalIdentity(UUID identity){
 		IdmIdentityDto identityDto = identityService.get(identity);
 		String username = identityDto.getUsername();
@@ -182,17 +197,38 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		return !Objects.isNull(byUsername);
 	}
 
+	/**
+	 * This looks for technical identities owned by this identity with ending contract
+	 * @param idmIdentityContractDtos
+	 * @return
+	 */
 	private Stream<IdmIdentityContractDto> handleTechnical(Stream<IdmIdentityContractDto> idmIdentityContractDtos) {
-		return idmIdentityContractDtos.flatMap(this::filterOwnersofTechnicalIdentities);
+		return idmIdentityContractDtos.filter(this::filterOwnersOfTechnicalIdentities);
 	}
 
-	private Stream<IdmIdentityContractDto> filterOwnersofTechnicalIdentities(IdmIdentityContractDto guarantee){
+	/**
+	 * This is filter method for handleTechnical
+	 * @param guarantee
+	 * @return
+	 */
+	private boolean filterOwnersOfTechnicalIdentities(IdmIdentityContractDto guarantee){
 		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
 		identityContractFilter.setSubordinatesFor(guarantee.getIdentity());
 		List<IdmIdentityContractDto> subordinates = identityContractService.find(identityContractFilter, null).getContent();
-		return subordinates.stream().filter(s -> isManagerForTechnicalIdentity(s.getIdentity()));
+		for (IdmIdentityContractDto subordinate : subordinates){
+			if(isManagerForTechnicalIdentity(subordinate.getIdentity())){
+				return true;
+			}
+		}
+		//
+		return false;
 	}
 
+	/**
+	 * Checks if identity starts with given prefix and so it is technical identity
+	 * @param id
+	 * @return
+	 */
 	private boolean isManagerForTechnicalIdentity(UUID id){
 		IdmIdentityDto identityDto = identityService.get(id);
 		if(Objects.isNull(identityDto)){
