@@ -61,6 +61,16 @@
             "placeholder": "Prvek organizační struktury ..."
           }
         }
+      },
+      "role-by-role-catalogue-evaluator": {
+        "help": "Oprávnění pro role, které jsou zařazeny ve vybraném katalogu.",
+        "attributes": {
+          "role-catalogue": {
+            "label": "Katalog",
+            "help": "Vyberte katalog ve kterém budou role na které se budou vztahovat vybraná práva. Práva budou platit také na všechny role v katalozích se šířením dolů.",
+            "placeholder": "Katalog ..."
+          }
+        }
       }
     }
   }
