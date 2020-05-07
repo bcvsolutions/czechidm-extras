@@ -8,6 +8,7 @@ import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
@@ -24,6 +25,8 @@ import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableStatefulExecutor;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+
+import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.data.domain.Page;
@@ -43,6 +46,7 @@ import java.util.stream.Collectors;
  * @author Tomáš Doischer
  */
 @Service
+@DisallowConcurrentExecution
 @Description("Task which will send notification X days before end of the last contract. It is recommended to"
 		+ "run for the first time without sending emails.")
 
@@ -55,9 +59,6 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	private Long daysBeforeEnd;
 	private LocalDate currentDate = LocalDate.now();
 	private LocalDate validMinusXDays = LocalDate.now();
-	private String fullName;
-	private String position;
-	private String ppvEnd;
 	private UUID recipientRoleBefore = null;
 	private Boolean sendToManagerBefore;
 	
@@ -71,6 +72,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	private IdmRoleService roleService;
 	@Autowired
 	private IdmIdentityRoleService identityRoleService;
+	@Autowired
+	private ConfigurationService configurationService;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -110,8 +113,6 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	
 	@Override
 	public Optional<OperationResult> processItem(IdmIdentityContractDto dto) {
-		List<IdmIdentityDto> recipients;
-
 		if (dto.getValidTill() == null) {
 			// the contract has infinite validity, leave alone
 			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
@@ -130,44 +131,46 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
 		}
 		
-		IdmIdentityDto identityDto = DtoUtils.getEmbedded(dto, IdmIdentityContract_.identity, IdmIdentityDto.class);
-		fullName = identityDto.getFirstName() + " " + identityDto.getLastName() + " (" + 
-				identityDto.getUsername() + ")";
+		IdmIdentityDto identity = DtoUtils.getEmbedded(dto, IdmIdentityContract_.identity, IdmIdentityDto.class);
+		String fullName = identity.getFirstName() + " " + identity.getLastName() + " (" + 
+				identity.getUsername() + ")";
 
+		String position = "";
 		if (dto.getWorkPosition() != null) {
 			position = DtoUtils.getEmbedded(dto, IdmIdentityContract_.workPosition, IdmTreeNodeDto.class).getName();
 		}
 		
-		ppvEnd = dto.getValidTill().format(DateTimeFormatter.ofPattern("dd. MM. YYYY"));
+		String ppvEnd = "";
+		if (dto.getValidTill() != null) {
+			ppvEnd = dto.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));
+		}
 
-		IdmIdentityDto guarantee = getManagerForContract(dto.getId(), identityDto.getId());
+		IdmIdentityDto guarantee = getManagerForContract(dto.getId(), identity.getId());
 		if (guarantee == null) {
-			LOG.info(String.format("ContractEndNotificationTask No manager for contract %s.", dto.getId()));
+			LOG.info("ContractEndNotificationTask No manager for contract [{}].", dto.getId());
 		}
 		
 		// end of contract today and daysBeforeEnd set to 0
 		if (daysBeforeEnd == 0L && currentDate.isEqual(validMinusXDays)) {
-			recipients = getRecipients(guarantee);
-			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END, new ArrayList<>(recipients), guarantee);
-			return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
-		}
+			return getRecipientsAndSend(guarantee, false, fullName, identity, position, ppvEnd);
+		} 
 
 		// end of contract will be in daysBeforeEnd days
 		if (daysBeforeEnd > 0L) {
-			recipients = getRecipients(guarantee);
-			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END_IN_X_DAYS, new ArrayList<>(recipients), guarantee);
-			return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
+			return getRecipientsAndSend(guarantee, true, fullName, identity, position, ppvEnd);
 		} else {
 			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
 		}
 	}
 	
-	private void sendNotification(String topic, List<IdmIdentityDto> recipients, IdmIdentityDto manager) {
+	private void sendNotification(String topic, List<IdmIdentityDto> recipients, IdmIdentityDto manager, String fullName,
+			IdmIdentityDto identity, String position, String ppvEnd) {
 		notificationManager.send(
 				topic,
 				new IdmMessageDto
 						.Builder()
 						.setLevel(NotificationLevel.INFO)
+						.addParameter("userIdentity", identity)
 						.addParameter("user", fullName)
 						.addParameter("department", position)
 						.addParameter("ppvEnd", ppvEnd)
@@ -299,6 +302,25 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		}
 		
 		return Boolean.TRUE;
+	}
+	
+	private Optional<OperationResult> getRecipientsAndSend(IdmIdentityDto guarantee, boolean sendBefore, 
+			String fullName, IdmIdentityDto identity, String position, String ppvEnd) {
+		List<IdmIdentityDto> recipients = getRecipients(guarantee);
+		if (recipients.isEmpty()) {
+			return Optional.of(new OperationResult.Builder(OperationState.EXCEPTION).
+					setModel(new DefaultResultModel(ExtrasResultCode.NO_RECIPIENTS_FOUND)).
+					build()); 
+		}
+		if (sendBefore) {
+			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END_IN_X_DAYS, new ArrayList<>(recipients), guarantee, 
+				fullName, identity, position, ppvEnd);
+		} else {
+			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END, new ArrayList<>(recipients), guarantee, 
+					fullName, identity, position, ppvEnd);
+		}
+
+		return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
 	}
 
 	protected void setDatesForTest(LocalDate currentDate, Long daysBeforeEnd) {
