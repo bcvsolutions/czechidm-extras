@@ -82,8 +82,9 @@ public class IdentityByTreeNodeEvaluator extends AbstractAuthorizationEvaluator<
 		subqueryTreeNode.where(
 				builder.and(
 						builder.equal(subqueryTreeNodeRoot.get(IdmTreeNode_.id), treeNodeDto.getId()),
+						builder.equal(subRoot.get(IdmIdentityContract_.workPosition).get(IdmTreeNode_.treeType), subqueryTreeNodeRoot.get(IdmTreeNode_.treeType)),
 						builder.between(
-                				subRoot.get(IdmIdentityContract_.workPosition).get(IdmTreeNode_.forestIndex).get(IdmForestIndexEntity_.lft), 
+                				subRoot.get(IdmIdentityContract_.workPosition).get(IdmTreeNode_.forestIndex).get(IdmForestIndexEntity_.lft),
                 				subqueryTreeNodeRoot.get(IdmTreeNode_.forestIndex).get(IdmForestIndexEntity_.lft),
                 				subqueryTreeNodeRoot.get(IdmTreeNode_.forestIndex).get(IdmForestIndexEntity_.rgt)
                 		)
