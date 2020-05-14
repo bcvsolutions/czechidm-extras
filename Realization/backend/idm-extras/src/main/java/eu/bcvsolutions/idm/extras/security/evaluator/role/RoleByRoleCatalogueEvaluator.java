@@ -16,10 +16,7 @@ import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
 
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
-import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
@@ -50,8 +47,6 @@ public class RoleByRoleCatalogueEvaluator extends AbstractAuthorizationEvaluator
 	public static final String EVALUATOR_NAME = "role-by-role-catalogue-evaluator";
 
 	@Autowired
-	private IdmRoleCatalogueService roleCatalogueService;
-	@Autowired
 	private IdmRoleService roleService;
 
 	@Override
@@ -59,13 +54,8 @@ public class RoleByRoleCatalogueEvaluator extends AbstractAuthorizationEvaluator
 			AuthorizationPolicy policy, BasePermission... permission) {
 
 		// check before apply evaluator
-		UUID uuid = getUuid(policy);
-		if (uuid == null) {
-			return null;
-		}
-
-		IdmRoleCatalogueDto roleCatalogueDto = roleCatalogueService.get(uuid);
-		if (roleCatalogueDto == null) {
+		UUID roleCatalogueId = getUuid(policy);
+		if (roleCatalogueId == null) {
 			return null;
 		}
 		
@@ -81,7 +71,7 @@ public class RoleByRoleCatalogueEvaluator extends AbstractAuthorizationEvaluator
 		subqueryRoleCatalogue.select(subRoleCatalogueRoot);
 		subqueryRoleCatalogue.where(
 				builder.and(
-						builder.equal(subRoleCatalogueRoot.get(IdmRoleCatalogue_.id), roleCatalogueDto.getId()),
+						builder.equal(subRoleCatalogueRoot.get(IdmRoleCatalogue_.id), roleCatalogueId),
 						builder.between(
 								subRoot.get(IdmRoleCatalogueRole_.roleCatalogue).get(IdmRoleCatalogue_.forestIndex).get(IdmForestIndexEntity_.lft), 
 								subRoleCatalogueRoot.get(IdmRoleCatalogue_.forestIndex).get(IdmForestIndexEntity_.lft),
@@ -102,23 +92,18 @@ public class RoleByRoleCatalogueEvaluator extends AbstractAuthorizationEvaluator
 	@Override
 	public Set<String> getPermissions(IdmRole authorizable, AuthorizationPolicy policy) {
 		Set<String> permissions = super.getPermissions(authorizable, policy);
-		UUID uuid = getUuid(policy);
-		if (uuid == null) {
+		UUID roleCatalogueId = getUuid(policy);
+		if (roleCatalogueId == null) {
 			return permissions;
 		}
 		
-		IdmRoleCatalogueDto roleCatalogueDto = roleCatalogueService.get(uuid);
-		if (roleCatalogueDto == null) {
-			return permissions;
-		}
-
 		// we try found role by id and role catalogue
 		IdmRoleFilter filter = new IdmRoleFilter();
 		filter.setId(authorizable.getId());
-		filter.setRoleCatalogueId(roleCatalogueDto.getId());
-		List<IdmRoleDto> roles = roleService.find(filter, null).getContent();
+		filter.setRoleCatalogueId(roleCatalogueId);
+		long rolesCount = roleService.count(filter);
 		
-		if (!roles.isEmpty()) {
+		if (rolesCount > 0) {
 			permissions.addAll(policy.getPermissions());
 		}
 

@@ -16,11 +16,8 @@ import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
 
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
-import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
 import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
@@ -52,8 +49,6 @@ public class IdentityByTreeNodeEvaluator extends AbstractAuthorizationEvaluator<
 	public static final String EVALUATOR_NAME = "identity-by-tree-node-evaluator";
 
 	@Autowired
-	private IdmTreeNodeService treeNodeService;
-	@Autowired
 	private IdmIdentityService identityService;
 	
 	@Override
@@ -61,16 +56,11 @@ public class IdentityByTreeNodeEvaluator extends AbstractAuthorizationEvaluator<
 			AuthorizationPolicy policy, BasePermission... permission) {
 
 		// check before apply evaluator
-		UUID uuid = getUuid(policy);
-		if (uuid == null) {
+		UUID treeNodeId = getUuid(policy);
+		if (treeNodeId == null) {
 			return null;
 		}
 
-		IdmTreeNodeDto treeNodeDto = treeNodeService.get(uuid);
-		if (treeNodeDto == null) {
-			return null;
-		}
-		
 		// subquery to treenode (contract position -> treenode)
 		Subquery<IdmIdentityContract> subquery = query.subquery(IdmIdentityContract.class);
 		Root<IdmIdentityContract> subRoot = subquery.from(IdmIdentityContract.class);
@@ -81,7 +71,7 @@ public class IdentityByTreeNodeEvaluator extends AbstractAuthorizationEvaluator<
 		subqueryTreeNode.select(subqueryTreeNodeRoot);
 		subqueryTreeNode.where(
 				builder.and(
-						builder.equal(subqueryTreeNodeRoot.get(IdmTreeNode_.id), treeNodeDto.getId()),
+						builder.equal(subqueryTreeNodeRoot.get(IdmTreeNode_.id), treeNodeId),
 						builder.equal(subRoot.get(IdmIdentityContract_.workPosition).get(IdmTreeNode_.treeType), subqueryTreeNodeRoot.get(IdmTreeNode_.treeType)),
 						builder.between(
                 				subRoot.get(IdmIdentityContract_.workPosition).get(IdmTreeNode_.forestIndex).get(IdmForestIndexEntity_.lft),
@@ -103,24 +93,19 @@ public class IdentityByTreeNodeEvaluator extends AbstractAuthorizationEvaluator<
 	@Override
 	public Set<String> getPermissions(IdmIdentity authorizable, AuthorizationPolicy policy) {
 		Set<String> permissions = super.getPermissions(authorizable, policy);
-		UUID uuid = getUuid(policy);
-		if (uuid == null) {
-			return permissions;
-		}
-		
-		IdmTreeNodeDto treeNodeDto = treeNodeService.get(uuid);
-		if (treeNodeDto == null) {
+		UUID treeNodeId = getUuid(policy);
+		if (treeNodeId == null) {
 			return permissions;
 		}
 		
 		// we try found identity by tree node, identity id and recursively
 		IdmIdentityFilter filter = new IdmIdentityFilter();
 		filter.setId(authorizable.getId());
-		filter.setTreeNode(treeNodeDto.getId());
+		filter.setTreeNode(treeNodeId);
 		filter.setRecursively(true);
-		List<IdmIdentityDto> founded = identityService.find(filter, null).getContent();
+		long identitiesCount = identityService.count(filter);
 		
-		if (!founded.isEmpty()) {
+		if (identitiesCount > 0) {
 			permissions.addAll(policy.getPermissions());
 		}
 
