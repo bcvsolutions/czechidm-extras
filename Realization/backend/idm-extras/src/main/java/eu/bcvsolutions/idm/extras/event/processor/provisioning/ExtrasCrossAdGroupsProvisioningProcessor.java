@@ -206,6 +206,10 @@ public class ExtrasCrossAdGroupsProvisioningProcessor extends AbstractEntityEven
 		Map<ProvisioningAttributeDto, Object> fullAccountObject = provisioningOperationService
 				.getFullAccountObject(provisioningOperation);
 
+		if (fullAccountObject == null) {
+			return new DefaultEventResult<>(event, this);
+		}
+
 		Optional<Map.Entry<ProvisioningAttributeDto, Object>> ldapGroups = fullAccountObject.entrySet().stream()
 				.filter(fullObject -> fullObject.getKey().getSchemaAttributeName().equals("ldapGroups"))
 				.findFirst();
