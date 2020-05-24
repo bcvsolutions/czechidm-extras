@@ -114,7 +114,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 			// create notifications
 			IdmNotificationTemplateFilter tf = new IdmNotificationTemplateFilter();
 			tf.setText("ContractEndInFuture");
-			templateFuture = notificationTemplateService.find(tf, null, null).getContent().get(0);
+			templateFuture = notificationTemplateService.find(tf, null).getContent().get(0);
 
 			NotificationConfigurationDto notificationConfigurationFuture = new NotificationConfigurationDto();
 			notificationConfigurationFuture.setTopic("extras:contractEndInXDays");
@@ -126,7 +126,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 			IdmNotificationTemplateFilter tfTwo = new IdmNotificationTemplateFilter();
 			tfTwo.setText("ContractEndNow");
-			templateNow = notificationTemplateService.find(tfTwo, null, null).getContent().get(0);
+			templateNow = notificationTemplateService.find(tfTwo, null).getContent().get(0);
 
 			NotificationConfigurationDto notificationConfigurationNow = new NotificationConfigurationDto();
 			notificationConfigurationNow.setTopic("extras:contractEnd");
@@ -184,7 +184,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 		// we should find 1 email notification on testRecipient
 		long count = notificationLogService.count(filter);
-		IdmNotificationTemplateDto usedTemplateOne = notificationLogService.find(filter, null, null).getContent().
+		IdmNotificationTemplateDto usedTemplateOne = notificationLogService.find(filter, null).getContent().
 				get(0).getMessage().getTemplate();
 		
 		Assert.assertEquals(1, count);
@@ -196,7 +196,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 		// we should find 1 email notification on manager
 		long count2 = notificationLogService.count(filterTwo);
-		IdmNotificationTemplateDto usedTemplateTwo = notificationLogService.find(filterTwo, null, null).getContent().
+		IdmNotificationTemplateDto usedTemplateTwo = notificationLogService.find(filterTwo, null).getContent().
 				get(0).getMessage().getTemplate();
 
 		Assert.assertEquals(1, count2);
@@ -240,7 +240,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		// we should find 1 email notification on testRecipient
 		long countThree = notificationLogService.count(filterThree);
 		
-		IdmNotificationTemplateDto usedTemplateThree = notificationLogService.find(filterThree, null, null).getContent().
+		IdmNotificationTemplateDto usedTemplateThree = notificationLogService.find(filterThree, null).getContent().
 				get(0).getMessage().getTemplate();
 		
 		Assert.assertEquals(1, countThree);
