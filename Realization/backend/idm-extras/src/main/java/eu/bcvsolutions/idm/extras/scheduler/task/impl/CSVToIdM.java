@@ -40,7 +40,9 @@ public class CSVToIdM {
 	private String attributeColumnName;
 	private String criticalityColumnName;
 	private String guaranteeColumnName;
+	private String guaranteeTypeColumnName;
 	private String guaranteeRoleColumnName;
+	private String guaranteeRoleTypeColumnName;
 	private String catalogueColumnName;
 	private String subRoleColumnName;
 	private String columnSeparator;
@@ -49,7 +51,9 @@ public class CSVToIdM {
 	private Boolean hasAttribute;
 	private Boolean hasCriticality;
 	private Boolean hasGuarantees;
+	private Boolean hasGuaranteeTypes;
 	private Boolean hasGuaranteeRoles;
+	private Boolean hasGuaranteeRoleTypes;
 	private Boolean hasCatalogues;
 	private Boolean hasSubRoles;
 	private Boolean hasRoleCodes;
@@ -59,7 +63,9 @@ public class CSVToIdM {
 	private Map<String, List<String>> roleAttributes;
 	private Map<String, String> criticalities;
 	private Map<String, List<String>> guarantees;
+	private Map<String, String> guaranteeTypes;
 	private Map<String, List<String>> guaranteeRoles;
+	private Map<String, String> guaranteeRoleTypes;
 	private Map<String, List<String>> catalogues;
 	private Map<String, List<String>> subRoles;
 	private Map<String, String> roleCodes;
@@ -110,6 +116,22 @@ public class CSVToIdM {
 		return guaranteeRoles;
 	}
 
+	public Map<String, String> getGuaranteeTypes() {
+		return guaranteeTypes;
+	}
+
+	public void setGuaranteeTypes(Map<String, String> guaranteeTypes) {
+		this.guaranteeTypes = guaranteeTypes;
+	}
+
+	public Map<String, String> getGuaranteeRoleTypes() {
+		return guaranteeRoleTypes;
+	}
+
+	public void setGuaranteeRoleTypes(Map<String, String> guaranteeRoleTypes) {
+		this.guaranteeRoleTypes = guaranteeRoleTypes;
+	}
+
 	public void setGuaranteeRoles(Map<String, List<String>> guaranteeRoles) {
 		this.guaranteeRoles = guaranteeRoles;
 	}
@@ -132,11 +154,11 @@ public class CSVToIdM {
 
 	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String roleCodeColumnName, 
 			String descriptionColumnName, 
-			String attributeColumnName, String criticalityColumnName, String guaranteeColumnName,
-			String guaranteeRoleColumnName, String catalogueColumnName, String subRoleColumnName,
+			String attributeColumnName, String criticalityColumnName, String guaranteeColumnName, String guaranteeTypeColumnName,
+			String guaranteeRoleColumnName, String guaranteeRoleTypeColumnName, String catalogueColumnName, String subRoleColumnName,
 			String columnSeparator, String multiValueSeparator,
-			Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, 
-			Boolean hasGuarantees, Boolean hasGuaranteeRoles, Boolean hasCatalogues, Boolean hasSubRoles,
+			Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, Boolean hasGuarantees, Boolean hasGuaranteeTypes, 
+			Boolean hasGuaranteeRoles, Boolean hasGuaranteeRoleTypes, Boolean hasCatalogues, Boolean hasSubRoles,
 			Boolean hasRoleCodes, String encoding) {
 		
 		this.attachmentData = attachmentData;
@@ -146,7 +168,9 @@ public class CSVToIdM {
 		this.attributeColumnName = attributeColumnName;
 		this.criticalityColumnName = criticalityColumnName;
 		this.guaranteeColumnName = guaranteeColumnName;
+		this.guaranteeTypeColumnName = guaranteeTypeColumnName;
 		this.guaranteeRoleColumnName = guaranteeRoleColumnName;
+		this.guaranteeRoleTypeColumnName = guaranteeRoleTypeColumnName;
 		this.catalogueColumnName = catalogueColumnName;
 		this.subRoleColumnName = subRoleColumnName;
 		this.columnSeparator = columnSeparator;
@@ -155,7 +179,9 @@ public class CSVToIdM {
 		this.hasAttribute = hasAttribute;
 		this.hasCriticality = hasCriticality;
 		this.hasGuarantees = hasGuarantees;
+		this.hasGuaranteeTypes = hasGuaranteeTypes;
 		this.hasGuaranteeRoles = hasGuaranteeRoles;
+		this.hasGuaranteeRoleTypes = hasGuaranteeRoleTypes;
 		this.hasCatalogues = hasCatalogues;
 		this.hasSubRoles = hasSubRoles;
 		this.hasRoleCodes = hasRoleCodes;
@@ -168,7 +194,9 @@ public class CSVToIdM {
 		this.roleAttributes = maps.getRoleAttributes();
 		this.criticalities = maps.getCriticalities();
 		this.guarantees = maps.getGuarantees();
+		this.guaranteeTypes = maps.getGuaranteeTypes();
 		this.guaranteeRoles = maps.getGuaranteeRoles();
+		this.guaranteeRoleTypes = maps.getGuaranteeRoleTypes();
 		this.catalogues = maps.getCatalogues();
 		this.subRoles = maps.getSubRoles();
 	}
@@ -195,30 +223,47 @@ public class CSVToIdM {
 			if (hasDescription) {
 				descriptionColumnNumber = findColumnNumber(header, descriptionColumnName);
 			}
+			
 			// find number of column with description name
 			int roleCodesColumnNumber = -1;
 			if (hasRoleCodes) {
 				roleCodesColumnNumber = findColumnNumber(header, roleCodeColumnName);
 			}
+			
 			// find number of column with attributes
 			int attributeColumnNumber = -1;
 			if (hasAttribute) {
 				attributeColumnNumber = findColumnNumber(header, attributeColumnName);
 			}
+			
 			// find number of column with criticality
 			int criticalityColumnNumber = -1;
 			if (hasCriticality) {
 				criticalityColumnNumber = findColumnNumber(header, criticalityColumnName);
 			}
+			
 			// find number of column with guarantee
 			int guaranteeColumnNumber = -1;
 			if (hasGuarantees) {
 				guaranteeColumnNumber = findColumnNumber(header, guaranteeColumnName);
 			}
+			
+			// find number of column with guarantee type
+			int guaranteeTypesColumnNumber = -1;
+			if (hasGuaranteeTypes) {
+				guaranteeTypesColumnNumber = findColumnNumber(header, guaranteeTypeColumnName);
+			}
+			
 			// find number of column with guaranteeRole
 			int guaranteeRolesColumnNumber = -1;
 			if (hasGuaranteeRoles) {
 				guaranteeRolesColumnNumber = findColumnNumber(header, guaranteeRoleColumnName);
+			}
+			
+			// find number of column with guarantee role type
+			int guaranteeRoleTypesColumnNumber = -1;
+			if (hasGuaranteeRoleTypes) {
+				guaranteeRoleTypesColumnNumber = findColumnNumber(header, guaranteeRoleTypeColumnName);
 			}
 			
 			// find number of column with catalogues
@@ -233,14 +278,16 @@ public class CSVToIdM {
 				subRolesColumnNumber = findColumnNumber(header, subRoleColumnName);
 			}
 
-			Map<String, String> roleCodes = new HashMap<>();
-			Map<String, String> roleDescriptions = new HashMap<>();
-			Map<String, List<String>> roleAttributes = new HashMap<>();
-			Map<String, String> criticalities = new HashMap<>();
-			Map<String, List<String>> guarantees = new HashMap<>();
-			Map<String, List<String>> guaranteeRoles = new HashMap<>();
-			Map<String, List<String>> catalogues = new HashMap<>();
-			Map<String, List<String>> subRoles = new HashMap<>();
+			Map<String, String> roleCodesParsing = new HashMap<>();
+			Map<String, String> roleDescriptionsParsing = new HashMap<>();
+			Map<String, List<String>> roleAttributesParsing = new HashMap<>();
+			Map<String, String> criticalitiesParsing = new HashMap<>();
+			Map<String, List<String>> guaranteesParsing = new HashMap<>();
+			Map<String, String> guaranteeTypesParsing = new HashMap<>();
+			Map<String, List<String>> guaranteeRolesParsing = new HashMap<>();
+			Map<String, String> guaranteeRoleTypesParsing = new HashMap<>();
+			Map<String, List<String>> cataloguesParsing = new HashMap<>();
+			Map<String, List<String>> subRolesParsing = new HashMap<>();
 			
 			for (String[] line : reader) {
 				String[] roleNames = line[roleColumnNumber].split(multiValueSeparator);
@@ -292,6 +339,15 @@ public class CSVToIdM {
 					guaranteesArray = new String[0];
 				}
 				
+				// get guarantee types from the csv
+				String guaranteeType;
+				
+				if (hasGuaranteeTypes) {
+					guaranteeType = line[guaranteeTypesColumnNumber];
+				} else {
+					guaranteeType = "";
+				}
+				
 				// get guaranteesRoles from the csv
 				String[] guaranteesRolesArray;
 				
@@ -299,6 +355,15 @@ public class CSVToIdM {
 					guaranteesRolesArray = line[guaranteeRolesColumnNumber].split(multiValueSeparator);
 				} else {
 					guaranteesRolesArray = new String[0];
+				}
+				
+				// get guarantee role types from the csv
+				String guaranteeRoleType;
+				
+				if (hasGuaranteeRoleTypes) {
+					guaranteeRoleType = line[guaranteeRoleTypesColumnNumber];
+				} else {
+					guaranteeRoleType = "";
 				}
 				
 				// get catalogues from the csv
@@ -322,53 +387,60 @@ public class CSVToIdM {
 				for (String roleName : roleNames) {
 					if (!StringUtils.isEmpty(roleName)) {
 						// save role codes
-						roleCodes.put(roleName, roleCode);
+						roleCodesParsing.put(roleName, roleCode);
 						
 						// save descriptions
-						roleDescriptions.put(roleName, description);
+						roleDescriptionsParsing.put(roleName, description);
 						
 						// save attributes
 						List<String> attr = new ArrayList<>((int) (attributes.length / 0.75));
 						for(String attribute : attributes) {
 							attr.add(attribute);
 						}
-						roleAttributes.put(roleName, attr);
+						roleAttributesParsing.put(roleName, attr);
 						
 						// save criticalities
-						criticalities.put(roleName, criticality);
+						criticalitiesParsing.put(roleName, criticality);
 						
 						// save guarantees
 						List<String> guar = new ArrayList<>((int) (guaranteesArray.length / 0.75));
 						for(String guarantee : guaranteesArray) {
 							guar.add(guarantee);
 						}
-						guarantees.put(roleName, guar);
+						guaranteesParsing.put(roleName, guar);
+						
+						// save guarantee types
+						guaranteeTypesParsing.put(roleName, guaranteeType);
 						
 						// save guaranteesRoles
 						List<String> guarRoles = new ArrayList<>((int) (guaranteesRolesArray.length / 0.75));
 						for(String guaranteeRole : guaranteesRolesArray) {
 							guarRoles.add(guaranteeRole);
 						}
-						guaranteeRoles.put(roleName, guarRoles);
+						guaranteeRolesParsing.put(roleName, guarRoles);
+						
+						// save guarantee role types
+						guaranteeRoleTypesParsing.put(roleName, guaranteeRoleType);
 						
 						// save catalogues
 						List<String> catalogueList = new ArrayList<>((int) (cataloguesArray.length / 0.75));
 						for(String catalogue : cataloguesArray) {
 							catalogueList.add(catalogue);
 						}
-						catalogues.put(roleName, catalogueList);
+						cataloguesParsing.put(roleName, catalogueList);
 						
 						// save sub roles
 						List<String> subRolesList = new ArrayList<>((int) (subRolesArray.length / 0.75));
 						for(String subRole : subRolesArray) {
 							subRolesList.add(subRole);
 						}
-						subRoles.put(roleName, subRolesList);
+						subRolesParsing.put(roleName, subRolesList);
 					}
 				}
 			}
 			
-			Maps maps = new Maps(roleCodes, roleDescriptions, roleAttributes, criticalities, guarantees, guaranteeRoles, catalogues, subRoles);
+			Maps maps = new Maps(roleCodesParsing, roleDescriptionsParsing, roleAttributesParsing, criticalitiesParsing, guaranteesParsing, 
+					guaranteeTypesParsing, guaranteeRolesParsing, guaranteeRoleTypesParsing, cataloguesParsing, subRolesParsing);
 			return maps;
 		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
@@ -410,20 +482,25 @@ public class CSVToIdM {
 	private Map<String, List<String>> roleAttributes;
 	private Map<String, String> criticalities;
 	private Map<String, List<String>> guarantees;
+	private Map<String, String> guaranteeTypes;
 	private Map<String, List<String>> guaranteeRoles;
+	private Map<String, String> guaranteeRoleTypes;
 	private Map<String, List<String>> catalogues; 
 	private Map<String, List<String>> subRoles;
 	
 	public Maps(Map<String, String> roleCodes, Map<String, String> roleDescriptions, Map<String, List<String>> roleAttributes,
-			Map<String, String> criticalities, Map<String, List<String>> guarantees,
-			Map<String, List<String>> guaranteeRoles, Map<String, List<String>> catalogues, Map<String, List<String>> subRoles) {
+			Map<String, String> criticalities, Map<String, List<String>> guarantees, Map<String, String> guaranteeTypes,
+			Map<String, List<String>> guaranteeRoles, Map<String, String> guaranteeRoleTypes, Map<String, List<String>> catalogues, 
+			Map<String, List<String>> subRoles) {
 		super();
 		this.roleCodes = roleCodes;
 		this.roleDescriptions = roleDescriptions;
 		this.roleAttributes = roleAttributes;
 		this.criticalities = criticalities;
 		this.guarantees = guarantees;
+		this.guaranteeTypes = guaranteeTypes;
 		this.guaranteeRoles = guaranteeRoles;
+		this.guaranteeRoleTypes = guaranteeRoleTypes;
 		this.catalogues = catalogues;
 		this.subRoles = subRoles;
 	}
@@ -467,6 +544,14 @@ public class CSVToIdM {
 	public void setGuarantees(Map<String, List<String>> guarantees) {
 		this.guarantees = guarantees;
 	}
+	
+	public Map<String, String> getGuaranteeTypes() {
+		return guaranteeTypes;
+	}
+
+	public void setGuaranteeTypes(Map<String, String> guaranteeTypes) {
+		this.guaranteeTypes = guaranteeTypes;
+	}
 
 	public Map<String, List<String>> getGuaranteeRoles() {
 		return guaranteeRoles;
@@ -474,6 +559,14 @@ public class CSVToIdM {
 
 	public void setGuaranteeRoles(Map<String, List<String>> guaranteeRoles) {
 		this.guaranteeRoles = guaranteeRoles;
+	}
+	
+	public Map<String, String> getGuaranteeRoleTypes() {
+		return guaranteeRoleTypes;
+	}
+
+	public void setGuaranteeRoleTypes(Map<String, String> guaranteeRoleTypes) {
+		this.guaranteeRoleTypes = guaranteeRoleTypes;
 	}
 	
 	public Map<String, List<String>> getCatalogues() {

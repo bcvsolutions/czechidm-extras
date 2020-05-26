@@ -1,28 +1,48 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
-import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
-import eu.bcvsolutions.idm.core.api.dto.*;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
-import eu.bcvsolutions.idm.core.api.service.*;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
-import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
-import eu.bcvsolutions.idm.extras.utils.Pair;
-import eu.bcvsolutions.idm.test.api.TestHelper;
-import org.junit.Assert;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
-import static org.junit.Assert.*;
+import org.junit.Assert;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import eu.bcvsolutions.idm.acc.dto.SysRoleSystemDto;
+import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
+import eu.bcvsolutions.idm.acc.dto.filter.SysRoleSystemFilter;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCatalogueDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleCompositionDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleFormAttributeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCatalogueService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleCompositionService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListItemService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
+import eu.bcvsolutions.idm.extras.utils.Pair;
+import eu.bcvsolutions.idm.test.api.TestHelper;
 
 public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
@@ -43,6 +63,9 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private static final String SUB_ROLE_TWO = "subrole2";
 	private static final String SUB_ROLE_COLUMN = "subroles";
 	private static final String ENVIRONMENT = "testing env";
+	private static final String GUARANTEE_TYPE_COLUMN = "guaranteeType";
+	private static final String GUARANTEE_ROLE_TYPE_COLUMN = "guaranteeRoleType";
+	private static final String GUARANTEE_TYPE = "type1";
 	
 	@Autowired
 	private IdmRoleFormAttributeService roleFormAttributeService;
@@ -62,11 +85,28 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private IdmRoleCatalogueService roleCatalogueService;
 	@Autowired
 	private IdmRoleCompositionService roleCompositionService;
+	@Autowired
+	private IdmCodeListService codeListService;
+	@Autowired
+	private IdmCodeListItemService codeListItemService;
 	
 	@Test
 	public void importRolesTest() {
 		setPath(PATH, "importRolesTestFile04.csv");
 		CHECK_NAME = "CORE-CLOSE";
+		
+		// create guarantee type
+		IdmCodeListDto codeList = new IdmCodeListDto(UUID.randomUUID());
+		codeList.setCode("guarantee-type");
+		codeList.setName("guarantee-type");
+		codeListService.save(codeList);
+		
+		IdmCodeListItemDto codeListItem = new IdmCodeListItemDto();
+		codeListItem.setCode(GUARANTEE_TYPE);
+		codeListItem.setName(GUARANTEE_TYPE);
+		codeListItem.setCodeList(codeList.getId());
+		codeListItemService.save(codeListItem);
+		
 		// create system
 		Pair<SysSystemDto, Map<String, Object>> pair = createData();
 		SysSystemDto system = pair.getFirst();
@@ -143,23 +183,27 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		// test for setting guarantee, finds the guarantee of the role
 		IdmRoleGuaranteeFilter filterGuaranteeRole = new IdmRoleGuaranteeFilter();
 		filterGuaranteeRole.setRole(ourRole.getId());
-		List<IdmRoleGuaranteeDto> garantLinks = roleGuaranteeService.find(filterGuaranteeRole, null, null).getContent();
+		List<IdmRoleGuaranteeDto> garantLinks = roleGuaranteeService.find(filterGuaranteeRole, null).getContent();
 		IdmRoleGuaranteeDto garantLink = garantLinks.get(0);
 		IdmIdentityDto garant = identityService.get(garantLink.getGuarantee());
+		String guaranteeType = garantLink.getType();
 
 		Assert.assertEquals(GUARANTEE, garant.getUsername());
+		Assert.assertEquals(GUARANTEE_TYPE, guaranteeType);
 		
 		// test for setting guarantee role
 		IdmRoleGuaranteeRoleFilter filterRoleGuaranteeRole = new IdmRoleGuaranteeRoleFilter();
 		filterRoleGuaranteeRole.setRole(ourRole.getId());
-		List<IdmRoleGuaranteeRoleDto> garantRoleLinks = roleGuaranteeRoleService.find(filterRoleGuaranteeRole, null, null).getContent();
+		List<IdmRoleGuaranteeRoleDto> garantRoleLinks = roleGuaranteeRoleService.find(filterRoleGuaranteeRole, null).getContent();
 		IdmRoleGuaranteeRoleDto garantRoleLink = garantRoleLinks.get(0);
 		IdmRoleDto garantRole = roleService.get(garantRoleLink.getGuaranteeRole());
+		String guaranteeRoleType = garantRoleLink.getType();
 		
 		Assert.assertEquals(GUARANTEE_ROLE, garantRole.getCode());
+		Assert.assertEquals(GUARANTEE_TYPE, guaranteeRoleType);
 
 		// test for assigning sub roles
-		List<IdmRoleCompositionDto> subRoles = roleCompositionService.findAllSubRoles(ourRole.getId(), null);
+		List<IdmRoleCompositionDto> subRoles = roleCompositionService.findAllSubRoles(ourRole.getId());
 		Assert.assertEquals(1, subRoles.size());
 		Assert.assertEquals(ourRole.getId(), subRoles.get(0).getSuperior());
 		
@@ -239,19 +283,19 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		// test for setting guarantee, finds the guarantee of the role
 		IdmRoleGuaranteeFilter filterGuaranteeRoleUpdate = new IdmRoleGuaranteeFilter();
 		filterGuaranteeRoleUpdate.setRole(ourRoleUpdate.getId());
-		List<IdmRoleGuaranteeDto> garantLinksUpdate = roleGuaranteeService.find(filterGuaranteeRoleUpdate, null, null).getContent();
+		List<IdmRoleGuaranteeDto> garantLinksUpdate = roleGuaranteeService.find(filterGuaranteeRoleUpdate, null).getContent();
 
 		Assert.assertEquals(2, garantLinksUpdate.size());
 		
 		// test for setting guarantee role
 		IdmRoleGuaranteeRoleFilter filterRoleGuaranteeRoleUpdate = new IdmRoleGuaranteeRoleFilter();
 		filterRoleGuaranteeRoleUpdate.setRole(ourRoleUpdate.getId());
-		List<IdmRoleGuaranteeRoleDto> garantRoleLinksUpdate = roleGuaranteeRoleService.find(filterRoleGuaranteeRoleUpdate, null, null).getContent();
+		List<IdmRoleGuaranteeRoleDto> garantRoleLinksUpdate = roleGuaranteeRoleService.find(filterRoleGuaranteeRoleUpdate, null).getContent();
 		
 		Assert.assertEquals(2, garantRoleLinksUpdate.size());
 
 		// test for assigning sub roles
-		List<IdmRoleCompositionDto> subRolesUpdate = roleCompositionService.findAllSubRoles(ourRoleUpdate.getId(), null);
+		List<IdmRoleCompositionDto> subRolesUpdate = roleCompositionService.findAllSubRoles(ourRoleUpdate.getId());
 		Assert.assertEquals(2, subRolesUpdate.size());
 	}
 	
@@ -260,7 +304,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		setPath(PATH_THREE, "importRolesTestFile06.csv");
 		Pair<SysSystemDto, Map<String, Object>> pair = createData();
 		//
-		Map<String, Object> configOfLRT = addToCongigEnvironment(pair.getSecond());
+		Map<String, Object> configOfLRT = addToCongigOtherParams(pair.getSecond());
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
 		lrt.init(configOfLRT);
 		longRunningTaskManager.executeSync(lrt);
@@ -279,7 +323,7 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		
 		IdmRoleFilter rf = new IdmRoleFilter();
 		rf.setEnvironment(ENVIRONMENT);
-		List<IdmRoleDto> rolesForEnvironment = roleService.find(rf, null, null).getContent();
+		List<IdmRoleDto> rolesForEnvironment = roleService.find(rf, null).getContent();
 		Assert.assertEquals(1, rolesForEnvironment.size());
 		Assert.assertEquals("testtest3" + "|" + ENVIRONMENT, rolesForEnvironment.get(0).getCode());
 		Assert.assertEquals(ENVIRONMENT, rolesForEnvironment.get(0).getEnvironment());
@@ -294,10 +338,12 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CRITICALITY_COLUMN_NAME, CRITICALITY_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CATALOGUES_COLUMN_NAME, CATALOGUES_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_SUBROLES_COLUMN_NAME, SUB_ROLE_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_TYPE_COLUMN_NAME, GUARANTEE_TYPE_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_ROLE_TYPE_COLUMN_NAME, GUARANTEE_ROLE_TYPE_COLUMN);
 		return configOfLRT;
 	}
 	
-	private Map<String, Object> addToCongigEnvironment(Map<String, Object> configOfLRT){
+	private Map<String, Object> addToCongigOtherParams(Map<String, Object> configOfLRT){
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ENVIRONMENT, ENVIRONMENT);
 		return configOfLRT;
 	}
