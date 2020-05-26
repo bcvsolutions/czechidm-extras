@@ -155,10 +155,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		if(hasSystem) {
 			system = findSystem();
 		}
-		
-		if (!attachmentManager.get(attachmentId).getMimetype().contains("text/csv")) {
-			throw new ResultCodeException(ExtrasResultCode.WRONG_FILE_FORMAT);
-		}
+
 		// get data from CSV
 		IdmAttachmentDto attachment = attachmentManager.get(attachmentId);
 		attachment.setOwnerId(this.getScheduledTaskId());
