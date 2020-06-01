@@ -469,7 +469,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			roleSystemFilter.setSystemId(system.getId());
 			roleSystemFilter.setRoleId(role.getId());
 			roleSystemFilter.setSystemMappingId(systemMapping.getId());
-			long count = roleSystemService.count(roleSystemFilter, null);
+			long count = roleSystemService.count(roleSystemFilter);
 
 			if (count == 0) {
 				SysRoleSystemDto roleSystem = new SysRoleSystemDto();
