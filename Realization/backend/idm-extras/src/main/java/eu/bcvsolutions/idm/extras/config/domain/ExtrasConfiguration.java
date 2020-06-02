@@ -20,6 +20,10 @@ public interface ExtrasConfiguration extends Configurable {
 	String EXTRAS_SYSTEM_EXCHANGE_ID =
 			IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID +
 					".configuration.systemId";
+	
+	String EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_A = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".wf.approval.guaranteeTypeA";
+	String EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_B = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".wf.approval.guaranteeTypeB";
+	String EXTRAS_APPROVAL_WF_CUSTOM_SCRIPT = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".wf.approval.customScript";
 
 	@Override
 	default String getConfigurableType() {
@@ -48,4 +52,26 @@ public interface ExtrasConfiguration extends Configurable {
 	List<String> getTitlesBefore();
 
 	UUID getSystemId();
+	
+	/**
+	 * Return property with code of role guarantees for A type
+	 *
+	 * @return
+	 */
+	String getRoleGuaranteeTypeA();
+	
+	/**
+	 * Return property with code of role guarantees for B type
+	 *
+	 * @return
+	 */
+	String getRoleGuaranteeTypeB();
+	
+	/**
+	 * Return property with code of custom script for role approvers
+	 *
+	 * @return
+	 */
+	String getCustomApprovalScriptCode();
+
 }
