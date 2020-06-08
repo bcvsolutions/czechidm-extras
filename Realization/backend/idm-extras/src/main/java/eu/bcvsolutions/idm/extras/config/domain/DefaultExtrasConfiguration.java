@@ -57,7 +57,22 @@ public class DefaultExtrasConfiguration
 		if (string != null && !string.isEmpty()) {
 			return Lists.newArrayList(string.split(","));
 		}
-
+		
 		return Lists.newArrayList();
+	}
+
+	@Override
+	public String getRoleGuaranteeTypeA() {
+		return getConfigurationService().getValue(EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_A);
+	}
+
+	@Override
+	public String getRoleGuaranteeTypeB() {
+		return getConfigurationService().getValue(EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_B);
+	}
+
+	@Override
+	public String getCustomApprovalScriptCode() {
+		return getConfigurationService().getValue(EXTRAS_APPROVAL_WF_CUSTOM_SCRIPT);
 	}
 }
