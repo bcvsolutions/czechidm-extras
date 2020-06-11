@@ -201,7 +201,7 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 
 		IdmFormAttributeDto descriptionCodeListAttribute = new IdmFormAttributeDto(PARAM_DESCRIPTION_CODE_LIST, PARAM_DESCRIPTION_CODE_LIST,
 				PersistentType.SHORTTEXT);
-		descriptionCodeListAttribute.setRequired(true);
+		descriptionCodeListAttribute.setRequired(false);
 		descriptionCodeListAttribute.setPlaceholder("Description of code list which will be created/updated");
 
 		IdmFormAttributeDto separatorAttribute = new IdmFormAttributeDto(PARAM_SEPARATOR, PARAM_SEPARATOR,
