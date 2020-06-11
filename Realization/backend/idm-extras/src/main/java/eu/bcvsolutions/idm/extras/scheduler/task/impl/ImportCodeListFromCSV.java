@@ -7,7 +7,6 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -97,7 +96,6 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 
 		// Load CSV via parser
 		try (CSVParser csvParser = csvFormat.parse(attachmentReader)) {
-			AtomicBoolean isNewCodeList = new AtomicBoolean(false);
 
 			List<CSVRecord> records = csvParser.getRecords();
 			this.count = (long) records.size();
@@ -109,7 +107,6 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 			if (codeListDto == null) {
 				LOG.info("Creating new code list");
 				codeListDto = new IdmCodeListDto();
-				isNewCodeList.set(true);
 			}
 			codeListDto.setCode(code);
 			codeListDto.setName(name);
@@ -125,23 +122,21 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 				LOG.info("Processing row [{}]", record.toString());
 
 				IdmCodeListItemDto codeListItemDto = new IdmCodeListItemDto();
-				if (!isNewCodeList.get()) {
-					LOG.info("Try to find existing item");
-					IdmCodeListItemFilter codeListItemFilter = new IdmCodeListItemFilter();
-					codeListItemFilter.setCode(key);
-					codeListItemFilter.setCodeListId(codeListUuid);
-					List<IdmCodeListItemDto> items = codeListItemService.find(codeListItemFilter, null).getContent();
+				LOG.info("Try to find existing item");
+				IdmCodeListItemFilter codeListItemFilter = new IdmCodeListItemFilter();
+				codeListItemFilter.setCode(key);
+				codeListItemFilter.setCodeListId(codeListUuid);
+				List<IdmCodeListItemDto> items = codeListItemService.find(codeListItemFilter, null).getContent();
 
-					if (items.size() > 1) {
-						LOG.info("Found more then one item with code [{}] skipping", key);
-						++this.counter;
-						this.logItemProcessed(items.get(0), taskNotCompleted("Found more then one item with code " + key + " skipping"));
-						return;
-					}
-					if (!items.isEmpty()) {
-						LOG.info("Item already exists, we will update it");
-						codeListItemDto = items.get(0);
-					}
+				if (items.size() > 1) {
+					LOG.info("Found more then one item with code [{}] skipping", key);
+					++this.counter;
+					this.logItemProcessed(items.get(0), taskNotCompleted("Found more then one item with code " + key + " skipping"));
+					return;
+				}
+				if (!items.isEmpty()) {
+					LOG.info("Item already exists, we will update it");
+					codeListItemDto = items.get(0);
 				}
 
 				codeListItemDto.setCode(key);
@@ -211,7 +206,7 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 
 		IdmFormAttributeDto separatorAttribute = new IdmFormAttributeDto(PARAM_SEPARATOR, PARAM_SEPARATOR,
 				PersistentType.SHORTTEXT);
-		separatorAttribute.setRequired(true);
+		separatorAttribute.setRequired(false);
 		separatorAttribute.setPlaceholder("Separator of columns in CSV");
 
 		return Lists.newArrayList(csvAttachment, codeCodeListAttribute, nameCodeListAttribute, descriptionCodeListAttribute, separatorAttribute);
