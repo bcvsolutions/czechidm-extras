@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,12 +47,12 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 @Description("Task which will create/update defined code list and it's items from CSV file")
 public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<OperationResult> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ImportCodeListFromCSV.class);
-	private static final String PARAM_PATH_TO_CSV = "CSV with values for import";
-	private static final String PARAM_CODE_CODE_LIST = "Code of code list";
-	private static final String PARAM_NAME_CODE_LIST = "Name of code list";
-	private static final String PARAM_DESCRIPTION_CODE_LIST = "Description of code list";
-	private static final String PARAM_SEPARATOR = "Separator of csv file";
+	public static final Logger LOG = LoggerFactory.getLogger(ImportCodeListFromCSV.class);
+	public static final String PARAM_PATH_TO_CSV = "CSV with values for import";
+	public static final String PARAM_CODE_CODE_LIST = "Code of code list";
+	public static final String PARAM_NAME_CODE_LIST = "Name of code list";
+	public static final String PARAM_DESCRIPTION_CODE_LIST = "Description of code list";
+	public static final String PARAM_SEPARATOR = "Separator of csv file";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
@@ -98,7 +99,8 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 		try (CSVParser csvParser = csvFormat.parse(attachmentReader)) {
 			AtomicBoolean isNewCodeList = new AtomicBoolean(false);
 
-			this.count = (long) csvParser.getRecords().size();
+			List<CSVRecord> records = csvParser.getRecords();
+			this.count = (long) records.size();
 			this.counter = 0L;
 
 			// load or create Code list
@@ -113,11 +115,11 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 			codeListDto.setName(name);
 			codeListDto.setDescription(description);
 			codeListDto = codeListService.save(codeListDto);
-			LOG.info("Code list saved with values from LR config");
+			LOG.info("Code list saved with values from LRT config");
 
 			UUID codeListUuid = codeListDto.getId();
 
-			csvParser.getRecords().forEach(record -> {
+			records.forEach(record -> {
 				String key = record.get("key");
 				String value = record.get("value");
 				LOG.info("Processing row [{}]", record.toString());
@@ -133,7 +135,7 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 					if (items.size() > 1) {
 						LOG.info("Found more then one item with code [{}] skipping", key);
 						++this.counter;
-						this.logItemProcessed(items.get(0), taskNotCompleted("Found more then one same items"));
+						this.logItemProcessed(items.get(0), taskNotCompleted("Found more then one item with code " + key + " skipping"));
 						return;
 					}
 					if (!items.isEmpty()) {
@@ -145,7 +147,7 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 				codeListItemDto.setCode(key);
 				codeListItemDto.setName(value);
 				codeListItemDto.setCodeList(codeListUuid);
-				codeListItemService.save(codeListItemDto);
+				codeListItemDto = codeListItemService.save(codeListItemDto);
 				LOG.info("Code list item [{}] saved", key);
 
 				++this.counter;
