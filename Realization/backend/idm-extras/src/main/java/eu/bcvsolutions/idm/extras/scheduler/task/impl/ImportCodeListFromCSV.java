@@ -77,81 +77,78 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 		attachment.setOwnerId(this.getScheduledTaskId());
 		attachmentManager.save(attachment);
 
-		InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
+		try (InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
+			 Reader attachmentReader = new InputStreamReader(attachmentData);) {
+			LOG.info("Reader is created");
 
-		LOG.info("Attachment is prepared, now transform to reader");
-
-		Reader attachmentReader = new InputStreamReader(attachmentData);
-
-		LOG.info("Reade is created");
-
-		if (StringUtils.isBlank(separator)) {
-			separator = COLUMN_SEPARATOR;
-		}
-
-		// prepare format of CSV
-		CSVFormat csvFormat = CSVFormat.DEFAULT
-				.withFirstRecordAsHeader()
-				.withDelimiter(separator.charAt(0));
-
-		// Load CSV via parser
-		try (CSVParser csvParser = csvFormat.parse(attachmentReader)) {
-
-			List<CSVRecord> records = csvParser.getRecords();
-			this.count = (long) records.size();
-			this.counter = 0L;
-
-			// load or create Code list
-			LOG.info("We will load or create code list");
-			IdmCodeListDto codeListDto = codeListService.getByCode(code);
-			if (codeListDto == null) {
-				LOG.info("Creating new code list");
-				codeListDto = new IdmCodeListDto();
+			if (StringUtils.isBlank(separator)) {
+				separator = COLUMN_SEPARATOR;
 			}
-			codeListDto.setCode(code);
-			codeListDto.setName(name);
-			codeListDto.setDescription(description);
-			codeListDto = codeListService.save(codeListDto);
-			LOG.info("Code list saved with values from LRT config");
 
-			UUID codeListUuid = codeListDto.getId();
+			// prepare format of CSV
+			CSVFormat csvFormat = CSVFormat.DEFAULT
+					.withFirstRecordAsHeader()
+					.withDelimiter(separator.charAt(0));
 
-			records.forEach(record -> {
-				String key = record.get("key");
-				String value = record.get("value");
-				LOG.info("Processing row [{}]", record.toString());
+			// Load CSV via parser
+			try (CSVParser csvParser = csvFormat.parse(attachmentReader)) {
+				List<CSVRecord> records = csvParser.getRecords();
+				this.count = (long) records.size();
+				this.counter = 0L;
 
-				IdmCodeListItemDto codeListItemDto = new IdmCodeListItemDto();
-				LOG.info("Try to find existing item");
-				IdmCodeListItemFilter codeListItemFilter = new IdmCodeListItemFilter();
-				codeListItemFilter.setCode(key);
-				codeListItemFilter.setCodeListId(codeListUuid);
-				List<IdmCodeListItemDto> items = codeListItemService.find(codeListItemFilter, null).getContent();
+				// load or create Code list
+				LOG.info("We will load or create code list");
+				IdmCodeListDto codeListDto = codeListService.getByCode(code);
+				if (codeListDto == null) {
+					LOG.info("Creating new code list");
+					codeListDto = new IdmCodeListDto();
+				}
+				codeListDto.setCode(code);
+				codeListDto.setName(name);
+				codeListDto.setDescription(description);
+				codeListDto = codeListService.save(codeListDto);
+				LOG.info("Code list saved with values from LRT config");
 
-				if (items.size() > 1) {
-					LOG.info("Found more then one item with code [{}] skipping", key);
+				UUID codeListUuid = codeListDto.getId();
+
+				records.forEach(record -> {
+					String key = record.get("key");
+					String value = record.get("value");
+					LOG.info("Processing row [{}]", record.toString());
+
+					IdmCodeListItemDto codeListItemDto = new IdmCodeListItemDto();
+					LOG.info("Try to find existing item");
+					IdmCodeListItemFilter codeListItemFilter = new IdmCodeListItemFilter();
+					codeListItemFilter.setCode(key);
+					codeListItemFilter.setCodeListId(codeListUuid);
+					List<IdmCodeListItemDto> items = codeListItemService.find(codeListItemFilter, null).getContent();
+
+					if (items.size() > 1) {
+						LOG.info("Found more then one item with code [{}] skipping", key);
+						++this.counter;
+						this.logItemProcessed(items.get(0), taskNotCompleted("Found more then one item with code " + key + " skipping"));
+						return;
+					}
+					if (!items.isEmpty()) {
+						LOG.info("Item already exists, we will update it");
+						codeListItemDto = items.get(0);
+					}
+
+					codeListItemDto.setCode(key);
+					codeListItemDto.setName(value);
+					codeListItemDto.setCodeList(codeListUuid);
+					codeListItemDto = codeListItemService.save(codeListItemDto);
+					LOG.info("Code list item [{}] saved", key);
+
 					++this.counter;
-					this.logItemProcessed(items.get(0), taskNotCompleted("Found more then one item with code " + key + " skipping"));
-					return;
-				}
-				if (!items.isEmpty()) {
-					LOG.info("Item already exists, we will update it");
-					codeListItemDto = items.get(0);
-				}
-
-				codeListItemDto.setCode(key);
-				codeListItemDto.setName(value);
-				codeListItemDto.setCodeList(codeListUuid);
-				codeListItemDto = codeListItemService.save(codeListItemDto);
-				LOG.info("Code list item [{}] saved", key);
-
-				++this.counter;
-				this.logItemProcessed(codeListItemDto, taskCompleted("Item was created/updated"));
-			});
+					this.logItemProcessed(codeListItemDto, taskCompleted("Item was created/updated"));
+				});
+			} catch (IOException e) {
+				LOG.error("Can't parse csv", e);
+			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOG.error("Error occurred during input stream preparation", e);
 		}
-
 
 		return null;
 	}
