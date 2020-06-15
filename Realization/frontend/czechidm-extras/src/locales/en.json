@@ -48,5 +48,102 @@
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."
     }
+  },
+  "eav": {
+    "long-running-task": {
+      "extras-import-roles-from-csv": {
+        "label": "Import roles from CSV",
+        "help": "This tool allows you to import roles from a CSV file and set them various attributes.",
+        "attributes": {
+          "canberequested": {
+            "label": "Can be requested"
+          },
+          "fileencoding": {
+            "label": "File encoding",
+            "placeholder": "Encoding of input file"
+          },
+          "roleenvironment": {
+            "label": "Role environment",
+            "placeholder": "The name of the environment to which you want to add the roles"
+          },
+          "memberofcolumn": {
+            "label": "Column with memberOf attribute value",
+            "placeholder": "Leave empty if you don't want to set a memberOf attribute value column"
+          },
+          "memberofname": {
+            "label": "MemberOf attribute name",
+            "placeholder": "Leave empty if you don't want to set a memberOf"
+          },
+          "multivalueseparator": {
+            "label": "Multi value separator",
+            "placeholder": "Default: new line"
+          },
+          "columnseparator": {
+            "label": "Column separator"
+          },
+          "formdefinitioncode": {
+            "label": "Form definition code",
+            "placeholder": "If you are importing role attributes, set the code of the definition"
+          },
+          "subrolescolumn": {
+            "label": "Column with subrole codes",
+            "placeholder": "The name of the column with subordinate role codes"
+          },
+          "cataloguecolumn": {
+            "label": "Column with catalogue names",
+            "placeholder": "The name of the column with catalogue names"
+          },
+          "updateguaranteeroletypes": {
+            "label": "Update guarantee role types"
+          },
+          "guaranteeroletypescolumn": {
+            "label": "Column with guarantee role types",
+            "placeholder": "The name of the column with the types of role guarantees by roles"
+          },
+          "guaranteerolescolumn": {
+            "label": "Column with guarantee roles",
+            "placeholder": "The name of the column with role guarantees by roles"
+          },
+          "updateguaranteetypes": {
+            "label": "Update guarantee types"
+          },
+          "guaranteetypescolumn": {
+            "label": "Column with guarantee types",
+            "placeholder": "The name of the column with the types of role guarantees by login"
+          },
+          "guaranteescolumn": {
+            "label": "Column with guarantees",
+            "placeholder": "The name of the column with role guarantees by login"
+          },
+          "criticalitycolumn": {
+            "label": "Column with criticality",
+            "placeholder": "Default: 0"
+          },
+          "roleattributescolumn": {
+            "label": "Column with role attributes",
+            "placeholder": "The name of the column with the role attributes"
+          },
+          "descriptioncolumn": {
+            "label": "Column with description",
+            "placeholder": "The name of the column with the description of roles"
+          },
+          "rolecodescolumn": {
+            "label": "Column with role codes",
+            "placeholder": "The name of the column with the codes of roles to import"
+          },
+          "rolenamescolumn": {
+            "label": "Column with role names",
+            "placeholder": "The name of the column with the names of roles to import"
+          },
+          "systemname": {
+            "label": "System name",
+            "placeholder": "The name of your system, leave empty if you don't want to set a system"
+          },
+          "importcsvfile": {
+            "label": "Upload a CSV file"
+          }
+        }
+      }
+    }
   }
 }
