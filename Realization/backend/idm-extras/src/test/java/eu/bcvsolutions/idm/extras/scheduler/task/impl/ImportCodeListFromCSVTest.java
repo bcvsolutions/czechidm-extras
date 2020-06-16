@@ -1,7 +1,7 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -10,7 +10,6 @@ import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -120,7 +119,7 @@ public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		Assert.assertNotNull(stream);
+		assertNotNull(stream);
 		eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto attachment = new IdmAttachmentDto();
 		attachment.setInputData(stream);
 		attachment.setName(name);
