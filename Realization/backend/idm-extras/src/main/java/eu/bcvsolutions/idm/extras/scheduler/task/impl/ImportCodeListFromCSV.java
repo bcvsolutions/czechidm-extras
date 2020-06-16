@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,9 +29,14 @@ import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmCodeListItemFilter;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListItemService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
+import eu.bcvsolutions.idm.core.eav.entity.IdmCodeListItem;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
@@ -52,6 +58,9 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 	public static final String PARAM_NAME_CODE_LIST = "Name of code list";
 	public static final String PARAM_DESCRIPTION_CODE_LIST = "Description of code list";
 	public static final String PARAM_SEPARATOR = "Separator of csv file";
+	public static final String PARAM_ENCODING = "File encoding";
+	public static final String PARAM_EAV_ATTR_NAME_PREFIX = "EAV attribute name prefix";
+	public static final String PARAM_EAV_ATTR_VALUE_PREFIX = "EAV attribute value prefix";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
@@ -61,6 +70,9 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 	private String name;
 	private String description;
 	private String separator;
+	private String encoding;
+	private String eavAttributeNamePrefix;
+	private String eavAttributeValuePrefix;
 
 	@Autowired
 	private AttachmentManager attachmentManager;
@@ -68,6 +80,12 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 	private IdmCodeListService codeListService;
 	@Autowired
 	private IdmCodeListItemService codeListItemService;
+	@Autowired
+	private IdmFormDefinitionService formDefinitionService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
+	@Autowired
+	private FormService formService;
 
 	@Override
 	public OperationResult process() {
@@ -77,8 +95,12 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 		attachment.setOwnerId(this.getScheduledTaskId());
 		attachmentManager.save(attachment);
 
+		if (StringUtils.isBlank(encoding)) {
+			encoding = "utf-8";
+		}
+
 		try (InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
-			 Reader attachmentReader = new InputStreamReader(attachmentData);) {
+			 Reader attachmentReader = new InputStreamReader(attachmentData, encoding);) {
 			LOG.info("Reader is created");
 
 			if (StringUtils.isBlank(separator)) {
@@ -111,6 +133,7 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 
 				UUID codeListUuid = codeListDto.getId();
 
+
 				records.forEach(record -> {
 					String key = record.get("key");
 					String value = record.get("value");
@@ -140,6 +163,25 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 					codeListItemDto = codeListItemService.save(codeListItemDto);
 					LOG.info("Code list item [{}] saved", key);
 
+					if (!StringUtils.isBlank(eavAttributeNamePrefix) && !StringUtils.isBlank(eavAttributeValuePrefix)) {
+						LOG.info("EAV prefixes set, we will create EAV");
+						int eavSuffix = 1;
+						while (record.isMapped(eavAttributeNamePrefix + eavSuffix) && record.isMapped(eavAttributeValuePrefix + eavSuffix)) {
+							LOG.info("EAV columns mapped we can create EAV");
+							String eavName = record.get(eavAttributeNamePrefix + eavSuffix);
+							String eavValue = record.get(eavAttributeValuePrefix + eavSuffix);
+
+							IdmFormDefinitionDto formDef = formDefinitionService.findOneByTypeAndCode(IdmCodeListItem.class.getName(), code);
+							if (formDef != null) {
+								IdmFormAttributeDto attribute = formAttributeService.findAttribute(IdmCodeListItem.class.getName(), code, eavName);
+								createAndSaveEav(codeListItemDto, eavName, eavValue, formDef, attribute);
+							} else {
+								LOG.info("No EAV definitions was found, can't create EAV");
+							}
+							++eavSuffix;
+						}
+					}
+
 					++this.counter;
 					this.logItemProcessed(codeListItemDto, taskCompleted("Item was created/updated"));
 				});
@@ -162,6 +204,9 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 		name = getParameterConverter().toString(properties, PARAM_NAME_CODE_LIST);
 		description = getParameterConverter().toString(properties, PARAM_DESCRIPTION_CODE_LIST);
 		separator = getParameterConverter().toString(properties, PARAM_SEPARATOR);
+		encoding = getParameterConverter().toString(properties, PARAM_ENCODING);
+		eavAttributeNamePrefix = getParameterConverter().toString(properties, PARAM_EAV_ATTR_NAME_PREFIX);
+		eavAttributeValuePrefix = getParameterConverter().toString(properties, PARAM_EAV_ATTR_VALUE_PREFIX);
 	}
 
 	@Override
@@ -173,6 +218,9 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 		props.put(PARAM_NAME_CODE_LIST, name);
 		props.put(PARAM_DESCRIPTION_CODE_LIST, description);
 		props.put(PARAM_SEPARATOR, separator);
+		props.put(PARAM_ENCODING, encoding);
+		props.put(PARAM_EAV_ATTR_NAME_PREFIX, eavAttributeNamePrefix);
+		props.put(PARAM_EAV_ATTR_VALUE_PREFIX, eavAttributeValuePrefix);
 		return props;
 	}
 
@@ -204,9 +252,25 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 		IdmFormAttributeDto separatorAttribute = new IdmFormAttributeDto(PARAM_SEPARATOR, PARAM_SEPARATOR,
 				PersistentType.SHORTTEXT);
 		separatorAttribute.setRequired(false);
-		separatorAttribute.setPlaceholder("Separator of columns in CSV");
+		separatorAttribute.setPlaceholder("Separator of columns in CSV, default is ;");
 
-		return Lists.newArrayList(csvAttachment, codeCodeListAttribute, nameCodeListAttribute, descriptionCodeListAttribute, separatorAttribute);
+		IdmFormAttributeDto encodingAttribute = new IdmFormAttributeDto(PARAM_ENCODING, PARAM_ENCODING,
+				PersistentType.SHORTTEXT);
+		encodingAttribute.setRequired(false);
+		encodingAttribute.setPlaceholder("Encoding of CSV, default is utf-8");
+
+		IdmFormAttributeDto eavAttributeNameAttribute = new IdmFormAttributeDto(PARAM_EAV_ATTR_NAME_PREFIX, PARAM_EAV_ATTR_NAME_PREFIX,
+				PersistentType.SHORTTEXT);
+		eavAttributeNameAttribute.setRequired(false);
+		eavAttributeNameAttribute.setPlaceholder("Prefix of EAV attribute name column");
+
+		IdmFormAttributeDto eavAttributeValueAttribute = new IdmFormAttributeDto(PARAM_EAV_ATTR_VALUE_PREFIX, PARAM_EAV_ATTR_VALUE_PREFIX,
+				PersistentType.SHORTTEXT);
+		eavAttributeValueAttribute.setRequired(false);
+		eavAttributeValueAttribute.setPlaceholder("Prefix of EAV attribute value column");
+
+		return Lists.newArrayList(csvAttachment, codeCodeListAttribute, nameCodeListAttribute, descriptionCodeListAttribute, separatorAttribute,
+				encodingAttribute, eavAttributeNameAttribute, eavAttributeValueAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {
@@ -217,5 +281,25 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 	private OperationResult taskNotCompleted(String message) {
 		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.IMPORT_CODE_LIST_ERROR,
 				ImmutableMap.of("message", message))).build();
+	}
+
+	private void createAndSaveEav(IdmCodeListItemDto codeListItemDto, String eavName, String eavValue, IdmFormDefinitionDto formDef, IdmFormAttributeDto attribute) {
+		if (attribute == null) {
+			LOG.info("EAV doesn't exists, we will create it");
+			IdmFormAttributeDto formAttributeDto = new IdmFormAttributeDto(eavName, eavName);
+			formAttributeDto.setFormDefinition(formDef.getId());
+			formAttributeService.save(formAttributeDto);
+			LOG.info("Save value now");
+			saveEav(codeListItemDto.getId(), formDef, eavValue, eavName);
+		} else {
+			LOG.info("EAV already exists, just save value");
+			saveEav(codeListItemDto.getId(), formDef, eavValue, eavName);
+		}
+	}
+
+	private void saveEav(UUID entityId, IdmFormDefinitionDto formDefinition, String value, String attributeName) {
+		List<String> values = new ArrayList<>();
+		values.add(value);
+		formService.saveValues(entityId, IdmCodeListItem.class, formDefinition, attributeName, Lists.newArrayList(values));
 	}
 }
