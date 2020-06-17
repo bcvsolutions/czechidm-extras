@@ -228,7 +228,6 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		Map<String, Object> properties = new HashMap<>();
 		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "6");
 		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
-		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITIES, "tec_");
 		properties.put(LastContractEndNotificationTask.SEND_INVALID_CONTRACTS, false);
 		properties.put(LastContractEndNotificationTask.TECHNICAL_ROLE_CODE, tecRole.getId());
 
