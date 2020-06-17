@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
@@ -209,8 +210,10 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 	@Test
 	public void testTechnicalInFuture() {
+		IdmRoleDto tecRole = getHelper().createRole("technicalRoleName001");
 		IdmIdentityDto subject = getHelper().createIdentity("tec_username_to_test");
 		IdmIdentityContractDto subjectContract = getHelper().getPrimeContract(subject);
+		IdmIdentityRoleDto identityRole = getHelper().createIdentityRole(subject, tecRole);
 
 		IdmIdentityDto manager = getHelper().createIdentity("ts-managerTec");
 		getHelper().createContractGuarantee(subjectContract, manager);
@@ -225,9 +228,9 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		Map<String, Object> properties = new HashMap<>();
 		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "6");
 		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
-		properties.put(LastContractEndNotificationTask.PREFIX_TECHNICAL_IDENTITY, "tec_");
+		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITIES, "tec_");
 		properties.put(LastContractEndNotificationTask.SEND_INVALID_CONTRACTS, false);
-		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITY, false);
+		properties.put(LastContractEndNotificationTask.TECHNICAL_ROLE_CODE, tecRole.getId());
 
 		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
 		notificationThree.init(properties);
@@ -267,9 +270,8 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		Map<String, Object> properties = new HashMap<>();
 		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "8");
 		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
-		properties.put(LastContractEndNotificationTask.PREFIX_TECHNICAL_IDENTITY, "adm_");
+		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITIES, "adm_");
 		properties.put(LastContractEndNotificationTask.SEND_INVALID_CONTRACTS, false);
-		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITY, true);
 
 		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
 		notificationThree.init(properties);
