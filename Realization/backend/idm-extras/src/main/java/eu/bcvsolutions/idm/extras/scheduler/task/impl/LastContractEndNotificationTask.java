@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,16 +132,16 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	
 	@Override
 	public Page<IdmIdentityContractDto> getItemsToProcess(Pageable pageable) {
-		Stream<IdmIdentityContractDto> filtered = filterByDate();
-		if(prefixTechnical!=null && !prefixTechnical.equals("")){
+		Stream<IdmIdentityContractDto> contractsFilteredByDate = filterByDate();
+		if(StringUtils.isBlank(prefixTechnical)){
 			if(prefixAdmin!= null && prefixAdmin){
-				filtered = handleTechnicalAndPrefix(filtered);
+				contractsFilteredByDate.filter(f -> hasTechnicalIdentity(f.getIdentity()));
 			} else {
-				filtered = handleTechnical(filtered);
+				contractsFilteredByDate.filter(this::filterOwnersOfTechnicalIdentities);
 			}
 		}
-		List<IdmIdentityContractDto> collect = filtered.collect(Collectors.toList());
-		return new PageImpl<>(collect, pageable, collect.size());
+		List<IdmIdentityContractDto> contracts = contractsFilteredByDate.collect(Collectors.toList());
+		return new PageImpl<>(contracts, pageable, contracts.size());
 	}
 
 	/**
@@ -153,9 +154,9 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		if(sendInvalid != null && !sendInvalid){
 			filter.setValid(true);
 		}
-		List<IdmIdentityContractDto> content =
+		List<IdmIdentityContractDto> relevantContracts =
 				identityContractService.find(filter, null).getContent();
-		return content.stream()
+		return relevantContracts.stream()
 				.filter(this::isGoingToEnd)
 				.filter(this::isLastContract);
 	}
@@ -176,16 +177,6 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	}
 
 	/**
-	 * This function handle technical identities - it looks for identity with given prefix and if that exist for
-	 * identity with ending contract
-	 * @param idmIdentityContractDtos
-	 * @return
-	 */
-	private Stream<IdmIdentityContractDto> handleTechnicalAndPrefix(Stream<IdmIdentityContractDto> idmIdentityContractDtos) {
-		return idmIdentityContractDtos.filter(f -> hasTechnicalIdentity(f.getIdentity()));
-	}
-
-	/**
 	 * Finds identity with given prefix in idm
 	 * @param identity
 	 * @return
@@ -198,15 +189,6 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	}
 
 	/**
-	 * This looks for technical identities owned by this identity with ending contract
-	 * @param idmIdentityContractDtos
-	 * @return
-	 */
-	private Stream<IdmIdentityContractDto> handleTechnical(Stream<IdmIdentityContractDto> idmIdentityContractDtos) {
-		return idmIdentityContractDtos.filter(this::filterOwnersOfTechnicalIdentities);
-	}
-
-	/**
 	 * This is filter method for handleTechnical
 	 * @param guarantee
 	 * @return
@@ -215,13 +197,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
 		identityContractFilter.setSubordinatesFor(guarantee.getIdentity());
 		List<IdmIdentityContractDto> subordinates = identityContractService.find(identityContractFilter, null).getContent();
-		for (IdmIdentityContractDto subordinate : subordinates){
-			if(isManagerForTechnicalIdentity(subordinate.getIdentity())){
-				return true;
-			}
-		}
-		//
-		return false;
+		return subordinates.stream().anyMatch(subordinate -> isManagerForTechnicalIdentity(subordinate.getIdentity()));
 	}
 
 	/**
