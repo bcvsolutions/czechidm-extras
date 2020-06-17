@@ -31,6 +31,7 @@ import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 /**
  * @author Tomáš Doischer
+ * @author Marek Klement
  */
 
 public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest {
@@ -326,7 +327,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 		// we should find 1 email notification on testRecipient
 		long countThree = notificationLogService.count(filterThree);
-		
+
 		IdmNotificationTemplateDto usedTemplateThree = notificationLogService.find(filterThree, null).getContent().
 				get(0).getMessage().getTemplate();
 		

@@ -133,11 +133,11 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	@Override
 	public Page<IdmIdentityContractDto> getItemsToProcess(Pageable pageable) {
 		Stream<IdmIdentityContractDto> contractsFilteredByDate = filterByDate();
-		if(StringUtils.isBlank(prefixTechnical)){
+		if(!StringUtils.isBlank(prefixTechnical)){
 			if(prefixAdmin!= null && prefixAdmin){
-				contractsFilteredByDate.filter(f -> hasTechnicalIdentity(f.getIdentity()));
+				contractsFilteredByDate = contractsFilteredByDate.filter(f -> hasTechnicalIdentity(f.getIdentity()));
 			} else {
-				contractsFilteredByDate.filter(this::filterOwnersOfTechnicalIdentities);
+				contractsFilteredByDate = contractsFilteredByDate.filter(this::filterOwnersOfTechnicalIdentities);
 			}
 		}
 		List<IdmIdentityContractDto> contracts = contractsFilteredByDate.collect(Collectors.toList());
