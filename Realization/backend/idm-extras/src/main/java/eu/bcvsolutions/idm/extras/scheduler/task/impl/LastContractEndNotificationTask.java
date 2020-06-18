@@ -1,6 +1,7 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -247,7 +248,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	}
 	
 	private void sendNotification(String topic, List<IdmIdentityDto> recipients, IdmIdentityDto manager, String fullName,
-			IdmIdentityDto identity, String position, String ppvEnd) {
+			IdmIdentityDto identity, String position, String ppvEnd, List<IdmIdentityDto> subordinatesTechOrAdm) {
 		notificationManager.send(
 				topic,
 				new IdmMessageDto
@@ -258,6 +259,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 						.addParameter("department", position)
 						.addParameter("ppvEnd", ppvEnd)
 						.addParameter("manager", manager)
+						.addParameter("technicalOrAdminAccounts", subordinatesTechOrAdm)
 						.build(),
 				recipients
 		);
@@ -417,15 +419,40 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 					setModel(new DefaultResultModel(ExtrasResultCode.NO_RECIPIENTS_FOUND)).
 					build()); 
 		}
-		if (sendBefore) {
+		if (!StringUtils.isBlank(prefixAdmin)) {
+			// todo get Admin account
+			List<IdmIdentityDto> adminIdentitiesForAccount = getAdminIdentitiesForAccount(guarantee);
+			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END, new ArrayList<>(recipients), guarantee,
+					fullName, identity, position, ppvEnd, adminIdentitiesForAccount);
+		} else if (technicalRoleCode!= null) {
+			List<IdmIdentityDto> technicalIdentitiesForAccount = getTechnicalIdentitiesForAccount(guarantee);
+			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END, new ArrayList<>(recipients),
+					guarantee,
+					fullName, identity, position, ppvEnd, technicalIdentitiesForAccount);
+		} else if (sendBefore) {
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END_IN_X_DAYS, new ArrayList<>(recipients), guarantee, 
-				fullName, identity, position, ppvEnd);
+				fullName, identity, position, ppvEnd, null);
 		} else {
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END, new ArrayList<>(recipients), guarantee, 
-					fullName, identity, position, ppvEnd);
+					fullName, identity, position, ppvEnd, null);
 		}
 		
 		return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
+	}
+
+	private List<IdmIdentityDto> getTechnicalIdentitiesForAccount(IdmIdentityDto account){
+		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
+		identityContractFilter.setSubordinatesFor(account.getId());
+		List<IdmIdentityContractDto> subordinates = identityContractService.find(identityContractFilter, null).getContent();
+		return subordinates.stream().filter(subordinate -> isManagerForTechnicalIdentity(subordinate.getIdentity()))
+				.map(subordinate -> identityService.get(subordinate.getIdentity()))
+				.collect(Collectors.toList());
+	}
+
+	private List<IdmIdentityDto> getAdminIdentitiesForAccount(IdmIdentityDto account){
+		String username = account.getUsername();
+		IdmIdentityDto byUsername = identityService.getByUsername(prefixAdmin + username);
+		return Collections.singletonList(byUsername);
 	}
 
 	protected void setDatesForTest(LocalDate currentDate, Long daysBeforeEnd) {
