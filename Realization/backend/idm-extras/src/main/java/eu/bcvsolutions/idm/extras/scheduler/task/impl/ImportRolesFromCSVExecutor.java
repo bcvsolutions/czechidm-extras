@@ -382,15 +382,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			roleSystemService.save(roleSystem);
 
 			// Create role system mapping with role name	
-			if(hasMemberOf) {
-				String transformationScript;
-				if (hasMemberOfValue) {
-					transformationScript = MessageFormat.format("\"{0}\"", memberOfValues.get(roleName));
-				} else {
-					transformationScript = MessageFormat.format("\"{0}\"", roleName);
-				}
-				roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttribute, transformationScript, OBJECT_CLASSNAME);
-			}
+			createUpdateRoleSystemMapping(roleName, system, memberOfValues, role);
 		}
 		
 		// Assign subroles
@@ -402,7 +394,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		this.logItemProcessed(role, taskCompleted("Role " + roleName + " created"));
 		return role;
 	}
-	
+
 	/**
 	 * Updates canBeRequested and description, role attributes, criticality and guarantees. Only criticality, 
 	 * canBerequested and description can be deleted (by changing), nothing else is deleted. Description 
@@ -481,16 +473,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			}
 
 			// update role system mapping with role name
-			if(hasMemberOf) {
-				String transformationScript;
-				if (hasMemberOfValue) {
-					transformationScript = MessageFormat.format("\"{0}\"", memberOfValues.get(roleName));
-				} else {
-					transformationScript = MessageFormat.format("\"{0}\"", roleName);
-				}
-				roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttribute, transformationScript, OBJECT_CLASSNAME);
-				systemMappingUpdated = Boolean.TRUE;
-			}
+			systemMappingUpdated = createUpdateRoleSystemMapping(roleName, system, memberOfValues, role);
 		}
 		
 		roleService.save(role);
@@ -502,6 +485,20 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		} else {
 			this.logItemProcessed(role, taskNotCompleted("Nothing to update! Role name: " + roleName));
 		}
+	}
+
+	private boolean createUpdateRoleSystemMapping(String roleName, SysSystemDto system, Map<String, String> memberOfValues, IdmRoleDto role) {
+		if(hasMemberOf) {
+			String transformationScript;
+			if (hasMemberOfValue) {
+				transformationScript = MessageFormat.format("\"{0}\"", memberOfValues.get(roleName));
+			} else {
+				transformationScript = MessageFormat.format("\"{0}\"", roleName);
+			}
+			roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttribute, transformationScript, OBJECT_CLASSNAME);
+			return true;
+		}
+		return false;
 	}
 	
 	/**
