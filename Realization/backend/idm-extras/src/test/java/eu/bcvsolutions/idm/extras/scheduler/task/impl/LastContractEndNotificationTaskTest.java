@@ -28,6 +28,7 @@ import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationLogServi
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationTemplateService;
 import eu.bcvsolutions.idm.core.notification.entity.IdmEmailLog;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 /**
@@ -39,6 +40,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	
 	private static IdmNotificationTemplateDto templateFuture;
 	private static IdmNotificationTemplateDto templateNow;
+	private static IdmNotificationTemplateDto templateTec;
 	public static boolean initRan = false;
 	
 	@Autowired
@@ -119,25 +121,13 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 			tf.setText("ContractEndInFuture");
 			templateFuture = notificationTemplateService.find(tf, null).getContent().get(0);
 
-			NotificationConfigurationDto notificationConfigurationFuture = new NotificationConfigurationDto();
-			notificationConfigurationFuture.setTopic("extras:contractEndInXDays");
-			notificationConfigurationFuture.setNotificationType("email");
-			notificationConfigurationFuture.setLevel(NotificationLevel.SUCCESS);
-			notificationConfigurationFuture.setTemplate(templateFuture.getId());
-
-			notificationConfigurationService.save(notificationConfigurationFuture);
-
 			IdmNotificationTemplateFilter tfTwo = new IdmNotificationTemplateFilter();
 			tfTwo.setText("ContractEndNow");
 			templateNow = notificationTemplateService.find(tfTwo, null).getContent().get(0);
 
-			NotificationConfigurationDto notificationConfigurationNow = new NotificationConfigurationDto();
-			notificationConfigurationNow.setTopic("extras:contractEnd");
-			notificationConfigurationNow.setNotificationType("email");
-			notificationConfigurationNow.setLevel(NotificationLevel.SUCCESS);
-			notificationConfigurationNow.setTemplate(templateNow.getId());
-
-			notificationConfigurationService.save(notificationConfigurationNow);
+			IdmNotificationTemplateFilter tfThree = new IdmNotificationTemplateFilter();
+			tfThree.setText("ContractEndTechnical");
+			templateTec = notificationTemplateService.find(tfThree, null).getContent().get(0);
 			
 			initRan = true;
 		}
@@ -246,7 +236,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 				get(0).getMessage().getTemplate();
 
 		Assert.assertEquals(1, count2);
-		Assert.assertEquals(templateFuture, usedTemplateTwo);
+		Assert.assertEquals(templateTec, usedTemplateTwo);
 
 		getHelper().deleteIdentity(subject.getId());
 		getHelper().deleteIdentity(manager.getId());
@@ -287,7 +277,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 				get(0).getMessage().getTemplate();
 
 		Assert.assertEquals(1, count2);
-		Assert.assertEquals(templateFuture, usedTemplateTwo);
+		Assert.assertEquals(templateTec, usedTemplateTwo);
 
 		getHelper().deleteIdentity(admin.getId());
 		getHelper().deleteIdentity(identity.getId());

@@ -80,6 +80,13 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 				IdmEmailLog.NOTIFICATION_TYPE,
 				"Contract end in x days notification",
 				contractEndInXDaysNow != null ? contractEndInXDaysNow.getId() : null));
+		IdmNotificationTemplateDto contractEndTechnical = notificationTemplateService.getByCode("contractEndTechnical");
+		configs.add(new NotificationConfigurationDto(
+				TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END,
+				NotificationLevel.INFO,
+				IdmEmailLog.NOTIFICATION_TYPE,
+				"Contract end in x days notification for owner of technical or admin identity",
+				contractEndTechnical != null ? contractEndTechnical.getId() : null));
 		return configs;
 	}
 

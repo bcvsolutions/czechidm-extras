@@ -421,11 +421,11 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		}
 		if (!StringUtils.isBlank(prefixAdmin)) {
 			// todo get Admin account
-			List<IdmIdentityDto> adminIdentitiesForAccount = getAdminIdentitiesForAccount(guarantee);
+			List<IdmIdentityDto> adminIdentitiesForAccount = getAdminIdentitiesForAccount(identity);
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END, new ArrayList<>(recipients), guarantee,
 					fullName, identity, position, ppvEnd, adminIdentitiesForAccount);
 		} else if (technicalRoleCode!= null) {
-			List<IdmIdentityDto> technicalIdentitiesForAccount = getTechnicalIdentitiesForAccount(guarantee);
+			List<IdmIdentityDto> technicalIdentitiesForAccount = getTechnicalIdentitiesForAccount(identity);
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END, new ArrayList<>(recipients),
 					guarantee,
 					fullName, identity, position, ppvEnd, technicalIdentitiesForAccount);
