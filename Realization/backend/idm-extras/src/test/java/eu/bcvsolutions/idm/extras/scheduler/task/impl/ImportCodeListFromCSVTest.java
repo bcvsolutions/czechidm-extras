@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
@@ -17,7 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmProfileDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmCodeListItemFilter;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListItemService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
+import eu.bcvsolutions.idm.core.eav.entity.IdmCodeListItem;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
@@ -29,7 +38,7 @@ import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
  */
 @Transactional
 public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
-	
+
 	private static final String PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importCodeListTestFileCreate.csv";
 
 	@Autowired
@@ -38,6 +47,12 @@ public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
 	private LongRunningTaskManager longRunningTaskManager;
 	@Autowired
 	private AttachmentManager attachmentManager;
+	@Autowired
+	private IdmCodeListItemService codeListItemService;
+	@Autowired
+	private FormService formService;
+	@Autowired
+	private IdmFormDefinitionService formDefinitionService;
 
 	@Test
 	public void testImportCreateCodeList() {
@@ -54,6 +69,8 @@ public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
 		configOfLRT.put(ImportCodeListFromCSV.PARAM_NAME_CODE_LIST, name);
 		configOfLRT.put(ImportCodeListFromCSV.PARAM_DESCRIPTION_CODE_LIST, description);
 		configOfLRT.put(ImportCodeListFromCSV.PARAM_SEPARATOR, ";");
+		configOfLRT.put(ImportCodeListFromCSV.PARAM_EAV_ATTR_NAME_PREFIX, "attName");
+		configOfLRT.put(ImportCodeListFromCSV.PARAM_EAV_ATTR_VALUE_PREFIX, "attValue");
 
 		ImportCodeListFromCSV lrt = new ImportCodeListFromCSV();
 		lrt.init(configOfLRT);
@@ -76,6 +93,22 @@ public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
 		assertEquals(code, codeListDto.getCode());
 		assertEquals(name, codeListDto.getName());
 		assertEquals(description, codeListDto.getDescription());
+
+		IdmCodeListItemFilter itemFilter = new IdmCodeListItemFilter();
+		itemFilter.setCodeListId(codeListDto.getId());
+		List<IdmCodeListItemDto> items = codeListItemService.find(itemFilter, null).getContent();
+		assertNotNull(items);
+		assertEquals(3, items.size());
+
+		IdmCodeListItemDto firstItemFromFile = items.stream().filter(idmCodeListItemDto -> idmCodeListItemDto.getCode().equals("klic")).findFirst().orElse(null);
+		assertNotNull(firstItemFromFile);
+
+		IdmFormDefinitionDto formDef = formDefinitionService.findOneByTypeAndCode(IdmCodeListItem.class.getName(), codeListDto.getCode());
+		assertNotNull(formDef);
+
+		List<IdmFormValueDto> values = formService.getValues(firstItemFromFile, formDef);
+		assertNotNull(values);
+		assertEquals("eavHodnota", values.get(0).getShortTextValue());
 
 		// update
 		String nameUpdate = "Name update";
