@@ -15,10 +15,14 @@ import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.*;
+import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormDefinitionFilter;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
@@ -56,10 +60,21 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	static final String PARAM_CONTRACT_EAV_COLUMN_NAME = "Column with contract eav";
 	static final String PARAM_CONTRACT_EAV_NAME = "Name of contract eav attribute";
 	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
+	static final String PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE = "Roles assignment contract type";
+	static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
+	static final String PARAM_IS_ROLE_MULTI_VALUE = "Is roles column multi value?";
+	static final String PARAM_FILE_ENCODING = "File encoding type";
+	static final String PARAM_CONTRACT_DEFINITION_CODE = "Contract definition";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
-	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
+	private static final String MULTI_VALUE_SEPARATOR = ","; //"\\r?\\n" new line separator
+	private static final String FILE_ENCODING = "UTF-8";
+	private static final String CONTRACT_DEFINITION = "default";
+
+	private static final String OPTION_ITEM_ALL_CONTRACTS = "allContracts";
+	private static final String OPTION_ITEM_PRIME_CONTRACT = "primeContract";
+	private static final String OPTION_ITEM_EAV_CONTRACT = "eavContract";
 
 	private UUID attachmentId;
 	private String rolesColumnName;
@@ -67,7 +82,11 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	private String contractEavColumnName;
 	private String contractEavName;
 	private String columnSeparator;
+	private String assignedContractType;
 	private String multiValueSeparator;
+	private Boolean isMultiValue;
+	private String fileEncoding;
+	private String contractDefinitionCode;
 
 	@Autowired private IdmIdentityService identityService;
 	@Autowired private IdmRoleService roleService;
@@ -76,6 +95,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	@Autowired private IdmConceptRoleRequestService conceptRoleRequestService;
 	@Autowired private IdmIdentityContractService identityContractService;
 	@Autowired private FormService formService;
+	@Autowired private IdmFormDefinitionService formDefinitionService;
 	@Autowired private AttachmentManager attachmentManager;
 	
 	private int nonExistingRolesCounter;
@@ -108,7 +128,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		// Check attachment id
 		if (attachmentId != null) {
 			InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
-			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
+			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData,fileEncoding));
 			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
 		} else {
 			throw new ResultCodeException(ExtrasResultCode.EMPTY_ATTACHMENT_ID);
@@ -118,13 +138,11 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		// find numbers of columns
 		int usernameColumnNumber = findColumnNumber(header, usernameColumnName);
 		int roleColumnNumber = findColumnNumber(header, rolesColumnName);
-		int contractEavColumnNumber = findColumnNumber(header, contractEavColumnName);
-		
+
 		for (String[] line : reader) {
 			String username = line[usernameColumnNumber];
-			String contractEav = line[contractEavColumnNumber];
 			String roleName = line[roleColumnNumber];
-			
+
 			if (!StringUtils.isEmpty(roleName) && !StringUtils.isEmpty(username)) {
 				IdmIdentityDto identity = identityService.getByUsername(username);
 				UUID identityId;
@@ -134,40 +152,67 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 					continue;
 				}
 				if (identityId != null) {
-					List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identityId, LocalDate.now(), null);
-					if (!contractEav.isEmpty()) {
-						List<IdmIdentityContractDto> foundContracts = getContractsByEav(contracts, contractEav);
-						if (!foundContracts.isEmpty()) {
-							for (IdmIdentityContractDto contract : foundContracts) {
-								if (contract != null) {
-									UUID contractId = contract.getId();
-									if (!contractRoles.containsKey(contractId)) {
-										contractRoles.put(contractId, new ArrayList<>());
-									}
-									IdmRoleDto role = roleService.getByCode(roleName);
-									if (role != null) {
-										contractRoles.get(contractId).add(role.getId());
-									} else {
-										nonExistingRolesCounter++;
-										this.logItemProcessed(contract, taskNotCompleted("Role does not exist: " + roleName));
-										if (contractRoles.get(contractId).isEmpty()) {
-											contractRoles.remove(contractId);
-										}
-									}
-								}
-							}
+//					List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identityId, LocalDate.now(), null);
+					List<IdmIdentityContractDto> contracts = identityContractService.findAllByIdentity(identityId);
+					if (contracts.isEmpty()){
+						continue;
+					}
+					if (assignedContractType.equals(OPTION_ITEM_EAV_CONTRACT)) {
+						int contractEavColumnNumber = findColumnNumber(header, contractEavColumnName);
+						String contractEav = line[contractEavColumnNumber];
+						if (StringUtils.isEmpty(contractEav)){
+							continue;
 						}
-					} else {
-						for (IdmIdentityContractDto contract : contracts) {
+						List<IdmIdentityContractDto> foundContracts = getContractsByEav(contracts, contractEav);
+						if (foundContracts.isEmpty()) {
+							continue;
+						}
+						contracts = foundContracts;
+					} else if (assignedContractType.equals(OPTION_ITEM_ALL_CONTRACTS)){
+						//TODO this could be default option - assign to all valid and future contracts
+					} else if (assignedContractType.equals(OPTION_ITEM_PRIME_CONTRACT)){
+						contracts = new ArrayList<IdmIdentityContractDto>();
+						IdmIdentityContractDto primeContract = identityContractService.getPrimeContract(identityId);
+						if (primeContract!=null){
+							contracts.add(primeContract);
+						}else{
+							continue;
+						}
+					}else{
+						//No choice - skip assignment
+						//Break can be removed and default option will be: assign to all valid and future contracts
+						break;
+					}
+
+					//add roles to contracts
+					for (IdmIdentityContractDto contract : contracts) {
+						if (contract != null) {
+							if (!contract.isValidNowOrInFuture()){
+								continue;
+							}
 							UUID contractId = contract.getId();
 							if (!contractRoles.containsKey(contractId)) {
 								contractRoles.put(contractId, new ArrayList<>());
 							}
-							contractRoles.get(contractId).add(roleService.getByCode(roleName).getId());
+							System.out.println("roleName line:"+roleName +".");
+							String[] roles = {roleName};
+							if (isMultiValue){
+								 roles = roleName.split(MULTI_VALUE_SEPARATOR);
+							}
+							for (String roleStr : roles){
+								IdmRoleDto role = roleService.getByCode(roleStr);
+								if (role != null) {
+									contractRoles.get(contractId).add(role.getId());
+								} else {
+									nonExistingRolesCounter++;
+									this.logItemProcessed(contract, taskNotCompleted("Role does not exist: " + roleName));
+								}
+							}
+							if (contractRoles.get(contractId).isEmpty()) {
+								contractRoles.remove(contractId);
+							}
 						}
 					}
-				} else {
-					continue;
 				}
 			}
 		}
@@ -242,7 +287,6 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		}
 		
 		roleRequestService.startRequestInternal(roleRequest.getId(), true);
-		
 		if (!roleIds.isEmpty()) {
 			this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
 		} else {
@@ -270,6 +314,17 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	 * @return
 	 */
 	public Object getEavValueForContract(UUID contractId, String attributeCode) {
+		//EAV contract definition
+		if (!StringUtils.isEmpty(contractDefinitionCode)){
+//			IdmFormDefinitionFilter filter = new IdmFormDefinitionFilter();
+//			filter.setCode(contractDefinitionCode);
+//			List<IdmFormDefinitionDto> list = formDefinitionService.find(filter,null).getContent();
+			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode("eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract",contractDefinitionCode);
+			if (definition == null){
+				throw new ResultCodeException(ExtrasResultCode.CONTRACT_EAV_NOT_FOUND, ImmutableMap.of("definition", definition));
+			}
+			return getOneValue(formService.getValues(contractId, IdmIdentityContractDto.class, definition, attributeCode).stream().findFirst());
+		}
 		return getOneValue(formService.getValues(contractId, IdmIdentityContractDto.class, attributeCode).stream().findFirst());
 	}
 	
@@ -314,10 +369,23 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		contractEavColumnName = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_COLUMN_NAME);
 		contractEavName = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_NAME);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
-		// if not filled, init multiValueSeparator and check if csv has description
-		if (multiValueSeparator == null) {
-			multiValueSeparator = MULTI_VALUE_SEPARATOR;
+		assignedContractType = getParameterConverter().toString(properties, PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE);
+		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
+		isMultiValue = getParameterConverter().toBoolean(properties, PARAM_IS_ROLE_MULTI_VALUE);
+		fileEncoding = getParameterConverter().toString(properties, PARAM_FILE_ENCODING);
+		contractDefinitionCode = getParameterConverter().toString(properties, PARAM_CONTRACT_DEFINITION_CODE);
+
+		if (isMultiValue == null || multiValueSeparator == null || StringUtils.isEmpty(multiValueSeparator)) {
+			isMultiValue = Boolean.FALSE;
 		}
+		if (fileEncoding == null || StringUtils.isEmpty(fileEncoding)){
+			fileEncoding = FILE_ENCODING;
+		}
+		if (contractDefinitionCode == null || StringUtils.isEmpty(contractDefinitionCode)){
+			contractDefinitionCode = CONTRACT_DEFINITION;
+		}
+
+
 	}
 
 	@Override
@@ -330,33 +398,83 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		props.put(PARAM_CONTRACT_EAV_COLUMN_NAME, contractEavColumnName);
 		props.put(PARAM_CONTRACT_EAV_NAME, contractEavName);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
+		props.put(PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, assignedContractType);
+		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
+		props.put(PARAM_IS_ROLE_MULTI_VALUE, isMultiValue);
+		props.put(PARAM_FILE_ENCODING, fileEncoding);
+		props.put(PARAM_CONTRACT_DEFINITION_CODE, contractDefinitionCode);
 		return props;
 	}
 
 	@Override
 	public List<IdmFormAttributeDto> getFormAttributes() {
 		// csv file attachment
+		List<IdmFormAttributeDto> attributes = new LinkedList<>();
 		IdmFormAttributeDto csvAttachment = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT, PARAM_CSV_ATTACHMENT,
 				PersistentType.ATTACHMENT);
 		csvAttachment.setRequired(true);
+		attributes.add(csvAttachment);
+
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
+		attributes.add(rolesColumnNameAttribute);
+
 		IdmFormAttributeDto usernameColumnNameAttribute = new IdmFormAttributeDto(PARAM_USERNAME_COLUMN_NAME, PARAM_USERNAME_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		usernameColumnNameAttribute.setRequired(true);
+		attributes.add(usernameColumnNameAttribute);
+
+		IdmFormAttributeDto assignedContractTypeAttribute = new IdmFormAttributeDto(PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE,
+				PersistentType.SHORTTEXT);
+		assignedContractTypeAttribute.setDefaultValue(OPTION_ITEM_ALL_CONTRACTS);
+		assignedContractTypeAttribute.setDescription("Napište jednu z následujích hodnot. "+OPTION_ITEM_ALL_CONTRACTS+", "+OPTION_ITEM_PRIME_CONTRACT+", "+OPTION_ITEM_EAV_CONTRACT+ ". \r\n\""+OPTION_ITEM_ALL_CONTRACTS+"\" přiřadí role na všechny validní a budoucí kontrakty. \"" +OPTION_ITEM_PRIME_CONTRACT+"\" přiřadí role na hlavní kontrakt. \""+OPTION_ITEM_EAV_CONTRACT+"\" přiřadí role na EAV kontraktu.");
+		assignedContractTypeAttribute.setRequired(true);
+		attributes.add(assignedContractTypeAttribute);
+
 		IdmFormAttributeDto contractEavColumnNameAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_EAV_COLUMN_NAME, PARAM_CONTRACT_EAV_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		contractEavColumnNameAttribute.setRequired(true);
+		contractEavColumnNameAttribute.setRequired(false);
+		contractEavColumnNameAttribute.setDescription("Vyplňte s volbou. "+OPTION_ITEM_EAV_CONTRACT);
+		attributes.add(contractEavColumnNameAttribute);
+
 		IdmFormAttributeDto contractEavNameAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_EAV_NAME, PARAM_CONTRACT_EAV_NAME,
 				PersistentType.SHORTTEXT);
-		contractEavNameAttribute.setRequired(true);
+		contractEavNameAttribute.setRequired(false);
+		contractEavNameAttribute.setDescription("Vyplňte s volbou. "+OPTION_ITEM_EAV_CONTRACT);
+		attributes.add(contractEavNameAttribute);
+
 		IdmFormAttributeDto columnSeparatorAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SEPARATOR, PARAM_COLUMN_SEPARATOR,
 				PersistentType.CHAR);
 		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
 		columnSeparatorAttribute.setRequired(true);
-		//
-		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, usernameColumnNameAttribute, contractEavColumnNameAttribute, contractEavNameAttribute, columnSeparatorAttribute);
+		attributes.add(columnSeparatorAttribute);
+
+		IdmFormAttributeDto multiValueSeparatorAttribute = new IdmFormAttributeDto(PARAM_MULTI_VALUE_SEPARATOR, PARAM_MULTI_VALUE_SEPARATOR,
+				PersistentType.CHAR);
+		multiValueSeparatorAttribute.setDefaultValue(MULTI_VALUE_SEPARATOR);
+		multiValueSeparatorAttribute.setRequired(false);
+		attributes.add(multiValueSeparatorAttribute);
+
+		IdmFormAttributeDto isMultiValueAttribute = new IdmFormAttributeDto(PARAM_IS_ROLE_MULTI_VALUE,PARAM_IS_ROLE_MULTI_VALUE,
+				PersistentType.BOOLEAN);
+		attributes.add(isMultiValueAttribute);
+
+		IdmFormAttributeDto fileEncodingAttribute = new IdmFormAttributeDto(PARAM_FILE_ENCODING, PARAM_FILE_ENCODING,
+				PersistentType.SHORTTEXT);
+		fileEncodingAttribute.setRequired(true);
+		fileEncodingAttribute.setDefaultValue(FILE_ENCODING);
+		attributes.add(fileEncodingAttribute);
+
+		IdmFormAttributeDto contractDefinitionCodeAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_DEFINITION_CODE, PARAM_CONTRACT_DEFINITION_CODE,
+				PersistentType.SHORTTEXT);
+		contractDefinitionCodeAttribute.setDefaultValue("default");
+		contractDefinitionCodeAttribute.setDescription("Vyplňte s volbou. "+OPTION_ITEM_EAV_CONTRACT);
+		contractDefinitionCodeAttribute.setRequired(false);
+
+		attributes.add(contractDefinitionCodeAttribute);
+
+		return attributes;
 	}
 	
 	private OperationResult taskCompleted(String message) {
