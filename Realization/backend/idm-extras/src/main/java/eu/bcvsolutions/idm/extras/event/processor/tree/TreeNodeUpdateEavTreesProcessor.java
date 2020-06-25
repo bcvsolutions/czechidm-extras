@@ -70,4 +70,9 @@ public class TreeNodeUpdateEavTreesProcessor extends CoreEventProcessor<IdmTreeN
 	public String getName() {
 		return PROCESSOR_NAME;
 	}
+
+	@Override
+	public boolean isDefaultDisabled() {
+		return true;
+	}
 }
