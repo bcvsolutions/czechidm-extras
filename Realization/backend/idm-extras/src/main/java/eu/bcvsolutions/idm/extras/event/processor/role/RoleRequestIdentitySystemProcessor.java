@@ -90,5 +90,10 @@ public class RoleRequestIdentitySystemProcessor extends CoreEventProcessor<IdmRo
 	public String getName() {
 		return PROCESSOR_NAME;
 	}
+
+	@Override
+	public boolean isDefaultDisabled() {
+		return true;
+	}
 }
 

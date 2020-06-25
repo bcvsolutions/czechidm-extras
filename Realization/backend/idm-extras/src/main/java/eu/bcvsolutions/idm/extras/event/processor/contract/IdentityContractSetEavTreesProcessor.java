@@ -49,4 +49,9 @@ public class IdentityContractSetEavTreesProcessor extends AbstractContractSetEav
 	public int getOrder() {
 		return 600;
 	}
+
+	@Override
+	public boolean isDefaultDisabled() {
+		return true;
+	}
 }

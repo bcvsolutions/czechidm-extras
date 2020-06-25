@@ -57,5 +57,10 @@ public class ContractPositionSetEavTreesProcessor
 	public boolean conditional(EntityEvent<IdmContractPositionDto> event) {
 		return super.conditional(event);
 	}
+
+	@Override
+	public boolean isDefaultDisabled() {
+		return true;
+	}
 }
 
