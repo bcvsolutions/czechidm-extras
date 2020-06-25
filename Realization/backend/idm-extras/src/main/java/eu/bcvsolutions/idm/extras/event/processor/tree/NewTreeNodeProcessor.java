@@ -81,4 +81,9 @@ public class NewTreeNodeProcessor extends AbstractEntityEventProcessor<IdmTreeNo
 		// after create
 		return 1000;
 	}
+
+	@Override
+	public boolean isDefaultDisabled() {
+		return true;
+	}
 }

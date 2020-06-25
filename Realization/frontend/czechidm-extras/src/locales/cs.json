@@ -48,5 +48,124 @@
       "title": "Sloupec nenalezen.",
       "message": "Sloupec [{{name}}] nebyl nenalezen."
     }
+  },
+  "eav": {
+    "authorization-evaluator": {
+      "contract-subordinate-and-projection-evaluator": {
+        "help": "Oprávnění pro uživatele dle typu. Oprávnění je možné přidat pro vybraný typ uživatele nebo pro výchozí (uživatelé bez vyplněného typu).",
+        "attributes": {
+          "form-projection": {
+            "label": "Typ uživatele",
+            "help": "Vyberte typ uživatele, kterému bude nastaveno oprávnění.",
+            "placeholder": "Defaultní typ uživatele nebo vyberte ..."
+          }
+        }
+      },
+      "subordinate-and-projection-evaluator": {
+        "help": "Oprávnění pro uživatele dle typu. Oprávnění je možné přidat pro vybraný typ uživatele nebo pro výchozí (uživatelé bez vyplněného typu).",
+        "attributes": {
+          "form-projection": {
+            "label": "Typ uživatele",
+            "help": "Vyberte typ uživatele, kterému bude nastaveno oprávnění.",
+            "placeholder": "Defaultní typ uživatele nebo vyberte ..."
+          }
+        }
+      }
+    },
+    "long-running-task": {
+      "extras-import-roles-from-csv": {
+        "label": "Import rolí z CSV",
+        "help": "Tato úloha slouží k importu rolí z CSV souboru. Rolím je možné nastavit řadu atributů.",
+        "attributes": {
+          "canberequested": {
+            "label": "O roli lze žádat"
+          },
+          "fileencoding": {
+            "label": "Kódování souboru",
+            "placeholder": "Kódování vstupního souboru (např. \"utf-8\")"
+          },
+          "roleenvironment": {
+            "label": "Prostředí",
+            "placeholder": "Název prostředí, které chcete rolím nastavit"
+          },
+          "memberofcolumn": {
+            "label": "Název sloupce s hodnotou atributu memberOf",
+            "placeholder": "Nechte prázdné, pokud nechcete nastavit hodnotu atributu memberOf"
+          },
+          "memberofname": {
+            "label": "Název atributu memberOf",
+            "placeholder": "Nechte prázdné, pokud nechcete nastavit atribut memberOf"
+          },
+          "multivalueseparator": {
+            "label": "Oddělovač vícehodnotých atributů",
+            "placeholder": "Výchozí: nový řádek"
+          },
+          "columnseparator": {
+            "label": "Oddělovač sloupců"
+          },
+          "formdefinitioncode": {
+            "label": "Kód definice formuláře",
+            "placeholder": "Pokud nastavujete rolím atributy, uveďte kód definice formuláře"
+          },
+          "subrolescolumn": {
+            "label": "Název sloupce s kódy podřazených rolí",
+            "placeholder": "Název sloupce s kódy podřazených rolí"
+          },
+          "cataloguecolumn": {
+            "label": "Název sloupce s kódy katalogů rolí",
+            "placeholder": "Název sloupce s kódy katalogů rolí"
+          },
+          "updateguaranteeroletypes": {
+            "label": "Updatovat typ garanta podle role"
+          },
+          "guaranteeroletypescolumn": {
+            "label": "Název sloupce s typem garanta podle role",
+            "placeholder": "Název sloupce s typem garanta podle role"
+          },
+          "guaranteerolescolumn": {
+            "label": "Název sloupce s garanty podle role",
+            "placeholder": "Název sloupce s garanty podle role (kódy rolí)"
+          },
+          "updateguaranteetypes": {
+            "label": "Updatovat typ garanta podle uživatelů"
+          },
+          "guaranteetypescolumn": {
+            "label": "Název sloupce s typem garanta podle uživatelů",
+            "placeholder": "Název sloupce s typem garanta podle uživatelů"
+          },
+          "guaranteescolumn": {
+            "label": "Název sloupce s garanty podle uživatelů",
+            "placeholder": "Název sloupce s garanty podle uživatelů (loginy)"
+          },
+          "criticalitycolumn": {
+            "label": "Název sloupce s kritičností role",
+            "placeholder": "Výchozí: 0"
+          },
+          "roleattributescolumn": {
+            "label": "Název sloupce s atributy role",
+            "placeholder": "Název sloupce s atributy role"
+          },
+          "descriptioncolumn": {
+            "label": "Název sloupce s popisem role",
+            "placeholder": "Název sloupce s popisem role"
+          },
+          "rolecodescolumn": {
+            "label": "Název sloupce s kódy role",
+            "placeholder": "Název sloupce s kódy role"
+          },
+          "rolenamescolumn": {
+            "label": "Název sloupce s názvy role",
+            "placeholder": "Název sloupce s názvy role"
+          },
+          "systemname": {
+            "label": "Název systému",
+            "placeholder": "Nechte prázdné, pokud nechcete nastavit roli systém."
+          },
+          "importcsvfile": {
+            "label": "Vložte CSV soubor"
+          }
+        }
+      }
+    }
   }
 }
