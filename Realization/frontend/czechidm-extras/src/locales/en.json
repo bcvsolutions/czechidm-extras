@@ -48,5 +48,19 @@
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."
     }
+  },
+  "eav": {
+    "authorization-evaluator": {
+      "contract-subordinate-and-projection-evaluator": {
+        "help": "Permissions to user by type. Add permisson by selected user type or by default type (user without type is specified).",
+        "attributes": {
+          "form-projection": {
+            "label": "User type",
+            "help": "Add permission to selected user type or to default type (user without type is specified).",
+            "placeholder": "Default (empty) user type or select ..."
+          }
+        }
+      }
+    }
   }
 }

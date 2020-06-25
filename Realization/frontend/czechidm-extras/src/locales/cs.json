@@ -48,5 +48,19 @@
       "title": "Sloupec nenalezen.",
       "message": "Sloupec [{{name}}] nebyl nenalezen."
     }
+  },
+  "eav": {
+    "authorization-evaluator": {
+      "contract-subordinate-and-projection-evaluator": {
+        "help": "Oprávnění pro uživatele dle typu. Oprávnění je možné přidat pro vybraný typ uživatele nebo pro výchozí (uživatelé bez vyplněného typu).",
+        "attributes": {
+          "form-projection": {
+            "label": "Typ uživatele",
+            "help": "Vyberte typ uživatele, kterému bude nastaveno oprávnění.",
+            "placeholder": "Defaultní typ uživatele nebo vyberte ..."
+          }
+        }
+      }
+    }
   }
 }

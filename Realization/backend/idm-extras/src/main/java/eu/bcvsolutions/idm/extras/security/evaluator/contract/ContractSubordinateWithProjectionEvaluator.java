@@ -1,6 +1,5 @@
 package eu.bcvsolutions.idm.extras.security.evaluator.contract;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -12,10 +11,11 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Subquery;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Sets;
 
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
@@ -28,6 +28,12 @@ import eu.bcvsolutions.idm.core.security.evaluator.AbstractAuthorizationEvaluato
 import eu.bcvsolutions.idm.core.security.evaluator.identity.IdentityByFormProjectionEvaluator;
 import eu.bcvsolutions.idm.core.security.evaluator.identity.SubordinateContractEvaluator;
 
+/**
+ * Evaluator to give access to contracts of all subordinates, which have certain projection
+ *
+ * @author Peter Štrunc <peter.strunc@bcvsolutions.eu>
+ * @since 2.4.0
+ */
 @Component
 @Description("Access to contracts of all subordinates, which have certain projection")
 public class ContractSubordinateWithProjectionEvaluator extends AbstractAuthorizationEvaluator<IdmIdentityContract> {
@@ -82,7 +88,7 @@ public class ContractSubordinateWithProjectionEvaluator extends AbstractAuthoriz
 
 		Set<String> permissions1 = subordinateContractEvaluator.getPermissions(authorizable, policy);
 		Set<String> permissions2 = formProjectionEvaluator.getPermissions(authorizable.getIdentity(), policy);
-		Collection<String> intersection = CollectionUtils.intersection(permissions1, permissions2);
+		Set<String> intersection = Sets.intersection(permissions1, permissions2);
 
 		permissions.addAll(intersection);
 		return permissions;

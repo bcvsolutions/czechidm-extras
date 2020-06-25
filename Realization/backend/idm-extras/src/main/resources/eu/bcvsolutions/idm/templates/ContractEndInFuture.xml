@@ -11,8 +11,8 @@ parameters:
 
 <template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
-    <name>Contract end in future (extras)</name>
     <code>contractEndInFuture</code>
+    <name>Contract end in future (extras)</name>
     <subject>IdM - Uživateli $!user bude v následujících dnech ukončen PPV</subject>
     <bodyHtml>
         <![CDATA[

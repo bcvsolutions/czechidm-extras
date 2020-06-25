@@ -3,7 +3,9 @@ package eu.bcvsolutions.idm.extras.security.evaluator.contract;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
+import java.util.UUID;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -20,6 +22,7 @@ import eu.bcvsolutions.idm.core.eav.api.service.IdmFormProjectionService;
 import eu.bcvsolutions.idm.core.model.domain.CoreGroupPermission;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+import eu.bcvsolutions.idm.core.security.api.domain.BasePermission;
 import eu.bcvsolutions.idm.core.security.api.domain.IdmBasePermission;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
@@ -80,8 +83,8 @@ public class ContractSubordinateWithProjectionEvaluatorTest extends AbstractInte
 		testRead(identity, 1);
 
 		// create role with evaluator permissions
-		IdmRoleDto role = getIdmRoleDto(projetion1);
-		IdmRoleDto role2 = getIdmRoleDto(projetion2);
+		IdmRoleDto role = getIdmRoleDto(projetion1, IdmBasePermission.READ);
+		IdmRoleDto role2 = getIdmRoleDto(projetion2, IdmBasePermission.READ);
 
 		getHelper().assignRoles(primeValidContract, false, role);
 
@@ -91,6 +94,19 @@ public class ContractSubordinateWithProjectionEvaluatorTest extends AbstractInte
 		getHelper().assignRoles(primeValidContract, false, role2);
 		// now wth permissions I will see all users
 		testRead(identity, 3);
+
+		testUpdate(identity, primeValidContract2.getId(), true);
+
+		IdmRoleDto roleUpdate1 = getIdmRoleDto(projetion1, IdmBasePermission.UPDATE);
+		IdmRoleDto roleUpdate2 = getIdmRoleDto(projetion2, IdmBasePermission.UPDATE);
+
+		getHelper().assignRoles(primeValidContract, false, roleUpdate2);
+		//wrong projection
+		testUpdate(identity, primeValidContract2.getId(), true);
+
+		getHelper().assignRoles(primeValidContract, false, roleUpdate1);
+
+		testUpdate(identity, primeValidContract2.getId(), false);
 	}
 
 	private void testRead(IdmIdentityDto identity, int i) {
@@ -103,7 +119,25 @@ public class ContractSubordinateWithProjectionEvaluatorTest extends AbstractInte
 		}
 	}
 
-	private IdmRoleDto getIdmRoleDto(IdmFormProjectionDto projetion1) {
+	private void testUpdate(IdmIdentityDto identity, UUID contractId, boolean expectError) {
+		try {
+			getHelper().login(identity);
+			IdmIdentityContractDto contract = contractService.get(contractId);
+			contract.setPosition(UUID.randomUUID().toString());
+			contractService.save(contract, IdmBasePermission.UPDATE);
+			Assert.assertFalse(expectError);
+		} catch (AssertionError ass) {
+			// we want to rethrow this
+			System.out.println("Exception was not thrown");
+			throw ass;
+		} catch (Exception e) {
+			Assert.assertTrue(expectError);
+		} finally {
+			getHelper().logout();
+		}
+	}
+
+	private IdmRoleDto getIdmRoleDto(IdmFormProjectionDto projetion1, BasePermission... permissions) {
 		IdmRoleDto role = getHelper().createRole();
 
 		ConfigurationMap config = new ConfigurationMap();
@@ -114,7 +148,7 @@ public class ContractSubordinateWithProjectionEvaluatorTest extends AbstractInte
 				IdmIdentityContract.class,
 				ContractSubordinateWithProjectionEvaluator.class,
 				config,
-				IdmBasePermission.READ);
+				permissions);
 		return role;
 	}
 
