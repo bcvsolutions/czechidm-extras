@@ -11,8 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import com.google.common.collect.ImmutableMap;
@@ -27,39 +25,29 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
 /**
  * @author Petr Hanák
+ * @author Tomáš Doischer
  *
  */
 public class CSVToIdM {
-	
-	private static final Logger LOG = LoggerFactory.getLogger(CSVToIdM.class);
-	
+
 	private InputStream attachmentData;
-	private String rolesColumnName;
-	private String roleCodeColumnName;
-	private String descriptionColumnName;
-	private String attributeColumnName;
-	private String criticalityColumnName;
-	private String guaranteeColumnName;
-	private String guaranteeTypeColumnName;
-	private String guaranteeRoleColumnName;
-	private String guaranteeRoleTypeColumnName;
-	private String catalogueColumnName;
-	private String subRoleColumnName;
+
+	private static final String ROLES_ATTRIBUTE = "roleNames";
+	private static final String ROLE_CODES_ATTRIBUTE = "roleCodes";
+	private static final String DESCRIPTION_ATTRIBUTE = "description";
+	private static final String ATTRIBUTE_ATTRIBUTE = "attribute";
+	private static final String MEMBER_OF_ATTRIBUTE_VALUE_ATTRIBUTE = "memberOfAttributeValue";
+	private static final String CRITICALITY_ATTRIBUTE = "criticality";
+	private static final String GUARANTEE_ATTRIBUTE = "guarantees";
+	private static final String GUARANTEE_TYPE_ATTRIBUTE = "guaranteeTypes";
+	private static final String GUARANTEE_ROLE_ATTRIBUTE = "guaranteeRoles";
+	private static final String GUARANTEE_ROLE_TYPE_ATTRIBUTE = "guaranteeRoleType";
+	private static final String CATALOGUE_ATTRIBUTE = "catalogues";
+	private static final String SUBROLE_ATTRIBUTE = "subroles";
+
 	private String columnSeparator;
 	private String multiValueSeparator;
-	private Boolean hasDescription;
-	private Boolean hasAttribute;
-	private Boolean hasCriticality;
-	private Boolean hasGuarantees;
-	private Boolean hasGuaranteeTypes;
-	private Boolean hasGuaranteeRoles;
-	private Boolean hasGuaranteeRoleTypes;
-	private Boolean hasCatalogues;
-	private Boolean hasSubRoles;
-	private Boolean hasRoleCodes;
 	private String encoding;
-	private String memberOfAttributeValueColumnName;
-	private Boolean hasMemberOfValue;
 
 	private Map<String, String> roleDescriptions;
 	private Map<String, List<String>> roleAttributes;
@@ -74,45 +62,25 @@ public class CSVToIdM {
 	private Map<String, String> memberOfValues;
 
 	String[] header = new String[0];
-	
+
 	public Map<String, String> getRoleDescriptions() {
 		return roleDescriptions;
 	}
-	
-	public void setRoleDescriptions(Map<String, String> roleDescriptions) {
-		this.roleDescriptions = roleDescriptions;
-	}
-	
+
 	public Map<String, String> getRoleCodes() {
 		return roleCodes;
 	}
-	
-	public void setRoleCodes(Map<String, String> roleCodes) {
-		this.roleCodes = roleCodes;
-	}
-	
+
 	public Map<String, List<String>> getRoleAttributes() {
 		return roleAttributes;
 	}
 
-	public void setRoleAttributes(Map<String, List<String>> roleAttributes) {
-		this.roleAttributes = roleAttributes;
-	}
-	
 	public Map<String, String> getCriticalities() {
 		return criticalities;
 	}
 
-	public void setCriticalities(Map<String, String> criticalities) {
-		this.criticalities = criticalities;
-	}
-
 	public Map<String, List<String>> getGuarantees() {
 		return guarantees;
-	}
-
-	public void setGuarantees(Map<String, List<String>> guarantees) {
-		this.guarantees = guarantees;
 	}
 
 	public Map<String, List<String>> getGuaranteeRoles() {
@@ -123,382 +91,120 @@ public class CSVToIdM {
 		return guaranteeTypes;
 	}
 
-	public void setGuaranteeTypes(Map<String, String> guaranteeTypes) {
-		this.guaranteeTypes = guaranteeTypes;
-	}
-
 	public Map<String, String> getGuaranteeRoleTypes() {
 		return guaranteeRoleTypes;
 	}
 
-	public void setGuaranteeRoleTypes(Map<String, String> guaranteeRoleTypes) {
-		this.guaranteeRoleTypes = guaranteeRoleTypes;
-	}
-
-	public void setGuaranteeRoles(Map<String, List<String>> guaranteeRoles) {
-		this.guaranteeRoles = guaranteeRoles;
-	}
-	
 	public Map<String, List<String>> getCatalogues() {
 		return catalogues;
 	}
 
-	public void setCatalogues(Map<String, List<String>> catalogues) {
-		this.catalogues = catalogues;
-	}
-	
 	public Map<String, List<String>> getSubRoles() {
 		return subRoles;
-	}
-
-	public void setSubRoles(Map<String, List<String>> subRoles) {
-		this.subRoles = subRoles;
 	}
 
 	public Map<String, String> getMemberOfValues() {
 		return memberOfValues;
 	}
 
-	public void setMemberOfValues(Map<String, String> memberOfValues) {
-		this.memberOfValues = memberOfValues;
-	}
-
 	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String roleCodeColumnName,
-					String descriptionColumnName,
-					String attributeColumnName, String criticalityColumnName, String guaranteeColumnName, String guaranteeTypeColumnName,
-					String guaranteeRoleColumnName, String guaranteeRoleTypeColumnName, String catalogueColumnName, String subRoleColumnName,
-					String columnSeparator, String multiValueSeparator,
-					Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, Boolean hasGuarantees, Boolean hasGuaranteeTypes,
-					Boolean hasGuaranteeRoles, Boolean hasGuaranteeRoleTypes, Boolean hasCatalogues, Boolean hasSubRoles,
-					Boolean hasRoleCodes, String encoding, String memberOfAttributeValueColumnName, Boolean hasMemberOfValue) {
-		
+			String descriptionColumnName, String attributeColumnName, String criticalityColumnName,
+			String guaranteeColumnName, String guaranteeTypeColumnName, String guaranteeRoleColumnName,
+			String guaranteeRoleTypeColumnName, String catalogueColumnName, String subRoleColumnName,
+			String columnSeparator, String multiValueSeparator, Boolean hasDescription, Boolean hasAttribute,
+			Boolean hasCriticality, Boolean hasGuarantees, Boolean hasGuaranteeTypes, Boolean hasGuaranteeRoles,
+			Boolean hasGuaranteeRoleTypes, Boolean hasCatalogues, Boolean hasSubRoles, Boolean hasRoleCodes,
+			String encoding, String memberOfAttributeValueColumnName, Boolean hasMemberOfValue) {
+
+		List<Attribute> attributes = new ArrayList<>();
+		attributes.add(new Attribute(ROLES_ATTRIBUTE, rolesColumnName, Boolean.TRUE, Boolean.TRUE));
+		attributes.add(new Attribute(ROLE_CODES_ATTRIBUTE, roleCodeColumnName, Boolean.FALSE, hasRoleCodes));
+		attributes.add(new Attribute(DESCRIPTION_ATTRIBUTE, descriptionColumnName, Boolean.FALSE, hasDescription));
+		attributes.add(new Attribute(ATTRIBUTE_ATTRIBUTE, attributeColumnName, Boolean.TRUE, hasAttribute));
+		attributes.add(new Attribute(MEMBER_OF_ATTRIBUTE_VALUE_ATTRIBUTE, memberOfAttributeValueColumnName,
+				Boolean.FALSE, hasMemberOfValue));
+		attributes.add(new Attribute(CRITICALITY_ATTRIBUTE, criticalityColumnName, Boolean.FALSE, hasCriticality));
+		attributes.add(new Attribute(GUARANTEE_ATTRIBUTE, guaranteeColumnName, Boolean.TRUE, hasGuarantees));
+		attributes.add(
+				new Attribute(GUARANTEE_TYPE_ATTRIBUTE, guaranteeTypeColumnName, Boolean.FALSE, hasGuaranteeTypes));
+		attributes
+				.add(new Attribute(GUARANTEE_ROLE_ATTRIBUTE, guaranteeRoleColumnName, Boolean.TRUE, hasGuaranteeRoles));
+		attributes.add(new Attribute(GUARANTEE_ROLE_TYPE_ATTRIBUTE, guaranteeRoleTypeColumnName, Boolean.FALSE,
+				hasGuaranteeRoleTypes));
+		attributes.add(new Attribute(CATALOGUE_ATTRIBUTE, catalogueColumnName, Boolean.TRUE, hasCatalogues));
+		attributes.add(new Attribute(SUBROLE_ATTRIBUTE, subRoleColumnName, Boolean.TRUE, hasSubRoles));
+
 		this.attachmentData = attachmentData;
-		this.rolesColumnName = rolesColumnName;
-		this.roleCodeColumnName = roleCodeColumnName;
-		this.descriptionColumnName = descriptionColumnName;
-		this.attributeColumnName = attributeColumnName;
-		this.criticalityColumnName = criticalityColumnName;
-		this.guaranteeColumnName = guaranteeColumnName;
-		this.guaranteeTypeColumnName = guaranteeTypeColumnName;
-		this.guaranteeRoleColumnName = guaranteeRoleColumnName;
-		this.guaranteeRoleTypeColumnName = guaranteeRoleTypeColumnName;
-		this.catalogueColumnName = catalogueColumnName;
-		this.subRoleColumnName = subRoleColumnName;
 		this.columnSeparator = columnSeparator;
 		this.multiValueSeparator = multiValueSeparator;
-		this.hasDescription = hasDescription;
-		this.hasAttribute = hasAttribute;
-		this.hasCriticality = hasCriticality;
-		this.hasGuarantees = hasGuarantees;
-		this.hasGuaranteeTypes = hasGuaranteeTypes;
-		this.hasGuaranteeRoles = hasGuaranteeRoles;
-		this.hasGuaranteeRoleTypes = hasGuaranteeRoleTypes;
-		this.hasCatalogues = hasCatalogues;
-		this.hasSubRoles = hasSubRoles;
-		this.hasRoleCodes = hasRoleCodes;
 		this.encoding = encoding;
-		this.memberOfAttributeValueColumnName = memberOfAttributeValueColumnName;
-		this.hasMemberOfValue = hasMemberOfValue;
 
-		Maps maps = parseCSV();
-		
-		this.roleCodes = maps.getRoleCodes();
-		this.roleDescriptions = maps.getRoleDescriptions();
-		this.roleAttributes = maps.getRoleAttributes();
-		this.criticalities = maps.getCriticalities();
-		this.guarantees = maps.getGuarantees();
-		this.guaranteeTypes = maps.getGuaranteeTypes();
-		this.guaranteeRoles = maps.getGuaranteeRoles();
-		this.guaranteeRoleTypes = maps.getGuaranteeRoleTypes();
-		this.catalogues = maps.getCatalogues();
-		this.subRoles = maps.getSubRoles();
-		this.memberOfValues = maps.getMemberOfValues();
+		List<Attribute> parsedAttributes = parseCSV(attributes);
+
+		this.roleCodes = getValueOfAttribute(ROLE_CODES_ATTRIBUTE, parsedAttributes);
+		this.roleDescriptions = getValueOfAttribute(DESCRIPTION_ATTRIBUTE, parsedAttributes);
+		this.roleAttributes = getValuesOfAttribute(ATTRIBUTE_ATTRIBUTE, parsedAttributes);
+		this.criticalities = getValueOfAttribute(CRITICALITY_ATTRIBUTE, parsedAttributes);
+		this.guarantees = getValuesOfAttribute(GUARANTEE_ATTRIBUTE, parsedAttributes);
+		this.guaranteeTypes = getValueOfAttribute(GUARANTEE_TYPE_ATTRIBUTE, parsedAttributes);
+		this.guaranteeRoles = getValuesOfAttribute(GUARANTEE_ROLE_ATTRIBUTE, parsedAttributes);
+		this.guaranteeRoleTypes = getValueOfAttribute(GUARANTEE_ROLE_TYPE_ATTRIBUTE, parsedAttributes);
+		this.catalogues = getValuesOfAttribute(CATALOGUE_ATTRIBUTE, parsedAttributes);
+		this.subRoles = getValuesOfAttribute(SUBROLE_ATTRIBUTE, parsedAttributes);
+		this.memberOfValues = getValueOfAttribute(MEMBER_OF_ATTRIBUTE_VALUE_ATTRIBUTE, parsedAttributes);
 	}
-	
+
 	/**
-	 * Parse CSV file
-	 * - read selected CSV column and return list of roles with description
+	 * Parse CSV file - read selected CSV column and return list of roles with
+	 * description
 	 * 
 	 * @return
 	 */
-	private Maps parseCSV() {
+	private List<Attribute> parseCSV(List<Attribute> attributesAndColumnNames) {
 		CSVParser parser = new CSVParserBuilder().withEscapeChar(ICSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
 				.withSeparator(columnSeparator.charAt(0)).build();
-		CSVReader reader = null;
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData, StringUtils.isEmpty(encoding) ? Charset.defaultCharset() : Charset.forName(encoding)));
-			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
-			
+
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData,
+				StringUtils.isEmpty(encoding) ? Charset.defaultCharset() : Charset.forName(encoding)));
+				CSVReader reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
+		) {
 			header = reader.readNext();
-			// find number of column with role name
-			int roleColumnNumber = findColumnNumber(header, rolesColumnName);
-			// find number of column with description name
-			int descriptionColumnNumber = -1;
-			if (hasDescription) {
-				descriptionColumnNumber = findColumnNumber(header, descriptionColumnName);
-			}
-			
-			// find number of column with description name
-			int roleCodesColumnNumber = -1;
-			if (hasRoleCodes) {
-				roleCodesColumnNumber = findColumnNumber(header, roleCodeColumnName);
-			}
-			
-			// find number of column with attributes
-			int attributeColumnNumber = -1;
-			if (hasAttribute) {
-				attributeColumnNumber = findColumnNumber(header, attributeColumnName);
-			}
-			
-			// find number of column with criticality
-			int criticalityColumnNumber = -1;
-			if (hasCriticality) {
-				criticalityColumnNumber = findColumnNumber(header, criticalityColumnName);
-			}
-			
-			// find number of column with guarantee
-			int guaranteeColumnNumber = -1;
-			if (hasGuarantees) {
-				guaranteeColumnNumber = findColumnNumber(header, guaranteeColumnName);
-			}
-			
-			// find number of column with guarantee type
-			int guaranteeTypesColumnNumber = -1;
-			if (hasGuaranteeTypes) {
-				guaranteeTypesColumnNumber = findColumnNumber(header, guaranteeTypeColumnName);
-			}
-			
-			// find number of column with guaranteeRole
-			int guaranteeRolesColumnNumber = -1;
-			if (hasGuaranteeRoles) {
-				guaranteeRolesColumnNumber = findColumnNumber(header, guaranteeRoleColumnName);
-			}
-			
-			// find number of column with guarantee role type
-			int guaranteeRoleTypesColumnNumber = -1;
-			if (hasGuaranteeRoleTypes) {
-				guaranteeRoleTypesColumnNumber = findColumnNumber(header, guaranteeRoleTypeColumnName);
-			}
-			
-			// find number of column with catalogues
-			int cataloguesColumnNumber = -1;
-			if (hasCatalogues) {
-				cataloguesColumnNumber = findColumnNumber(header, catalogueColumnName);
-			}
-			
-			// find number of column with sub roles
-			int subRolesColumnNumber = -1;
-			if (hasSubRoles) {
-				subRolesColumnNumber = findColumnNumber(header, subRoleColumnName);
+
+			// get column numbers
+			for (Attribute attribute : attributesAndColumnNames) {
+				if (attribute.hasValue()) {
+					attribute
+							.setColumnNumber(findColumnNumber(header, attribute.getColumnName(), attribute.hasValue()));
+				}
 			}
 
-			// find number of column with memberOfValue
-			int memberOfValueColumnNumber = -1;
-			if (hasMemberOfValue) {
-				memberOfValueColumnNumber = findColumnNumber(header, memberOfAttributeValueColumnName);
-			}
-
-			Map<String, String> roleCodesParsing = new HashMap<>();
-			Map<String, String> roleDescriptionsParsing = new HashMap<>();
-			Map<String, List<String>> roleAttributesParsing = new HashMap<>();
-			Map<String, String> criticalitiesParsing = new HashMap<>();
-			Map<String, List<String>> guaranteesParsing = new HashMap<>();
-			Map<String, String> guaranteeTypesParsing = new HashMap<>();
-			Map<String, List<String>> guaranteeRolesParsing = new HashMap<>();
-			Map<String, String> guaranteeRoleTypesParsing = new HashMap<>();
-			Map<String, List<String>> cataloguesParsing = new HashMap<>();
-			Map<String, List<String>> subRolesParsing = new HashMap<>();
-			Map<String, String> memberOfValuesParsing = new HashMap<>();
-			
 			for (String[] line : reader) {
-				String[] roleNames = line[roleColumnNumber].split(multiValueSeparator);
-				// get role codes from the csv
-				String roleCode;
-				if (hasRoleCodes) {
-					roleCode = line[roleCodesColumnNumber];
-				} else {
-					roleCode = "";
-				}
-				
-				
-				// get description from the csv
-				String description;
-				if (hasDescription) {
-					description = line[descriptionColumnNumber];
-				} else {
-					description = "";
-				}
-
-				// get memberOfValue from the csv
-				String memberOfValue;
-				if (hasMemberOfValue) {
-					memberOfValue = line[memberOfValueColumnNumber];
-				} else {
-					memberOfValue = "";
-				}
-
-				// get attributes from the csv
-				String[] attributes;
-				
-				if (hasAttribute) {
-					attributes = line[attributeColumnNumber].split(multiValueSeparator);
-				} else {
-					attributes = new String[0];
-				}
-				
-				// get criticalities from the csv
-				String criticality;
-				if (hasCriticality) {
-					criticality = line[criticalityColumnNumber];
-
-					if(criticality.length() > 1) {
-						LOG.error(String.format("The criticality in the CSV file cannot be multivalued! Error in line: %s", Arrays.toString(line)));
-						throw new IllegalArgumentException("The criticality in the CSV file cannot be multivalued!" + Arrays.toString(line));
-					}
-				} else {
-					criticality = "";
-				}
-				
-				// get guarantees from the csv
-				String[] guaranteesArray;
-				
-				if (hasGuarantees) {
-					guaranteesArray = line[guaranteeColumnNumber].split(multiValueSeparator);
-				} else {
-					guaranteesArray = new String[0];
-				}
-				
-				// get guarantee types from the csv
-				String guaranteeType;
-				
-				if (hasGuaranteeTypes) {
-					guaranteeType = line[guaranteeTypesColumnNumber];
-				} else {
-					guaranteeType = "";
-				}
-				
-				// get guaranteesRoles from the csv
-				String[] guaranteesRolesArray;
-				
-				if (hasGuaranteeRoles) {
-					guaranteesRolesArray = line[guaranteeRolesColumnNumber].split(multiValueSeparator);
-				} else {
-					guaranteesRolesArray = new String[0];
-				}
-				
-				// get guarantee role types from the csv
-				String guaranteeRoleType;
-				
-				if (hasGuaranteeRoleTypes) {
-					guaranteeRoleType = line[guaranteeRoleTypesColumnNumber];
-				} else {
-					guaranteeRoleType = "";
-				}
-				
-				// get catalogues from the csv
-				String[] cataloguesArray;
-				
-				if (hasCatalogues) {
-					cataloguesArray = line[cataloguesColumnNumber].split(multiValueSeparator);
-				} else {
-					cataloguesArray = new String[0];
-				}
-				
-				// get sub roles from the csv
-				String[] subRolesArray;
-				
-				if (hasSubRoles) {
-					subRolesArray = line[subRolesColumnNumber].split(multiValueSeparator);
-				} else {
-					subRolesArray = new String[0];
-				}
-				
-				for (String roleName : roleNames) {
-					if (!StringUtils.isEmpty(roleName)) {
-						// save role codes
-						roleCodesParsing.put(roleName, roleCode);
-						
-						// save descriptions
-						roleDescriptionsParsing.put(roleName, description);
-
-						// save mamberOfValue
-						memberOfValuesParsing.put(roleName, memberOfValue);
-
-						// save attributes
-						List<String> attr = new ArrayList<>((int) (attributes.length / 0.75));
-						for(String attribute : attributes) {
-							attr.add(attribute);
-						}
-						roleAttributesParsing.put(roleName, attr);
-						
-						// save criticalities
-						criticalitiesParsing.put(roleName, criticality);
-						
-						// save guarantees
-						List<String> guar = new ArrayList<>((int) (guaranteesArray.length / 0.75));
-						for(String guarantee : guaranteesArray) {
-							guar.add(guarantee);
-						}
-						guaranteesParsing.put(roleName, guar);
-						
-						// save guarantee types
-						guaranteeTypesParsing.put(roleName, guaranteeType);
-						
-						// save guaranteesRoles
-						List<String> guarRoles = new ArrayList<>((int) (guaranteesRolesArray.length / 0.75));
-						for(String guaranteeRole : guaranteesRolesArray) {
-							guarRoles.add(guaranteeRole);
-						}
-						guaranteeRolesParsing.put(roleName, guarRoles);
-						
-						// save guarantee role types
-						guaranteeRoleTypesParsing.put(roleName, guaranteeRoleType);
-						
-						// save catalogues
-						List<String> catalogueList = new ArrayList<>((int) (cataloguesArray.length / 0.75));
-						for(String catalogue : cataloguesArray) {
-							catalogueList.add(catalogue);
-						}
-						cataloguesParsing.put(roleName, catalogueList);
-						
-						// save sub roles
-						List<String> subRolesList = new ArrayList<>((int) (subRolesArray.length / 0.75));
-						for(String subRole : subRolesArray) {
-							subRolesList.add(subRole);
-						}
-						subRolesParsing.put(roleName, subRolesList);
-					}
+				for (Attribute attribute : attributesAndColumnNames) {
+					attribute = setValue(attribute, line, attributesAndColumnNames);
 				}
 			}
-			
-			Maps maps = new Maps(roleCodesParsing, roleDescriptionsParsing, roleAttributesParsing, criticalitiesParsing, guaranteesParsing, 
-					guaranteeTypesParsing, guaranteeRolesParsing, guaranteeRoleTypesParsing, cataloguesParsing, subRolesParsing, memberOfValuesParsing);
-			return maps;
+
+			return attributesAndColumnNames;
 		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
-		} finally {
-			if (reader != null) {
-				try {
-					reader.close();
-				} catch (IOException e) {
-					LOG.error("Reader exception: ", e);
-				}
-			}
 		}
 	}
 
-	
 	/**
-	 * finds number of column
+	 * Finds number of column
 	 * 
 	 * @param header
 	 * @param columnName
 	 * @return
 	 */
-	private int findColumnNumber(String[] header, String columnName) {
+	private int findColumnNumber(String[] header, String columnName, boolean hasAttribute) {
+		if (!hasAttribute) {
+			return -1;
+		}
+
 		int counterHeader = 0;
-		for (String item : header){
-			if(item.equals(columnName)){
+		for (String item : header) {
+			if (item.equals(columnName)) {
 				return counterHeader;
 			}
 			counterHeader++;
@@ -506,124 +212,168 @@ public class CSVToIdM {
 		throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", columnName));
 	}
 
+	/**
+	 * Return attribute value
+	 * 
+	 * @param columnNumber
+	 * @param hasAttribute
+	 * @param line
+	 * @return
+	 */
+	private String getAttributeValue(int columnNumber, boolean hasAttribute, String[] line) {
+		if (hasAttribute) {
+			return line[columnNumber];
+		} else {
+			return "";
+		}
+	}
+
+	/**
+	 * Return multiple attribute values
+	 * 
+	 * @param columnNumber
+	 * @param hasAttribute
+	 * @param line
+	 * @return
+	 */
+	private List<String> getAttributeValues(int columnNumber, boolean hasAttribute, String[] line) {
+		if (hasAttribute) {
+			String[] v = line[columnNumber].split(multiValueSeparator);
+			return Arrays.asList(v);
+		} else {
+			return new ArrayList<>();
+		}
+	}
+
+	private Attribute setValue(Attribute attribute, String[] line, List<Attribute> attributesAndColumnNames) {
+		List<String> roleNames = getRoleName(line, attributesAndColumnNames);
+
+		if (!attribute.getAttributeName().equals(ROLES_ATTRIBUTE)) {
+			for (String roleName : roleNames) {
+				if (attribute.isMultivalued()) {
+					List<String> values = new ArrayList<>();
+					if (attribute.getColumnNumber() != null && attribute.getColumnNumber() != -1) {
+						values = getAttributeValues(attribute.getColumnNumber(), attribute.hasValue(), line);
+					}
+
+					if (values != null && roleName != null) {
+						attribute.addValues(roleName, values);
+					}
+				} else {
+					String value = "";
+					if (attribute.getColumnNumber() != null && attribute.getColumnNumber() != -1) {
+						value = getAttributeValue(attribute.getColumnNumber(), attribute.hasValue(), line);
+					}
+
+					if (value != null && roleName != null) {
+						attribute.addValue(roleName, value);
+					}
+				}
+			}
+		}
+
+		return attribute;
+	}
+
+	private List<String> getRoleName(String[] line, List<Attribute> attributesAndColumnNames) {
+		Attribute roleName = null;
+
+		for (Attribute attribute : attributesAndColumnNames) {
+			if (attribute.getAttributeName().equals(ROLES_ATTRIBUTE)) {
+				roleName = attribute;
+				break;
+			}
+		}
+
+		if (roleName != null) {
+			return getAttributeValues(roleName.getColumnNumber(), roleName.hasValue(), line);
+		} else {
+			return new ArrayList<>();
+		}
+	}
+
+	private Map<String, List<String>> getValuesOfAttribute(String attributeName,
+			List<Attribute> attributesAndColumnNames) {
+		for (Attribute attribute : attributesAndColumnNames) {
+			if (attribute.getAttributeName().equals(attributeName)) {
+				return attribute.getValues();
+			}
+		}
+
+		return new HashMap<>();
+	}
+
+	private Map<String, String> getValueOfAttribute(String attributeName, List<Attribute> attributesAndColumnNames) {
+		for (Attribute attribute : attributesAndColumnNames) {
+			if (attribute.getAttributeName().equals(attributeName)) {
+				return attribute.getValue();
+			}
+		}
+
+		return new HashMap<>();
+	}
 }
 
- class Maps {
-	private Map<String, String> roleDescriptions;
-	private Map<String, String> roleCodes;
-	private Map<String, List<String>> roleAttributes;
-	private Map<String, String> criticalities;
-	private Map<String, List<String>> guarantees;
-	private Map<String, String> guaranteeTypes;
-	private Map<String, List<String>> guaranteeRoles;
-	private Map<String, String> guaranteeRoleTypes;
-	private Map<String, List<String>> catalogues; 
-	private Map<String, List<String>> subRoles;
-	private Map<String, String> memberOfValues;
+class Attribute {
+	private String attributeName;
+	private String columnName;
+	private Boolean multivalued;
+	private Boolean hasValue;
+	private Integer columnNumber;
+	private Map<String, String> value;
+	private Map<String, List<String>> values;
 
-	public Maps(Map<String, String> roleCodes, Map<String, String> roleDescriptions, Map<String, List<String>> roleAttributes,
-			Map<String, String> criticalities, Map<String, List<String>> guarantees, Map<String, String> guaranteeTypes,
-			Map<String, List<String>> guaranteeRoles, Map<String, String> guaranteeRoleTypes, Map<String, List<String>> catalogues, 
-			Map<String, List<String>> subRoles, Map<String, String> memberOfValues) {
-		super();
-		this.roleCodes = roleCodes;
-		this.roleDescriptions = roleDescriptions;
-		this.roleAttributes = roleAttributes;
-		this.criticalities = criticalities;
-		this.guarantees = guarantees;
-		this.guaranteeTypes = guaranteeTypes;
-		this.guaranteeRoles = guaranteeRoles;
-		this.guaranteeRoleTypes = guaranteeRoleTypes;
-		this.catalogues = catalogues;
-		this.subRoles = subRoles;
-		this.memberOfValues = memberOfValues;
+	public Attribute(String attributeName, String columnName, Boolean multivalued, Boolean hasValue) {
+		this.attributeName = attributeName;
+		this.columnName = columnName;
+		this.multivalued = multivalued;
+		this.hasValue = hasValue;
+
+		this.value = new HashMap<>();
+		this.values = new HashMap<>();
 	}
 
-	public Map<String, String> getRoleCodes() {
-		return roleCodes;
+	public void setColumnNumber(Integer columnNumber) {
+		this.columnNumber = columnNumber;
 	}
 
-	public void setRoleCodes(Map<String, String> roleCodes) {
-		this.roleCodes = roleCodes;
-	}
-	
-	public Map<String, String> getRoleDescriptions() {
-		return roleDescriptions;
+	public String getColumnName() {
+		return columnName;
 	}
 
-	public void setRoleDescriptions(Map<String, String> roleDescriptions) {
-		this.roleDescriptions = roleDescriptions;
+	public String getAttributeName() {
+		return attributeName;
 	}
 
-	public Map<String, List<String>> getRoleAttributes() {
-		return roleAttributes;
+	public Boolean isMultivalued() {
+		return multivalued;
 	}
 
-	public void setRoleAttributes(Map<String, List<String>> roleAttributes) {
-		this.roleAttributes = roleAttributes;
+	public void setMultivalued(Boolean multivalued) {
+		this.multivalued = multivalued;
 	}
 
-	public Map<String, String> getCriticalities() {
-		return criticalities;
+	public Boolean hasValue() {
+		return hasValue;
 	}
 
-	public void setCriticalities(Map<String, String> criticalities) {
-		this.criticalities = criticalities;
+	public Integer getColumnNumber() {
+		return columnNumber;
 	}
 
-	public Map<String, List<String>> getGuarantees() {
-		return guarantees;
+	public Map<String, String> getValue() {
+		return value;
 	}
 
-	public void setGuarantees(Map<String, List<String>> guarantees) {
-		this.guarantees = guarantees;
-	}
-	
-	public Map<String, String> getGuaranteeTypes() {
-		return guaranteeTypes;
+	public Map<String, List<String>> getValues() {
+		return values;
 	}
 
-	public void setGuaranteeTypes(Map<String, String> guaranteeTypes) {
-		this.guaranteeTypes = guaranteeTypes;
+	public void addValue(String roleName, String foundValue) {
+		value.put(roleName, foundValue);
 	}
 
-	public Map<String, List<String>> getGuaranteeRoles() {
-		return guaranteeRoles;
+	public void addValues(String roleName, List<String> foundValues) {
+		values.put(roleName, foundValues);
 	}
-
-	public void setGuaranteeRoles(Map<String, List<String>> guaranteeRoles) {
-		this.guaranteeRoles = guaranteeRoles;
-	}
-	
-	public Map<String, String> getGuaranteeRoleTypes() {
-		return guaranteeRoleTypes;
-	}
-
-	public void setGuaranteeRoleTypes(Map<String, String> guaranteeRoleTypes) {
-		this.guaranteeRoleTypes = guaranteeRoleTypes;
-	}
-	
-	public Map<String, List<String>> getCatalogues() {
-		return catalogues;
-	}
-
-	public void setCatalogues(Map<String, List<String>> catalogues) {
-		this.catalogues = catalogues;
-	}
-	
-	public Map<String, List<String>> getSubRoles() {
-		return subRoles;
-	}
-
-	public void setSubRoles(Map<String, List<String>> subRoles) {
-		this.subRoles = subRoles;
-	}
-
-	 public Map<String, String> getMemberOfValues() {
-		 return memberOfValues;
-	 }
-
-	 public void setMemberOfValues(Map<String, String> memberOfValues) {
-		 this.memberOfValues = memberOfValues;
-	 }
- }
+}
