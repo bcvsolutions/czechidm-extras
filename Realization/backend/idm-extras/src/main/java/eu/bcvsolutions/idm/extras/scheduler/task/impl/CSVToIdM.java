@@ -58,7 +58,9 @@ public class CSVToIdM {
 	private Boolean hasSubRoles;
 	private Boolean hasRoleCodes;
 	private String encoding;
-	
+	private String memberOfAttributeValueColumnName;
+	private Boolean hasMemberOfValue;
+
 	private Map<String, String> roleDescriptions;
 	private Map<String, List<String>> roleAttributes;
 	private Map<String, String> criticalities;
@@ -69,7 +71,8 @@ public class CSVToIdM {
 	private Map<String, List<String>> catalogues;
 	private Map<String, List<String>> subRoles;
 	private Map<String, String> roleCodes;
-	
+	private Map<String, String> memberOfValues;
+
 	String[] header = new String[0];
 	
 	public Map<String, String> getRoleDescriptions() {
@@ -152,14 +155,22 @@ public class CSVToIdM {
 		this.subRoles = subRoles;
 	}
 
-	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String roleCodeColumnName, 
-			String descriptionColumnName, 
-			String attributeColumnName, String criticalityColumnName, String guaranteeColumnName, String guaranteeTypeColumnName,
-			String guaranteeRoleColumnName, String guaranteeRoleTypeColumnName, String catalogueColumnName, String subRoleColumnName,
-			String columnSeparator, String multiValueSeparator,
-			Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, Boolean hasGuarantees, Boolean hasGuaranteeTypes, 
-			Boolean hasGuaranteeRoles, Boolean hasGuaranteeRoleTypes, Boolean hasCatalogues, Boolean hasSubRoles,
-			Boolean hasRoleCodes, String encoding) {
+	public Map<String, String> getMemberOfValues() {
+		return memberOfValues;
+	}
+
+	public void setMemberOfValues(Map<String, String> memberOfValues) {
+		this.memberOfValues = memberOfValues;
+	}
+
+	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String roleCodeColumnName,
+					String descriptionColumnName,
+					String attributeColumnName, String criticalityColumnName, String guaranteeColumnName, String guaranteeTypeColumnName,
+					String guaranteeRoleColumnName, String guaranteeRoleTypeColumnName, String catalogueColumnName, String subRoleColumnName,
+					String columnSeparator, String multiValueSeparator,
+					Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, Boolean hasGuarantees, Boolean hasGuaranteeTypes,
+					Boolean hasGuaranteeRoles, Boolean hasGuaranteeRoleTypes, Boolean hasCatalogues, Boolean hasSubRoles,
+					Boolean hasRoleCodes, String encoding, String memberOfAttributeValueColumnName, Boolean hasMemberOfValue) {
 		
 		this.attachmentData = attachmentData;
 		this.rolesColumnName = rolesColumnName;
@@ -186,7 +197,9 @@ public class CSVToIdM {
 		this.hasSubRoles = hasSubRoles;
 		this.hasRoleCodes = hasRoleCodes;
 		this.encoding = encoding;
-		
+		this.memberOfAttributeValueColumnName = memberOfAttributeValueColumnName;
+		this.hasMemberOfValue = hasMemberOfValue;
+
 		Maps maps = parseCSV();
 		
 		this.roleCodes = maps.getRoleCodes();
@@ -199,6 +212,7 @@ public class CSVToIdM {
 		this.guaranteeRoleTypes = maps.getGuaranteeRoleTypes();
 		this.catalogues = maps.getCatalogues();
 		this.subRoles = maps.getSubRoles();
+		this.memberOfValues = maps.getMemberOfValues();
 	}
 	
 	/**
@@ -278,6 +292,12 @@ public class CSVToIdM {
 				subRolesColumnNumber = findColumnNumber(header, subRoleColumnName);
 			}
 
+			// find number of column with memberOfValue
+			int memberOfValueColumnNumber = -1;
+			if (hasMemberOfValue) {
+				memberOfValueColumnNumber = findColumnNumber(header, memberOfAttributeValueColumnName);
+			}
+
 			Map<String, String> roleCodesParsing = new HashMap<>();
 			Map<String, String> roleDescriptionsParsing = new HashMap<>();
 			Map<String, List<String>> roleAttributesParsing = new HashMap<>();
@@ -288,6 +308,7 @@ public class CSVToIdM {
 			Map<String, String> guaranteeRoleTypesParsing = new HashMap<>();
 			Map<String, List<String>> cataloguesParsing = new HashMap<>();
 			Map<String, List<String>> subRolesParsing = new HashMap<>();
+			Map<String, String> memberOfValuesParsing = new HashMap<>();
 			
 			for (String[] line : reader) {
 				String[] roleNames = line[roleColumnNumber].split(multiValueSeparator);
@@ -307,7 +328,15 @@ public class CSVToIdM {
 				} else {
 					description = "";
 				}
-				
+
+				// get memberOfValue from the csv
+				String memberOfValue;
+				if (hasMemberOfValue) {
+					memberOfValue = line[memberOfValueColumnNumber];
+				} else {
+					memberOfValue = "";
+				}
+
 				// get attributes from the csv
 				String[] attributes;
 				
@@ -391,7 +420,10 @@ public class CSVToIdM {
 						
 						// save descriptions
 						roleDescriptionsParsing.put(roleName, description);
-						
+
+						// save mamberOfValue
+						memberOfValuesParsing.put(roleName, memberOfValue);
+
 						// save attributes
 						List<String> attr = new ArrayList<>((int) (attributes.length / 0.75));
 						for(String attribute : attributes) {
@@ -440,7 +472,7 @@ public class CSVToIdM {
 			}
 			
 			Maps maps = new Maps(roleCodesParsing, roleDescriptionsParsing, roleAttributesParsing, criticalitiesParsing, guaranteesParsing, 
-					guaranteeTypesParsing, guaranteeRolesParsing, guaranteeRoleTypesParsing, cataloguesParsing, subRolesParsing);
+					guaranteeTypesParsing, guaranteeRolesParsing, guaranteeRoleTypesParsing, cataloguesParsing, subRolesParsing, memberOfValuesParsing);
 			return maps;
 		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
@@ -487,11 +519,12 @@ public class CSVToIdM {
 	private Map<String, String> guaranteeRoleTypes;
 	private Map<String, List<String>> catalogues; 
 	private Map<String, List<String>> subRoles;
-	
+	private Map<String, String> memberOfValues;
+
 	public Maps(Map<String, String> roleCodes, Map<String, String> roleDescriptions, Map<String, List<String>> roleAttributes,
 			Map<String, String> criticalities, Map<String, List<String>> guarantees, Map<String, String> guaranteeTypes,
 			Map<String, List<String>> guaranteeRoles, Map<String, String> guaranteeRoleTypes, Map<String, List<String>> catalogues, 
-			Map<String, List<String>> subRoles) {
+			Map<String, List<String>> subRoles, Map<String, String> memberOfValues) {
 		super();
 		this.roleCodes = roleCodes;
 		this.roleDescriptions = roleDescriptions;
@@ -503,6 +536,7 @@ public class CSVToIdM {
 		this.guaranteeRoleTypes = guaranteeRoleTypes;
 		this.catalogues = catalogues;
 		this.subRoles = subRoles;
+		this.memberOfValues = memberOfValues;
 	}
 
 	public Map<String, String> getRoleCodes() {
@@ -584,4 +618,12 @@ public class CSVToIdM {
 	public void setSubRoles(Map<String, List<String>> subRoles) {
 		this.subRoles = subRoles;
 	}
+
+	 public Map<String, String> getMemberOfValues() {
+		 return memberOfValues;
+	 }
+
+	 public void setMemberOfValues(Map<String, String> memberOfValues) {
+		 this.memberOfValues = memberOfValues;
+	 }
  }
