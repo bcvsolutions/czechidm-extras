@@ -86,9 +86,9 @@ public class ContractSubordinateWithProjectionEvaluator extends AbstractAuthoriz
 			return permissions;
 		}
 
-		Set<String> permissions1 = subordinateContractEvaluator.getPermissions(authorizable, policy);
-		Set<String> permissions2 = formProjectionEvaluator.getPermissions(authorizable.getIdentity(), policy);
-		Set<String> intersection = Sets.intersection(permissions1, permissions2);
+		Set<String> subordinateContractEvaluatorPermissions = subordinateContractEvaluator.getPermissions(authorizable, policy);
+		Set<String> formProjectionEvaluatorPermissions = formProjectionEvaluator.getPermissions(authorizable.getIdentity(), policy);
+		Set<String> intersection = Sets.intersection(subordinateContractEvaluatorPermissions, formProjectionEvaluatorPermissions);
 
 		permissions.addAll(intersection);
 		return permissions;
