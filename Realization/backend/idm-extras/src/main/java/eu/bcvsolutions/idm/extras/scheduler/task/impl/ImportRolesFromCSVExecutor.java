@@ -494,7 +494,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			} else {
 				transformationScript = MessageFormat.format("\"{0}\"", roleName);
 			}
-			roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttribute, transformationScript, OBJECT_CLASSNAME);
+			roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttributeFromConfig, transformationScript, OBJECT_CLASSNAME);
 			return true;
 		}
 		return false;
