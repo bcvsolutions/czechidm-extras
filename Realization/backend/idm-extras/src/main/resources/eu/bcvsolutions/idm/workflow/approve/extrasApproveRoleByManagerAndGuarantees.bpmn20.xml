@@ -296,7 +296,7 @@ conceptRoleRequestService.save(conceptDto);</script>
         <activiti:value>true</activiti:value>
       </extensionElements>
     </dataObject>
-    <userTask id="approveByRoleGuaranteeB" name="Approve by role guarantee B" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail">
+    <userTask id="approveByRoleGuaranteeB" name="Approve by role guarantee B" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>
       <extensionElements>
         <activiti:formProperty id="disapprove" type="decision"></activiti:formProperty>
