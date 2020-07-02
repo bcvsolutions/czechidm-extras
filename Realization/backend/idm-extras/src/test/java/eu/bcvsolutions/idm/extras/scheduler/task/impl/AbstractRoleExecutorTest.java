@@ -52,7 +52,6 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 	static final String CRITICALITY_COLUMN = "criticality";
 	static final String CATALOGUES_COLUMN = "catalogue";
 	static final String DEFINITION = "defin";
-	static final String MEMBER_OF_ATTRIBUTE_VALUE_COLUMN = "comCode";
 
 	@Autowired
 	protected TestHelper helper;
@@ -83,11 +82,10 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 		return role.getName().equals(CHECK_NAME);
 	}
 
-	SysSystemDto initSystem() {
+	SysSystemDto initSystem(String systemName) {
 
 		// create test system
-		String generatedString = RandomStringUtils.random(10, true, true);
-		SysSystemDto system = helper.createTestResourceSystem(true, "TestSystemNameCSVRoles" + generatedString);
+		SysSystemDto system = helper.createTestResourceSystem(true, systemName);
 		Assert.assertNotNull(system);
 		List<SysSchemaObjectClassDto> schema = systemService.generateSchema(system);
 		SysSchemaAttributeDto rights = new SysSchemaAttributeDto();
@@ -135,15 +133,15 @@ public abstract class AbstractRoleExecutorTest extends AbstractIntegrationTest {
 
 	}
 
-	Pair<SysSystemDto, Map<String, Object>> createData() {
-		SysSystemDto system = initSystem();
+	Pair<SysSystemDto, Map<String, Object>> createData(String systemName) {
+		SysSystemDto system = initSystem(systemName);
 		Assert.assertNotNull(system);
 		// create setting of lrt
 		Map<String, Object> configOfLRT = new HashMap<>();
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_SYSTEM_NAME, system.getCode());
+//		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_SYSTEM_NAME, system.getCode());
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_COLUMN_SEPARATOR, ';');
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ROLES_COLUMN_NAME, ROLE_ROW);
-		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_MEMBER_OF_ATTRIBUTE, MEMBER_OF_NAME);
+//		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_MEMBER_OF_ATTRIBUTE, MEMBER_OF_NAME);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_CAN_BE_REQUESTED, true);
 		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_ATTRIBUTES_COLUMN_NAME, ROLE_ATTRIBUTE);
 		//configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_FORM_DEFINITION_CODE, DEFINITION);

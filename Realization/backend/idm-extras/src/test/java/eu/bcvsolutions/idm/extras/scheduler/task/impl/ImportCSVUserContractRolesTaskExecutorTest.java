@@ -47,7 +47,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractRoleExec
 	public void assignRolesToContractTest() {
 		loginAsAdmin();
 		setPath(path, "importContractEavRolesTestFile.csv");
-		Pair<SysSystemDto, Map<String, Object>> pair = createData();
+		Pair<SysSystemDto, Map<String, Object>> pair = createData("testsystem_assign_roles");
 		Map<String, Object> configOfLRT = pair.getSecond();
 
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();

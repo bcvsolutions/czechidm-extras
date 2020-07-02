@@ -88,13 +88,10 @@
             "label": "Prostředí",
             "placeholder": "Název prostředí, které chcete rolím nastavit"
           },
-          "memberofcolumn": {
-            "label": "Název sloupce s hodnotou atributu memberOf",
-            "placeholder": "Nechte prázdné, pokud nechcete nastavit hodnotu atributu memberOf"
-          },
-          "memberofname": {
-            "label": "Název atributu memberOf",
-            "placeholder": "Nechte prázdné, pokud nechcete nastavit atribut memberOf"
+          "systeminfocolumn": {
+            "label": "Název sloupce s informacemi o systému (název systému, atribut, jeho hodnota)",
+            "placeholder": "Pokud nenastavujete roli systém, nechte pole prázdné.",
+            "help": "Název systému, kód atributu a jeho hodnotu oddělujte znakem '+' (např. \"AD+ldapGroups+BCV_all\")."
           },
           "multivalueseparator": {
             "label": "Oddělovač vícehodnotých atributů",
@@ -110,6 +107,11 @@
           "subrolescolumn": {
             "label": "Název sloupce s kódy podřazených rolí",
             "placeholder": "Název sloupce s kódy podřazených rolí"
+          },
+          "eavscolumn": {
+            "label": "Název sloupce s kódy EAV atributů a jejich hodnotami",
+            "placeholder": "Název sloupce s kódy EAV atributů a jejich hodnotami",
+            "help": "Kód atributu a jeho hodnotu oddělujte znakem '+' (např. \"attribute+value\")."
           },
           "cataloguecolumn": {
             "label": "Název sloupce s kódy katalogů rolí",
@@ -156,10 +158,6 @@
           "rolenamescolumn": {
             "label": "Název sloupce s názvy role",
             "placeholder": "Název sloupce s názvy role"
-          },
-          "systemname": {
-            "label": "Název systému",
-            "placeholder": "Nechte prázdné, pokud nechcete nastavit roli systém."
           },
           "importcsvfile": {
             "label": "Vložte CSV soubor"

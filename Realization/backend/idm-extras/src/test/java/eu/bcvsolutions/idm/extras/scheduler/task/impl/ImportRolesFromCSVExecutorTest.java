@@ -37,12 +37,16 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleGuaranteeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
+import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListItemService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.model.entity.IdmRole;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 import eu.bcvsolutions.idm.extras.utils.Pair;
 import eu.bcvsolutions.idm.test.api.TestHelper;
@@ -69,6 +73,8 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private static final String GUARANTEE_TYPE_COLUMN = "guaranteeType";
 	private static final String GUARANTEE_ROLE_TYPE_COLUMN = "guaranteeRoleType";
 	private static final String GUARANTEE_TYPE = "type1";
+	private static final String EAV_COLUMN = "eav";
+	private static final String SYSTEM_COLUMN = "systeminfo";
 
 	@Autowired
 	private IdmRoleFormAttributeService roleFormAttributeService;
@@ -94,6 +100,8 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 	private IdmCodeListItemService codeListItemService;
 	@Autowired
 	private SysRoleSystemAttributeService roleSystemAttributeService;
+	@Autowired
+	private FormService formService;
 
 	@Test
 	public void importRolesTest() {
@@ -113,9 +121,12 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		codeListItemService.save(codeListItem);
 
 		// create system
-		Pair<SysSystemDto, Map<String, Object>> pair = createData();
+		Pair<SysSystemDto, Map<String, Object>> pair = createData("systemtest1");
 		SysSystemDto system = pair.getFirst();
 
+		// create EAVs
+		testHelper.createEavAttribute("eav", IdmRole.class, PersistentType.SHORTTEXT);
+		
 		// creates identity
 		IdmIdentityDto identity = testHelper.createIdentity(GUARANTEE);
 		testHelper.createIdentityContact(identity);
@@ -212,12 +223,23 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		Assert.assertEquals(1, subRoles.size());
 		Assert.assertEquals(ourRole.getId(), subRoles.get(0).getSuperior());
 
+		// test for setting EAV values
+		IdmRoleFilter roleFilter = new IdmRoleFilter();
+		roleFilter.setCodeableIdentifier("Manager-A");
+		List<IdmRoleDto> eavRoles = roleService.find(roleFilter, null).getContent();
+		IdmRoleDto eavRole = eavRoles.get(0);
+		
+		List<IdmFormValueDto> values = formService.getValues(eavRole.getId(), IdmRole.class, "eav");
+		Assert.assertEquals(1, values.size());
+		IdmFormValueDto value = values.get(0);
+		Assert.assertEquals("testvalue", value.getShortTextValue());
+		
 
 		// ***testing role updates
 		// create system
 
 		setPath(PATH_TWO, "importRolesTestFile05.csv");
-		Pair<SysSystemDto, Map<String, Object>> pairUpdate = createData();
+		Pair<SysSystemDto, Map<String, Object>> pairUpdate = createData("systemtest2");
 		SysSystemDto systemUpdate = pairUpdate.getFirst();
 
 		// creates identity
@@ -302,12 +324,23 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		// test for assigning sub roles
 		List<IdmRoleCompositionDto> subRolesUpdate = roleCompositionService.findAllSubRoles(ourRoleUpdate.getId());
 		Assert.assertEquals(2, subRolesUpdate.size());
+		
+		// test for setting EAV values
+		IdmRoleFilter roleFilterUpdated = new IdmRoleFilter();
+		roleFilterUpdated.setCodeableIdentifier("CORE-CLOSE");
+		List<IdmRoleDto> eavRolesUpdated = roleService.find(roleFilterUpdated, null).getContent();
+		IdmRoleDto eavRoleUpdated = eavRolesUpdated.get(0);
+			
+		List<IdmFormValueDto> valuesUpdated = formService.getValues(eavRoleUpdated.getId(), IdmRole.class, "eav");
+		Assert.assertEquals(1, valuesUpdated.size());
+		IdmFormValueDto valueUpdated = valuesUpdated.get(0);
+		Assert.assertEquals("testvalue2", valueUpdated.getShortTextValue());
 	}
 
 	@Test
 	public void importRolesTestEnvironment() {
 		setPath(PATH_THREE, "importRolesTestFile06.csv");
-		Pair<SysSystemDto, Map<String, Object>> pair = createData();
+		Pair<SysSystemDto, Map<String, Object>> pair = createData("systemtest3");
 		//
 		Map<String, Object> configOfLRT = addToCongigOtherParams(pair.getSecond());
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
@@ -336,10 +369,10 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
 	@Test
 	public void importMemberOfValue() {
-		setPath(PATH_FOUR, "importRolesTestFile07.csv.csv");
-		Pair<SysSystemDto, Map<String, Object>> config = createData();
-		config.getSecond().put(ImportRolesFromCSVExecutor.PARAM_MEMBER_OF_ATTRIBUTE_VALUE_COLUMN_NAME, MEMBER_OF_ATTRIBUTE_VALUE_COLUMN);
+		setPath(PATH_FOUR, "importRolesTestFile07.csv");
+		Pair<SysSystemDto, Map<String, Object>> config = createData("systemtest4");
 		config.getSecond().put(ImportRolesFromCSVExecutor.PARAM_ROLE_CODE_COLUMN_NAME, ROLE_ROW);
+		config.getSecond().put(ImportRolesFromCSVExecutor.PARAM_SYSTEM_INFO_COLUMN_NAME, "systeminfo");
 
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
 		lrt.init(config.getSecond());
@@ -391,6 +424,8 @@ public class ImportRolesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_SUBROLES_COLUMN_NAME, SUB_ROLE_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_TYPE_COLUMN_NAME, GUARANTEE_TYPE_COLUMN);
 		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_GUARANTEE_ROLE_TYPE_COLUMN_NAME, GUARANTEE_ROLE_TYPE_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_EAV_COLUMN_NAME, EAV_COLUMN);
+		configOfLRT.put(ImportRolesFromCSVExecutor.PARAM_SYSTEM_INFO_COLUMN_NAME, SYSTEM_COLUMN);
 		return configOfLRT;
 	}
 
