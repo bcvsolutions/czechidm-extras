@@ -91,7 +91,7 @@
           "systeminfocolumn": {
             "label": "Název sloupce s informacemi o systému (název systému, atribut, jeho hodnota)",
             "placeholder": "Pokud nenastavujete roli systém, nechte pole prázdné.",
-            "help": "Název systému, kód atributu a jeho hodnotu oddělujte znakem '+' (např. \"AD+ldapGroups+BCV_all\")."
+            "help": "Název systému, kód atributu a jeho hodnotu oddělujte znakem ':' (např. \"AD:ldapGroups:BCV_all\")."
           },
           "multivalueseparator": {
             "label": "Oddělovač vícehodnotých atributů",
@@ -111,7 +111,7 @@
           "eavscolumn": {
             "label": "Název sloupce s kódy EAV atributů a jejich hodnotami",
             "placeholder": "Název sloupce s kódy EAV atributů a jejich hodnotami",
-            "help": "Kód atributu a jeho hodnotu oddělujte znakem '+' (např. \"attribute+value\")."
+            "help": "Kód atributu a jeho hodnotu oddělujte znakem ':' (např. \"attribute:value\")."
           },
           "cataloguecolumn": {
             "label": "Název sloupce s kódy katalogů rolí",

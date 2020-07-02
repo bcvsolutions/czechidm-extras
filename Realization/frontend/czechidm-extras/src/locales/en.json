@@ -91,7 +91,7 @@
           "systeminfocolumn": {
             "label": "Column with system informations (name of the system, attribute, its value)",
             "placeholder": "Leave empty if you don't want to set a system",
-            "help": "Use '+' to separate the system name, attribute code and its value (e. g., \"AD+ldapGroups+BCV_all\")."
+            "help": "Use ':' to separate the system name, attribute code and its value (e. g., \"AD:ldapGroups:BCV_all\")."
           },
           "multivalueseparator": {
             "label": "Multi value separator",
@@ -110,8 +110,8 @@
           },
           "eavscolumn": {
             "label": "Column with EAV attribute codes and values",
-            "placeholder": "The name of the column with subordinate role codes"
-            "help": "Use '+' to separate the code of the attribute and its value (e. g., \"attribute+value\")."
+            "placeholder": "The name of the column with subordinate role codes",
+            "help": "Use ':' to separate the code of the attribute and its value (e. g., \"attribute:value\")."
           },
           "cataloguecolumn": {
             "label": "Column with catalogue names",

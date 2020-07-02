@@ -68,6 +68,7 @@ import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListItemService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
@@ -197,6 +198,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private IdmCodeListService codeListService;
 	@Autowired
 	private IdmCodeListItemService codeListItemService;
+	@Autowired
+	private IdmFormDefinitionService formDefinitionService;
 
 	@Override
 	public String getName() {
@@ -842,8 +845,21 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		}
 		
 		for (String key : eavs.keySet()) {
-			formService.saveValues(role.getId(), IdmRole.class, key, Lists.newArrayList(eavs.get(key)));
-			updated = Boolean.TRUE;
+			Boolean eavSet = Boolean.FALSE;
+			
+			IdmFormDefinitionDto definition = formDefinitionService.findOneByMain(IdmRole.class.getCanonicalName());
+			List<IdmFormAttributeDto> attributes = definition.getFormAttributes();
+			for (IdmFormAttributeDto attribute : attributes) {
+				if (attribute.getCode().equals(key)) {
+					formService.saveValues(role.getId(), IdmRole.class, key, Lists.newArrayList(eavs.get(key)));
+					eavSet = Boolean.TRUE;
+					updated = Boolean.TRUE;
+				}
+			} 
+			
+			if (!eavSet) {
+				logItemProcessed(role, taskNotCompleted("Role " + role.getCode() + " did not get an EAV " + key + " set. It does not exist in the main definition!"));
+			}
 		}
 		
 		return updated;
