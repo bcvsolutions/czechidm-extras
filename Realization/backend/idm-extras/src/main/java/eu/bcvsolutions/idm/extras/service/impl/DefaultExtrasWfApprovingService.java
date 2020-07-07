@@ -1,6 +1,7 @@
 package eu.bcvsolutions.idm.extras.service.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -177,4 +178,15 @@ public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService
 		candidates.removeIf(IdmIdentityDto::isDisabled);
 		return identityService.convertIdentitiesToString(candidates.stream().distinct().collect(Collectors.toList()));
 	}
+		
+	public boolean isUserInCandidates(String candidates, String user) {
+		if (candidates == null || user == null) {
+			return false;
+		}
+		List<String> listOfCandidates = Arrays.asList(candidates.split(","));
+		return listOfCandidates.stream().anyMatch(identity -> {
+			return identityService.getByUsername(identity).getId().toString().equals(user);
+		});
+	}
+	
 }
