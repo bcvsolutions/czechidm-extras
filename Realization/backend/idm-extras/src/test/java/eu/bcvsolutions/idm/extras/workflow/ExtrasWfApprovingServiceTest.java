@@ -21,6 +21,7 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmScriptAuthorityService;
 import eu.bcvsolutions.idm.core.api.service.IdmScriptService;
+import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 import eu.bcvsolutions.idm.extras.service.api.ExtrasWfApprovingService;
 import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
@@ -75,6 +76,8 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	GroovyScriptService groovyScriptService;
 	@Autowired
 	private IdmRoleService roleService;
+	@Autowired
+	SecurityService securityService;
 
 
 	private IdmRoleDto roleForApproval;
@@ -174,6 +177,16 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 		assertTrue(approvers.contains(adminIdentity.getCode()));
 	}
 	
+	@Test
+	@Transactional
+	public void loggedUserInCandidates() {
+		getHelper().loginAdmin();
+		String candidates = "admin";
+		String loggedUserId = securityService.getCurrentId().toString();
+		boolean isAdminCandidate =  extrasWfApprovingService.isUserInCandidates(candidates, loggedUserId);
+		assertTrue(isAdminCandidate);
+	}
+
 
 	@Test
 	@Transactional

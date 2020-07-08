@@ -74,9 +74,16 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask9" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
-                DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_A);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
+DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_A);
+
+if(candidates.isEmpty()) {
+	skip = true;
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false;
+}
 
                 //Save skip resolution to variables
                 execution.setVariable("skipApproving", skip);
@@ -97,8 +104,15 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask11" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
+
+if(candidates.isEmpty()) {
+	skip = true;
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false;
+}
 
                 //Save skip resolution to variables
                 execution.setVariable("skipApproving", skip);
@@ -117,20 +131,27 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask20" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
-                DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_B);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
+DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_B);
+                
+if(candidates.isEmpty()) {
+	skip = true;
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false;
+}
 
-                //Save skip resolution to variables
-                execution.setVariable("skipApproving", skip);
+//Save skip resolution to variables
+execution.setVariable("skipApproving", skip);
 
-                // If is skip == true, then set decision for next task on approve
-                if (skip) {
-                execution.setVariable("decision", "approve");
-                }else{
-                //Save candidates to variables
-                execution.setVariable("candidatesApproveGuarantee", candidates);
-                }</script>
+// If is skip == true, then set decision for next task on approve
+if (skip) {
+	execution.setVariable("decision", "approve");
+}else{
+	//Save candidates to variables
+	execution.setVariable("candidatesApproveGuarantee", candidates);
+}</script>
     </scriptTask>
     <userTask id="approveEditByRoleGuaranteeB" name="Schválení role garantem" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <extensionElements>
@@ -141,8 +162,15 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask21" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
+
+if(candidates.isEmpty()) {
+	skip = true;
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false;
+}
 
                 //Save skip resolution to variables
                 execution.setVariable("skipApproving", skip);
@@ -173,7 +201,7 @@ conceptRoleRequestService.save(conceptDto);</script>
     <sequenceFlow id="flow88" sourceRef="exclusivegateway6" targetRef="scripttask5">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[#{decision.equals("approve")}]]></conditionExpression>
     </sequenceFlow>
-    <userTask id="approveEditByContracManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail">
+    <userTask id="approveEditByContracManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>
       <extensionElements>
         <activiti:formProperty id="disapprove" type="decision"></activiti:formProperty>
@@ -184,9 +212,16 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask22" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
-                DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_A);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
+DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_A);
+
+if(candidates.isEmpty()) {
+	skip = true;
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false;
+}
 
                 //Save skip resolution to variables
                 execution.setVariable("skipApproving", skip);
@@ -213,20 +248,27 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask23" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
-                DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_B);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getRoleGuaranteesForApproval(conceptRole,
+DefaultExtrasWfApprovingService.APPROVE_BY_GUARANTEE_B);
 
-                //Save skip resolution to variables
-                execution.setVariable("skipApproving", skip);
+if(candidates.isEmpty()) {
+	skip = true;	
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false; 
+}
 
-                // If is skip == true, then set decision for next task on approve
-                if (skip) {
-                execution.setVariable("decision", "approve");
-                }else{
-                //Save candidates to variables
-                execution.setVariable("candidatesApproveGuarantee", candidates);
-                }</script>
+//Save skip resolution to variables
+execution.setVariable("skipApproving", skip);
+
+// If is skip == true, then set decision for next task on approve
+if (skip) {
+	execution.setVariable("decision", "approve");
+}else{
+	//Save candidates to variables
+	execution.setVariable("candidatesApproveGuarantee", candidates);
+}</script>
     </scriptTask>
     <userTask id="approveEditRoleByRoleGuaranteeB" name="Approve role edit by role guarantee" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>

@@ -72,8 +72,15 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask11" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
+
+if(candidates.isEmpty()) {
+	skip = true;
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false;
+}
 
                 //Save skip resolution to variables
                 execution.setVariable("skipApproving", skip);
@@ -94,8 +101,15 @@ conceptRoleRequestService.save(conceptDto);</script>
     <scriptTask id="scripttask21" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
-                String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
-                boolean skip = candidates.isEmpty();
+String candidates = defaultExtrasWfApprovingService.getContractManagersForApproval(conceptRole);
+
+if(candidates.isEmpty()) {
+	skip = true;
+}else if(implementerIdentifier.equals(securityService.getCurrentId().toString())){
+	skip = defaultExtrasWfApprovingService.isUserInCandidates(candidates, implementerIdentifier);
+}else{
+	skip = false; 
+}
 
                 //Save skip resolution to variables
                 execution.setVariable("skipApproving", skip);
@@ -116,7 +130,7 @@ conceptRoleRequestService.save(conceptDto);</script>
       </extensionElements>
     </userTask>
     <sequenceFlow id="flow75" sourceRef="scripttask21" targetRef="approveByContractManager"></sequenceFlow>
-    <userTask id="approveRoleEditByContractManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail">
+    <userTask id="approveRoleEditByContractManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>
       <extensionElements>
         <activiti:formProperty id="disapprove" type="decision"></activiti:formProperty>
