@@ -258,7 +258,7 @@ if (skip) {
 	execution.setVariable("candidatesApproveGuarantee", candidates);
 }</script>
     </scriptTask>
-    <userTask id="approveByContracManager" name="Approve role assignment by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
+    <userTask id="approveByContractManager" name="Approve role assignment by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>
       <extensionElements>
         <activiti:formProperty id="disapprove" type="decision"></activiti:formProperty>
@@ -279,15 +279,15 @@ if (skip) {
     <sequenceFlow id="flow89" sourceRef="exclusivegateway11" targetRef="scripttask4">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[#{decision.equals("disapprove")}]]></conditionExpression>
     </sequenceFlow>
-    <userTask id="approveEditByContracManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
+    <userTask id="approveEditByContractManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>
       <extensionElements>
         <activiti:formProperty id="disapprove" type="decision"></activiti:formProperty>
         <activiti:formProperty id="approve" type="decision"></activiti:formProperty>
       </extensionElements>
     </userTask>
-    <sequenceFlow id="flow90" sourceRef="scripttask11" targetRef="approveEditByContracManager"></sequenceFlow>
-    <sequenceFlow id="flow91" sourceRef="approveEditByContracManager" targetRef="exclusivegateway3"></sequenceFlow>
+    <sequenceFlow id="flow90" sourceRef="scripttask11" targetRef="approveEditByContractManager"></sequenceFlow>
+    <sequenceFlow id="flow91" sourceRef="approveEditByContractManager" targetRef="exclusivegateway3"></sequenceFlow>
     <scriptTask id="scripttask22" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
@@ -411,8 +411,8 @@ if (skip) {
         <activiti:value>true</activiti:value>
       </extensionElements>
     </dataObject>
-    <sequenceFlow id="flow119" sourceRef="scripttask21" targetRef="approveByContracManager"></sequenceFlow>
-    <sequenceFlow id="flow120" sourceRef="approveByContracManager" targetRef="exclusivegateway11"></sequenceFlow>
+    <sequenceFlow id="flow119" sourceRef="scripttask21" targetRef="approveByContractManager"></sequenceFlow>
+    <sequenceFlow id="flow120" sourceRef="approveByContractManager" targetRef="exclusivegateway11"></sequenceFlow>
     <sequenceFlow id="flow121" sourceRef="scripttask10" targetRef="approveByCustomScript"></sequenceFlow>
     <sequenceFlow id="flow122" sourceRef="approveByCustomScript" targetRef="exclusivegateway12"></sequenceFlow>
     <sequenceFlow id="flow123" sourceRef="exclusivegateway12" targetRef="scripttask9">
@@ -499,13 +499,13 @@ if (skip) {
       <bpmndi:BPMNShape bpmnElement="scripttask21" id="BPMNShape_scripttask21">
         <omgdc:Bounds height="95.0" width="151.0" x="560.0" y="178.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape bpmnElement="approveByContracManager" id="BPMNShape_approveByContracManager">
+      <bpmndi:BPMNShape bpmnElement="approveByContractManager" id="BPMNShape_approveByContractManager">
         <omgdc:Bounds height="86.0" width="171.0" x="752.0" y="182.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="exclusivegateway12" id="BPMNShape_exclusivegateway12">
         <omgdc:Bounds height="40.0" width="40.0" x="1388.0" y="209.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape bpmnElement="approveEditByContracManager" id="BPMNShape_approveEditByContracManager">
+      <bpmndi:BPMNShape bpmnElement="approveEditByContractManager" id="BPMNShape_approveEditByContractManager">
         <omgdc:Bounds height="86.0" width="171.0" x="752.0" y="423.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="scripttask22" id="BPMNShape_scripttask22">

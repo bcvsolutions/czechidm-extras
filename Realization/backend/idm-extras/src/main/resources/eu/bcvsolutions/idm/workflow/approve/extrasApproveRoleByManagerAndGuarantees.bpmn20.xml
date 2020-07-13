@@ -183,14 +183,14 @@ if(candidates.isEmpty()) {
                 execution.setVariable("candidatesApproveGuarantee", candidates);
                 }</script>
     </scriptTask>
-    <userTask id="approveByContracManager" name="Approve role assignment by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
+    <userTask id="approveByContractManager" name="Approve role assignment by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>
       <extensionElements>
         <activiti:formProperty id="disapprove" type="decision"></activiti:formProperty>
         <activiti:formProperty id="approve" type="decision"></activiti:formProperty>
       </extensionElements>
     </userTask>
-    <sequenceFlow id="flow75" sourceRef="scripttask21" targetRef="approveByContracManager"></sequenceFlow>
+    <sequenceFlow id="flow75" sourceRef="scripttask21" targetRef="approveByContractManager"></sequenceFlow>
     <exclusiveGateway id="exclusivegateway12" name="Exclusive Gateway"></exclusiveGateway>
     <sequenceFlow id="flow78" sourceRef="exclusivegateway12" targetRef="scripttask9">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[#{decision.equals("approve")}]]></conditionExpression>
@@ -201,14 +201,14 @@ if(candidates.isEmpty()) {
     <sequenceFlow id="flow88" sourceRef="exclusivegateway6" targetRef="scripttask5">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[#{decision.equals("approve")}]]></conditionExpression>
     </sequenceFlow>
-    <userTask id="approveEditByContracManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
+    <userTask id="approveEditByContractManager" name="Approve role edit by contract manager" activiti:candidateUsers="#{candidatesApproveGuarantee}" activiti:formKey="dynamicTaskRoleConceptDetail" activiti:skipExpression="#{skipApproving}">
       <documentation>${processInstanceName}</documentation>
       <extensionElements>
         <activiti:formProperty id="disapprove" type="decision"></activiti:formProperty>
         <activiti:formProperty id="approve" type="decision"></activiti:formProperty>
       </extensionElements>
     </userTask>
-    <sequenceFlow id="flow90" sourceRef="scripttask11" targetRef="approveEditByContracManager"></sequenceFlow>
+    <sequenceFlow id="flow90" sourceRef="scripttask11" targetRef="approveEditByContractManager"></sequenceFlow>
     <scriptTask id="scripttask22" name="Find all role guarantees and resolve if we can skip next task" scriptFormat="groovy" activiti:autoStoreVariables="false">
       <script>import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 
@@ -313,8 +313,8 @@ if (skip) {
     <sequenceFlow id="flow117" sourceRef="exclusivegateway18" targetRef="scripttask5">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[#{identityRoleService.get(conceptRole.identityRole,null) != null}]]></conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow118" sourceRef="approveByContracManager" targetRef="exclusivegateway12"></sequenceFlow>
-    <sequenceFlow id="flow119" sourceRef="approveEditByContracManager" targetRef="exclusivegateway7"></sequenceFlow>
+    <sequenceFlow id="flow118" sourceRef="approveByContractManager" targetRef="exclusivegateway12"></sequenceFlow>
+    <sequenceFlow id="flow119" sourceRef="approveEditByContractManager" targetRef="exclusivegateway7"></sequenceFlow>
     <endEvent id="endevent7" name="End"></endEvent>
     <sequenceFlow id="flow120" sourceRef="scripttask7" targetRef="endevent7"></sequenceFlow>
     <dataObject id="approve" name="approve" itemSubjectRef="xsd:string">
@@ -410,13 +410,13 @@ if (skip) {
       <bpmndi:BPMNShape bpmnElement="scripttask21" id="BPMNShape_scripttask21">
         <omgdc:Bounds height="95.0" width="151.0" x="570.0" y="177.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape bpmnElement="approveByContracManager" id="BPMNShape_approveByContracManager">
+      <bpmndi:BPMNShape bpmnElement="approveByContractManager" id="BPMNShape_approveByContractManager">
         <omgdc:Bounds height="86.0" width="171.0" x="752.0" y="182.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="exclusivegateway12" id="BPMNShape_exclusivegateway12">
         <omgdc:Bounds height="40.0" width="40.0" x="952.0" y="207.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape bpmnElement="approveEditByContracManager" id="BPMNShape_approveEditByContracManager">
+      <bpmndi:BPMNShape bpmnElement="approveEditByContractManager" id="BPMNShape_approveEditByContractManager">
         <omgdc:Bounds height="86.0" width="171.0" x="752.0" y="423.0"></omgdc:Bounds>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="scripttask22" id="BPMNShape_scripttask22">
