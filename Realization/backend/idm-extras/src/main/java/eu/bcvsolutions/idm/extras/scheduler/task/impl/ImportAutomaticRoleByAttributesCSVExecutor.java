@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
@@ -30,17 +29,18 @@ import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleAttributeRuleFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleService;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
@@ -51,25 +51,36 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  */
 @Component
 @Description("Create automatic role definitions from CSV")
-public class ImportAutomaticRoleByAtributesCSVExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
+public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleByAtributesCSVExecutor.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleByAttributesCSVExecutor.class);
 
-	static final String PARAM_CSV_ATTACHMENT = "Import csv file";
-	static final String PARAM_CSV_ATTACHMENT_ENCODING = "Import file encoding";
-	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
-	static final String PARAM_IDENTITY_ATTR_NAME_PREFIX = "Identity attribute column name prefix";
-	static final String PARAM_IDENTITY_ATTR_VALUE_PREFIX = "Identity attribute column value prefix";
-	static final String PARAM_IDENTITY_EAV_ATTR_NAME_PREFIX = "Identity EAV attribute column name prefix";
-	static final String PARAM_IDENTITY_EAV_ATTR_VALUE_PREFIX = "Identity EAV attribute column value prefix";
-	static final String PARAM_CONTRACT_ATTR_NAME_PREFIX = "Contract attribute column name prefix";
-	static final String PARAM_CONTRACT_ATTR_VALUE_PREFIX = "Contract attribute column value prefix";
-	static final String PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX = "Contract EAV attribute column name prefix";
-	static final String PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX = "Contract EAV attribute column value prefix";
+	public static final String PARAM_CSV_ATTACHMENT = "Import csv file";
+	public static final String PARAM_CSV_ATTACHMENT_ENCODING = "Import file encoding";
+	public static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
+	public static final String PARAM_COLUMN_SEPARATOR = "Column separator";
+	public static final String PARAM_IDENTITY_ATTR_NAME_PREFIX = "Identity attribute column name prefix";
+	public static final String PARAM_IDENTITY_ATTR_VALUE_PREFIX = "Identity attribute column value prefix";
+	public static final String PARAM_IDENTITY_EAV_ATTR_NAME_PREFIX = "Identity EAV attribute column name prefix";
+	public static final String PARAM_IDENTITY_EAV_ATTR_VALUE_PREFIX = "Identity EAV attribute column value prefix";
+	public static final String PARAM_CONTRACT_ATTR_NAME_PREFIX = "Contract attribute column name prefix";
+	public static final String PARAM_CONTRACT_ATTR_VALUE_PREFIX = "Contract attribute column value prefix";
+	public static final String PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX = "Contract EAV attribute column name prefix";
+	public static final String PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX = "Contract EAV attribute column value prefix";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
+
+	@Autowired
+	private AttachmentManager attachmentManager;
+	@Autowired
+	private IdmRoleService roleService;
+	@Autowired
+	private IdmAutomaticRoleAttributeService automaticRoleAttributeService;
+	@Autowired
+	private IdmAutomaticRoleAttributeRuleService automaticRoleAttributeRuleService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
 
 	private UUID attachmentId;
 	private String encoding;
@@ -84,17 +95,6 @@ public class ImportAutomaticRoleByAtributesCSVExecutor extends AbstractSchedulab
 	private String contractEavAttributeNamePrefix;
 	private String contractEavAttributeValuePrefix;
 
-	@Autowired
-	private AttachmentManager attachmentManager;
-	@Autowired
-	private IdmRoleService roleService;
-	@Autowired
-	private IdmAutomaticRoleAttributeService automaticRoleAttributeService;
-	@Autowired
-	private IdmAutomaticRoleAttributeRuleService automaticRoleAttributeRuleService;
-	@Autowired
-	private IdmFormAttributeService formAttributeService;
-
 	@Override
 	public OperationResult process() {
 		LOG.debug("Start process");
@@ -107,7 +107,7 @@ public class ImportAutomaticRoleByAtributesCSVExecutor extends AbstractSchedulab
 			encoding = "utf-8";
 		}
 		try (InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
-			 Reader attachmentReader = new InputStreamReader(attachmentData, encoding);) {
+			 Reader attachmentReader = new InputStreamReader(attachmentData, encoding)) {
 			LOG.info("Reader is created");
 			if (StringUtils.isBlank(columnSeparator)) {
 				columnSeparator = COLUMN_SEPARATOR;
@@ -119,157 +119,126 @@ public class ImportAutomaticRoleByAtributesCSVExecutor extends AbstractSchedulab
 					.withDelimiter(columnSeparator.charAt(0));
 
 			// Load CSV via parser
-			try (CSVParser csvParser = csvFormat.parse(attachmentReader)) {
-				List<CSVRecord> records = csvParser.getRecords();
-				this.count = (long) records.size();
-				this.counter = 0L;
-
-
-				records.forEach(record -> {
-					List<IdmAutomaticRoleAttributeRuleDto> rules = new LinkedList<>();
-
-					IdmAutomaticRoleAttributeDto automaticRoleAttributeDto = new IdmAutomaticRoleAttributeDto();
-					IdmRoleDto roleDto = roleService.getByCode(record.get(rolesColumnName));
-
-					automaticRoleAttributeDto.setRole(roleDto.getId());
-
-					StringBuilder nameBuilder = new StringBuilder();
-					nameBuilder.append(roleDto.getName());
-
-					//iterate thru identity attributes and create rules from it
-					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY);
-
-					//iterate thru identity EAV attributes and create rules from it
-					// TODO get eav form attribute
-					UUID identityId = UUID.randomUUID();
-					prepareRulesEav(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY_EAV, identityId);
-
-					//iterate thru contract attributes and create rules from it
-					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT);
-
-					//iterate thru contract EAV attributes and create rules from it
-					// TODO get eav form attribute
-					UUID contractId = UUID.randomUUID();
-					prepareRulesEav(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, contractId);
-
-					automaticRoleAttributeDto.setName(nameBuilder.toString());
-					automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
-
-					final UUID automaticRoleId = automaticRoleAttributeDto.getId();
-
-					// set id of automatic role to all rules and save it
-					rules.forEach(rule -> {
-						rule.setAutomaticRoleAttribute(automaticRoleId);
-						automaticRoleAttributeRuleService.save(rule);
-					});
-
-					automaticRoleAttributeDto.setConcept(false);
-					automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
-
-					++this.counter;
-					this.logItemProcessed(automaticRoleAttributeDto, taskCompleted("Item was created/updated"));
-				});
-			} catch (IOException e) {
-				LOG.error("Can't parse csv", e);
-			}
-
+			parseCsv(attachmentReader, csvFormat);
 		} catch (IOException e) {
 			LOG.error("Error occurred during input stream preparation", e);
 		}
 
 		return null;
-		//
 	}
 
-	private void prepareRules(CSVRecord record, List<IdmAutomaticRoleAttributeRuleDto> rules, StringBuilder nameBuilder, AutomaticRoleAttributeRuleType type) {
-		if (!StringUtils.isBlank(identityAttributeNamePrefix) && !StringUtils.isBlank(identityAttributeValuePrefix)) {
+	private void parseCsv(Reader attachmentReader, CSVFormat csvFormat) {
+		try (CSVParser csvParser = csvFormat.parse(attachmentReader)) {
+			List<CSVRecord> records = csvParser.getRecords();
+			this.count = (long) records.size();
+			this.counter = 0L;
+
+			records.forEach(record -> {
+				List<IdmAutomaticRoleAttributeRuleDto> rules = new LinkedList<>();
+
+				IdmAutomaticRoleAttributeDto automaticRoleAttributeDto = new IdmAutomaticRoleAttributeDto();
+				IdmRoleDto roleDto = roleService.getByCode(record.get(rolesColumnName));
+
+				automaticRoleAttributeDto.setRole(roleDto.getId());
+
+				StringBuilder nameBuilder = new StringBuilder();
+				nameBuilder.append(roleDto.getName());
+
+				//iterate through identity attributes and create rules from it
+				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY, false,
+						identityAttributeNamePrefix, identityAttributeValuePrefix);
+
+				//iterate through identity EAV attributes and create rules from it
+				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY_EAV, true,
+						identityEavAttributeNamePrefix, identityEavAttributeValuePrefix);
+
+				//iterate through contract attributes and create rules from it
+				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT, false,
+						contractAttributeNamePrefix, contractAttributeValuePrefix);
+
+				//iterate through contract EAV attributes and create rules from it
+				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, true,
+						contractEavAttributeNamePrefix, contractEavAttributeValuePrefix);
+
+				automaticRoleAttributeDto.setName(nameBuilder.toString());
+				automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
+
+				final UUID automaticRoleId = automaticRoleAttributeDto.getId();
+
+				// set id of automatic role to all rules and save it
+				rules.forEach(rule -> {
+					rule.setAutomaticRoleAttribute(automaticRoleId);
+					automaticRoleAttributeRuleService.save(rule);
+				});
+
+				automaticRoleAttributeDto.setConcept(false);
+				automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
+
+				++this.counter;
+				this.logItemProcessed(automaticRoleAttributeDto, taskCompleted("Item was created/updated"));
+			});
+		} catch (IOException e) {
+			LOG.error("Can't parse csv", e);
+		}
+	}
+
+	private void prepareRules(CSVRecord record, List<IdmAutomaticRoleAttributeRuleDto> rules, StringBuilder nameBuilder, AutomaticRoleAttributeRuleType type,
+							  boolean isEav, String attrNamePrefix, String attrValuePrefix) {
+		if (!StringUtils.isBlank(attrNamePrefix) && !StringUtils.isBlank(attrValuePrefix)) {
 			LOG.info("Identity attribute prefix filled, we will search and craete rule for it");
-			int identityAttrSuffix = 1;
-			while (record.isMapped(identityAttributeNamePrefix + identityAttrSuffix)) {
+			int attrSuffix = 1;
+			while (record.isMapped(attrNamePrefix + attrSuffix)) {
 				LOG.info("Identity attribute mapped we can create rule");
-				String identityAttrName = record.get(identityAttributeNamePrefix + identityAttrSuffix);
-				String identityAttrValue = "";
-				if (record.isMapped(identityAttributeValuePrefix + identityAttrSuffix)) {
-					identityAttrValue = record.get(identityAttributeValuePrefix + identityAttrSuffix);
+				String attrName = record.get(attrNamePrefix + attrSuffix);
+				if (!StringUtils.isBlank(attrName)) {
+					String attrValue = "";
+					if (record.isMapped(attrValuePrefix + attrSuffix)) {
+						attrValue = record.get(attrValuePrefix + attrSuffix);
+					}
+
+					IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule = new IdmAutomaticRoleAttributeRuleDto();
+					automaticRoleAttributeRule.setType(type);
+					automaticRoleAttributeRule.setAttributeName(attrName);
+					automaticRoleAttributeRule.setValue(attrValue);
+					automaticRoleAttributeRule.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
+
+					handleEav(nameBuilder, isEav, attrName, automaticRoleAttributeRule, type);
+
+					nameBuilder.append(attrName);
+					nameBuilder.append("-");
+					nameBuilder.append(attrValue);
+
+					rules.add(automaticRoleAttributeRule);
 				}
-
-				nameBuilder.append("|");
-				nameBuilder.append(identityAttrName);
-				nameBuilder.append("|");
-				nameBuilder.append(identityAttrValue);
-
-				IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule = new IdmAutomaticRoleAttributeRuleDto();
-				automaticRoleAttributeRule.setType(type);
-				automaticRoleAttributeRule.setAttributeName(identityAttrName);
-				automaticRoleAttributeRule.setValue(identityAttrValue);
-				automaticRoleAttributeRule.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
-				rules.add(automaticRoleAttributeRule);
-
-				++identityAttrSuffix;
+				++attrSuffix;
 			}
 		}
 	}
 
-	private void prepareRulesEav(CSVRecord record, List<IdmAutomaticRoleAttributeRuleDto> rules, StringBuilder nameBuilder, AutomaticRoleAttributeRuleType type,
-								 UUID attribute) {
-		if (!StringUtils.isBlank(identityAttributeNamePrefix) && !StringUtils.isBlank(identityAttributeValuePrefix)) {
-			LOG.info("Identity attribute prefix filled, we will search and craete rule for it");
-			int identityAttrSuffix = 1;
-			while (record.isMapped(identityAttributeNamePrefix + identityAttrSuffix)) {
-				LOG.info("Identity attribute mapped we can create rule");
-				String identityAttrName = record.get(identityAttributeNamePrefix + identityAttrSuffix);
-				String identityAttrValue = "";
-				if (record.isMapped(identityAttributeValuePrefix + identityAttrSuffix)) {
-					identityAttrValue = record.get(identityAttributeValuePrefix + identityAttrSuffix);
-				}
+	private void handleEav(StringBuilder nameBuilder, boolean isEav, String attrName, IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule,
+						   AutomaticRoleAttributeRuleType type) {
+		if (isEav) {
+			nameBuilder.append("|EAV-");
 
-				nameBuilder.append("|");
-				nameBuilder.append(identityAttrName);
-				nameBuilder.append("|");
-				nameBuilder.append(identityAttrValue);
-
-				IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule = new IdmAutomaticRoleAttributeRuleDto();
-				automaticRoleAttributeRule.setType(type);
-				automaticRoleAttributeRule.setAttributeName(identityAttrName);
-				automaticRoleAttributeRule.setValue(identityAttrValue);
-				automaticRoleAttributeRule.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
-				automaticRoleAttributeRule.setFormAttribute(attribute);
-				rules.add(automaticRoleAttributeRule);
-
-				++identityAttrSuffix;
+			IdmFormAttributeFilter filter = new IdmFormAttributeFilter();
+			filter.setCode(attrName);
+			if (type == AutomaticRoleAttributeRuleType.IDENTITY_EAV) {
+				filter.setDefinitionType(IdmIdentity.class.getName());
+			} else if (type == AutomaticRoleAttributeRuleType.CONTRACT_EAV) {
+				filter.setDefinitionType(IdmIdentityContract.class.getName());
+			} else {
+				LOG.info("Type is other type then identity EAV or identity contract EAV, filtering only by code");
 			}
-		}
-	}
 
-	/**
-	 * Check if role has automatic attributes with requested name
-	 *
-	 * @param attributeName
-	 * @param attributeValue
-	 * @return
-	 */
-	private IdmAutomaticRoleAttributeRuleDto findAutomaticAttributeRule(IdmRoleDto role, String attributeName, String attributeValue) {
-		IdmAutomaticRoleFilter roleFilter = new IdmAutomaticRoleFilter();
-		roleFilter.setRoleId(role.getId());
-		roleFilter.setRuleType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
-		roleFilter.setHasRules(Boolean.TRUE);
-		List<IdmAutomaticRoleAttributeDto> result = automaticRoleAttributeService.find(roleFilter, null).getContent();
-		if (!result.isEmpty()) {
-			IdmAutomaticRoleAttributeRuleFilter ruleFilter = new IdmAutomaticRoleAttributeRuleFilter();
-			ruleFilter.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
-			ruleFilter.setValue(attributeValue);
-			ruleFilter.setAttributeName(attributeName);
-			ruleFilter.setType(AutomaticRoleAttributeRuleType.CONTRACT_EAV);
-			for (IdmAutomaticRoleAttributeDto automaticRoleAttribute : result) {
-				ruleFilter.setAutomaticRoleAttributeId(automaticRoleAttribute.getId());
-				Page<IdmAutomaticRoleAttributeRuleDto> rules = automaticRoleAttributeRuleService.find(ruleFilter, null);
-				if (rules.getContent().size() > 0) {
-					return rules.getContent().get(0);
-				}
+			List<IdmFormAttributeDto> attributes = formAttributeService.find(filter, null).getContent();
+			if (!attributes.isEmpty()) {
+				automaticRoleAttributeRule.setFormAttribute(attributes.get(0).getId());
+			} else {
+				LOG.error("EAV attribute: [{}] not found can't create rule by EAV", attrName);
 			}
+		} else {
+			nameBuilder.append("|");
 		}
-
-		return null;
 	}
 
 	@Override
