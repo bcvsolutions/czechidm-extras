@@ -29,6 +29,7 @@ import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleService;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
@@ -58,6 +59,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 	public static final String PARAM_CSV_ATTACHMENT = "Import csv file";
 	public static final String PARAM_CSV_ATTACHMENT_ENCODING = "Import file encoding";
 	public static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
+	public static final String PARAM_DEFINITION_NAME_COLUMN_NAME = "Column with name for automatic role definition";
 	public static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	public static final String PARAM_IDENTITY_ATTR_NAME_PREFIX = "Identity attribute column name prefix";
 	public static final String PARAM_IDENTITY_ATTR_VALUE_PREFIX = "Identity attribute column value prefix";
@@ -85,6 +87,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 	private UUID attachmentId;
 	private String encoding;
 	private String rolesColumnName;
+	private String definitionNameColumnName;
 	private String columnSeparator;
 	private String identityAttributeNamePrefix;
 	private String identityAttributeValuePrefix;
@@ -160,22 +163,44 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, true,
 						contractEavAttributeNamePrefix, contractEavAttributeValuePrefix);
 
-				automaticRoleAttributeDto.setName(nameBuilder.toString());
-				automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
+				if (!StringUtils.isBlank(definitionNameColumnName) && !StringUtils.isBlank(record.get(definitionNameColumnName))) {
+					automaticRoleAttributeDto.setName(record.get(definitionNameColumnName));
+				} else {
+					automaticRoleAttributeDto.setName(nameBuilder.toString());
+				}
+
+				// Check if role definition is already exist or not
+				IdmAutomaticRoleFilter automaticRoleFilter = new IdmAutomaticRoleFilter();
+				automaticRoleFilter.setName(automaticRoleAttributeDto.getName());
+
+				List<IdmAutomaticRoleAttributeDto> automaticRoles = automaticRoleAttributeService.find(automaticRoleFilter, null).getContent();
+				if (automaticRoles.size() == 1) {
+					automaticRoleAttributeDto = automaticRoles.get(0);
+					// delete previous rules before we save the new ones
+					LOG.info("Definition: [{}] found we will update it. Deleting old rules and save rules from csv", automaticRoleAttributeDto.getName());
+					automaticRoleAttributeRuleService.deleteAllByAttribute(automaticRoleAttributeDto.getId());
+				} else if (automaticRoles.size() > 1) {
+					LOG.info("Found more then 1 definition: [{}] we will create new one, because we don't know which one should be used for " +
+							"updating", automaticRoleAttributeDto.getName());
+					automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
+				} else {
+					LOG.info("Definition: [{}] not found, we will create it", automaticRoleAttributeDto.getName());
+					automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
+				}
 
 				final UUID automaticRoleId = automaticRoleAttributeDto.getId();
 
 				// set id of automatic role to all rules and save it
 				rules.forEach(rule -> {
 					rule.setAutomaticRoleAttribute(automaticRoleId);
-					automaticRoleAttributeRuleService.save(rule);
+					IdmAutomaticRoleAttributeRuleDto savedRule = automaticRoleAttributeRuleService.save(rule);
+					this.logItemProcessed(savedRule, taskCompleted("Rule created for definition - " + nameBuilder.toString()));
 				});
 
 				automaticRoleAttributeDto.setConcept(false);
 				automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
 
 				++this.counter;
-				this.logItemProcessed(automaticRoleAttributeDto, taskCompleted("Item was created/updated"));
 			});
 		} catch (IOException e) {
 			LOG.error("Can't parse csv", e);
@@ -191,10 +216,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				LOG.info("Identity attribute mapped we can create rule");
 				String attrName = record.get(attrNamePrefix + attrSuffix);
 				if (!StringUtils.isBlank(attrName)) {
-					String attrValue = "";
-					if (record.isMapped(attrValuePrefix + attrSuffix)) {
-						attrValue = record.get(attrValuePrefix + attrSuffix);
-					}
+					String attrValue = getValue(record, attrValuePrefix, attrSuffix);
 
 					IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule = new IdmAutomaticRoleAttributeRuleDto();
 					automaticRoleAttributeRule.setType(type);
@@ -213,6 +235,14 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				++attrSuffix;
 			}
 		}
+	}
+
+	private String getValue(CSVRecord record, String attrValuePrefix, int attrSuffix) {
+		String attrValue = "";
+		if (record.isMapped(attrValuePrefix + attrSuffix)) {
+			attrValue = record.get(attrValuePrefix + attrSuffix);
+		}
+		return attrValue;
 	}
 
 	private void handleEav(StringBuilder nameBuilder, boolean isEav, String attrName, IdmAutomaticRoleAttributeRuleDto automaticRoleAttributeRule,
@@ -248,6 +278,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
 		encoding = getParameterConverter().toString(properties, PARAM_CSV_ATTACHMENT_ENCODING);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
+		definitionNameColumnName = getParameterConverter().toString(properties, PARAM_DEFINITION_NAME_COLUMN_NAME);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		identityAttributeNamePrefix = getParameterConverter().toString(properties, PARAM_IDENTITY_ATTR_NAME_PREFIX);
 		identityAttributeValuePrefix = getParameterConverter().toString(properties, PARAM_IDENTITY_ATTR_VALUE_PREFIX);
@@ -266,6 +297,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
 		props.put(PARAM_CSV_ATTACHMENT_ENCODING, encoding);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
+		props.put(PARAM_DEFINITION_NAME_COLUMN_NAME, definitionNameColumnName);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_IDENTITY_ATTR_NAME_PREFIX, identityAttributeNamePrefix);
 		props.put(PARAM_IDENTITY_ATTR_VALUE_PREFIX, identityAttributeValuePrefix);
@@ -289,6 +321,8 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
+		IdmFormAttributeDto definitionNameColumnNameAttribute = new IdmFormAttributeDto(PARAM_DEFINITION_NAME_COLUMN_NAME, PARAM_DEFINITION_NAME_COLUMN_NAME,
+				PersistentType.SHORTTEXT);
 		IdmFormAttributeDto columnSeparatorAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SEPARATOR, PARAM_COLUMN_SEPARATOR,
 				PersistentType.CHAR);
 		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
@@ -326,8 +360,8 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				PersistentType.SHORTTEXT);
 		contractEavAttrValueAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(csvAttachment, encodingAttr, rolesColumnNameAttribute, columnSeparatorAttribute, identityAttrNameAttribute,
-				identityAttrValueAttribute, identityEavAttrNameAttribute, identityEavAttrValueAttribute, contractAttrNameAttribute,
+		return Lists.newArrayList(csvAttachment, encodingAttr, rolesColumnNameAttribute, definitionNameColumnNameAttribute, columnSeparatorAttribute,
+				identityAttrNameAttribute, identityAttrValueAttribute, identityEavAttrNameAttribute, identityEavAttrValueAttribute, contractAttrNameAttribute,
 				contractAttrValueAttribute, contractEavAttrNameAttribute, contractEavAttrValueAttribute);
 	}
 
