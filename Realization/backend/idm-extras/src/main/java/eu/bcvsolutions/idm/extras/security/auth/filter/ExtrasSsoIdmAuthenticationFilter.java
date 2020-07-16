@@ -59,7 +59,7 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 
 	@Override
 	public boolean authorize(String token, HttpServletRequest request, HttpServletResponse response) {
-		LOG.info("Starting SSO filter authorization, value of the SSO header is: [{}]", token);
+		LOG.debug("Starting SSO filter authorization, value of the SSO header is: [{}]", token);
 		if (Strings.isNullOrEmpty(token)) {
 			LOG.warn("Token is null or empty!");
 			return false;
