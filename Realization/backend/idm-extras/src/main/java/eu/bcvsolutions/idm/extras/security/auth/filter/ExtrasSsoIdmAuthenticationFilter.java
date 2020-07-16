@@ -59,9 +59,9 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 
 	@Override
 	public boolean authorize(String token, HttpServletRequest request, HttpServletResponse response) {
-		LOG.debug("Starting SSO filter authorization, value of the SSO header is: [{}]", token);
+		LOG.info("Starting SSO filter authorization, value of the SSO header is: [{}]", token);
 		if (Strings.isNullOrEmpty(token)) {
-			LOG.debug("Token is null or empty!");
+			LOG.warn("Token is null or empty!");
 			return false;
 		}
 		// Remove suffix from the token - typically the domain
@@ -93,7 +93,7 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 
 		for (String fieldName : fieldNames) {
 			if (StringUtils.isEmpty(fieldName)) {
-				LOG.debug("String fieldName is empty.");
+				LOG.warn("String fieldName is empty.");
 				return false;
 			}
 			Page<AbstractDto> owners;
@@ -104,12 +104,13 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 				definition = formService.getDefinition(IdmIdentity.class, definitionCode);
 			}
 			if (null == definition) {
-				throw new IdmAuthenticationException(MessageFormat.format("Definition with code [{}] not found", definitionCode));
+				throw new IdmAuthenticationException(MessageFormat.format("Definition with code [{0}] not found", definitionCode));
 			}
 			IdmFormAttributeDto attribute = formService.getAttribute(definition, fieldName);
 			if (null == attribute) {
-				throw new IdmAuthenticationException(MessageFormat.format("Attribute with code [{}] not found", fieldName));
+				throw new IdmAuthenticationException(MessageFormat.format("Attribute with code [{0}] not found", fieldName));
 			}
+			LOG.debug("Found attribute [{}] in definition [{}]", attribute.getCode(), definition.getCode());
 			if (PARAMETER_FIELD_CONTRACT.equals(fieldChoose)) {
 				owners = formService.findOwners(IdmIdentityContract.class, attribute, userName, null);
 				for (AbstractDto owner : owners) {
@@ -131,7 +132,7 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 			}
 			IdmIdentityDto identity = (IdmIdentityDto) lookupService.lookupDto(IdmIdentityDto.class, uuids.iterator().next());
 			if (null == identity) {
-				LOG.debug("Identity does not exist!");
+				LOG.warn("Identity does not exist!");
 				return false;
 			}
 			return super.authorize(identity.getUsername(), request, response);
