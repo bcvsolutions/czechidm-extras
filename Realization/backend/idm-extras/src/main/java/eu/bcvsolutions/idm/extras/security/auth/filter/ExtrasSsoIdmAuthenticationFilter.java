@@ -61,10 +61,12 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 	public boolean authorize(String token, HttpServletRequest request, HttpServletResponse response) {
 		LOG.debug("Starting SSO filter authorization, value of the SSO header is: [{}]", token);
 		if (Strings.isNullOrEmpty(token)) {
-			return true;
+			LOG.debug("Token is null or empty!");
+			return false;
 		}
 		// Remove suffix from the token - typically the domain
 		String userName = removeUidSuffix(token);
+		LOG.debug("UserName with removed uid suffix: [{}]", userName);
 		Set<UUID> uuids = new LinkedHashSet<>();
 
 		List<String> fieldNames = getConfigurationService()
@@ -91,6 +93,7 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 
 		for (String fieldName : fieldNames) {
 			if (StringUtils.isEmpty(fieldName)) {
+				LOG.debug("String fieldName is empty.");
 				return false;
 			}
 			Page<AbstractDto> owners;
@@ -128,11 +131,12 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 			}
 			IdmIdentityDto identity = (IdmIdentityDto) lookupService.lookupDto(IdmIdentityDto.class, uuids.iterator().next());
 			if (null == identity) {
+				LOG.debug("Identity does not exist!");
 				return false;
 			}
 			return super.authorize(identity.getUsername(), request, response);
 		}
-
+		LOG.debug("Reached the end of function, returning false.");
 		return false;
 	}
 

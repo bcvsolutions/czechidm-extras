@@ -172,6 +172,12 @@ public class ExtrasSsoIdmAuthenticationFilterTest extends AbstractRestTest {
 		Assert.assertTrue(filter.authorize(TEST_SAME_SERVICE_LOGIN + PARAMETER_UID_SUFFIXES, null, null));
 	}
 
+	@Test
+	public void testNullAndEmptyToken(){
+		Assert.assertFalse(filter.authorize(null, null, null));
+		Assert.assertFalse(filter.authorize("", null, null));
+	}
+
 
 	private String getRemotePath() {
 		return BaseDtoController.BASE_PATH + "/authentication/remote-auth";
