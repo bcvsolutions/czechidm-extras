@@ -137,16 +137,20 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 			this.counter = 0L;
 
 			records.forEach(record -> {
-				List<IdmAutomaticRoleAttributeRuleDto> rules = new LinkedList<>();
+				IdmRoleDto roleDto = roleService.getByCode(record.get(rolesColumnName));
+				if(roleDto == null) {
+					LOG.info("Role with code [{}] not found", record.get(rolesColumnName));
+					return;
+				}
 
 				IdmAutomaticRoleAttributeDto automaticRoleAttributeDto = new IdmAutomaticRoleAttributeDto();
-				IdmRoleDto roleDto = roleService.getByCode(record.get(rolesColumnName));
 
 				automaticRoleAttributeDto.setRole(roleDto.getId());
 
 				StringBuilder nameBuilder = new StringBuilder();
 				nameBuilder.append(roleDto.getName());
 
+				List<IdmAutomaticRoleAttributeRuleDto> rules = new LinkedList<>();
 				//iterate through identity attributes and create rules from it
 				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY, false,
 						identityAttributeNamePrefix, identityAttributeValuePrefix);
