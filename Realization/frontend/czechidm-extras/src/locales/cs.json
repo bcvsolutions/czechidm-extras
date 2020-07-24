@@ -165,6 +165,51 @@
             "label": "Vložte CSV soubor"
           }
         }
+      },
+      "extras-import-automatic-roles-definitions-by-attribute": {
+        "label": "Import definic automatických rolí dle atributu z CSV",
+        "help": "Slouží k importu definic automatických rolí dle atributu identity, EAV identity, atributu úvazku, EAV úvazku",
+        "attributes": {
+          "csvfile": {
+            "label": "Vložte CSV soubor"
+          },
+          "fileencoding": {
+            "label": "Kódování souboru"
+          },
+          "rolescolumn": {
+            "label": "Název sloupce s rolemi"
+          },
+          "definitionnamecolumn": {
+            "label": "Název sloupce s názvy definic"
+          },
+          "separator": {
+            "label": "Oddělovač sloupců"
+          },
+          "identityattributecolumnnameprefix": {
+            "label": "Prefix názvu sloupce s názvem atributu identity"
+          },
+          "identityattributecolumnvalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou atributu identity"
+          },
+          "identityeavattributecolumnnameprefix": {
+            "label": "Prefix názvu sloupce s názvem EAV atributu identity"
+          },
+          "identityeavattributecolumnvalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou EAV atributu identity"
+          },
+          "contractattributecolumnnameprefix": {
+            "label": "Prefix názvu sloupce s názvem atributu úvazku"
+          },
+          "contractattributecolumnvalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou atributu úvazku"
+          },
+          "contracteavattributecolumnnameprefix": {
+            "label": "Prefix názvu sloupce s názvem EAV atributu úvazku"
+          },
+          "contracteavattributecolumnvalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou EAV atributu úvazku"
+          }
+        }
       }
     }
   }

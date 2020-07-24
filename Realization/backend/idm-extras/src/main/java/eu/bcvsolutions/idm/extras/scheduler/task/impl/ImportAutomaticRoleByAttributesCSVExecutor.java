@@ -50,28 +50,31 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  *
  * @author Roman Kucera
  */
-@Component
+@Component(ImportAutomaticRoleByAttributesCSVExecutor.TASK_NAME)
 @Description("Create automatic role definitions from CSV")
 public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleByAttributesCSVExecutor.class);
 
-	public static final String PARAM_CSV_ATTACHMENT = "Import csv file";
-	public static final String PARAM_CSV_ATTACHMENT_ENCODING = "Import file encoding";
-	public static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	public static final String PARAM_DEFINITION_NAME_COLUMN_NAME = "Column with name for automatic role definition";
-	public static final String PARAM_COLUMN_SEPARATOR = "Column separator";
-	public static final String PARAM_IDENTITY_ATTR_NAME_PREFIX = "Identity attribute column name prefix";
-	public static final String PARAM_IDENTITY_ATTR_VALUE_PREFIX = "Identity attribute column value prefix";
-	public static final String PARAM_IDENTITY_EAV_ATTR_NAME_PREFIX = "Identity EAV attribute column name prefix";
-	public static final String PARAM_IDENTITY_EAV_ATTR_VALUE_PREFIX = "Identity EAV attribute column value prefix";
-	public static final String PARAM_CONTRACT_ATTR_NAME_PREFIX = "Contract attribute column name prefix";
-	public static final String PARAM_CONTRACT_ATTR_VALUE_PREFIX = "Contract attribute column value prefix";
-	public static final String PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX = "Contract EAV attribute column name prefix";
-	public static final String PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX = "Contract EAV attribute column value prefix";
+	public static final String TASK_NAME = "extras-import-automatic-roles-definitions-by-attribute";
+
+	public static final String PARAM_CSV_ATTACHMENT = "csvFile";
+	public static final String PARAM_CSV_ATTACHMENT_ENCODING = "fileEncoding";
+	public static final String PARAM_ROLES_COLUMN_NAME = "rolesColumn";
+	public static final String PARAM_DEFINITION_NAME_COLUMN_NAME = "definitionNameColumn";
+	public static final String PARAM_COLUMN_SEPARATOR = "separator";
+	public static final String PARAM_IDENTITY_ATTR_NAME_PREFIX = "identityAttributeColumnNamePrefix";
+	public static final String PARAM_IDENTITY_ATTR_VALUE_PREFIX = "identityAttributeColumnValuePrefix";
+	public static final String PARAM_IDENTITY_EAV_ATTR_NAME_PREFIX = "identityEavAttributeColumnNamePrefix";
+	public static final String PARAM_IDENTITY_EAV_ATTR_VALUE_PREFIX = "identityEavAttributeColumnValuePrefix";
+	public static final String PARAM_CONTRACT_ATTR_NAME_PREFIX = "contractAttributeColumnNamePrefix";
+	public static final String PARAM_CONTRACT_ATTR_VALUE_PREFIX = "contractAttributeColumnValuePrefix";
+	public static final String PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX = "contractEavAttributeColumnNamePrefix";
+	public static final String PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX = "contractEavAttributeColumnValuePrefix";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
+	private static final String DEFAULT_ENCODING = "utf-8";
 
 	@Autowired
 	private AttachmentManager attachmentManager;
@@ -99,6 +102,11 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 	private String contractEavAttributeValuePrefix;
 
 	@Override
+	public String getName() {
+		return TASK_NAME;
+	}
+
+	@Override
 	public OperationResult process() {
 		LOG.debug("Start process");
 		// get data from CSV
@@ -107,7 +115,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 		attachmentManager.save(attachment);
 
 		if (StringUtils.isBlank(encoding)) {
-			encoding = "utf-8";
+			encoding = DEFAULT_ENCODING;
 		}
 		try (InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
 			 Reader attachmentReader = new InputStreamReader(attachmentData, encoding)) {
@@ -125,9 +133,10 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 			parseCsv(attachmentReader, csvFormat);
 		} catch (IOException e) {
 			LOG.error("Error occurred during input stream preparation", e);
+			return new OperationResult.Builder(OperationState.EXCEPTION).build();
 		}
 
-		return null;
+		return new OperationResult.Builder(OperationState.EXECUTED).build();
 	}
 
 	private void parseCsv(Reader attachmentReader, CSVFormat csvFormat) {
@@ -167,11 +176,16 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, true,
 						contractEavAttributeNamePrefix, contractEavAttributeValuePrefix);
 
+				String definitionName;
 				if (!StringUtils.isBlank(definitionNameColumnName) && !StringUtils.isBlank(record.get(definitionNameColumnName))) {
-					automaticRoleAttributeDto.setName(record.get(definitionNameColumnName));
+					definitionName = record.get(definitionNameColumnName);
 				} else {
-					automaticRoleAttributeDto.setName(nameBuilder.toString());
+					definitionName = nameBuilder.toString();
 				}
+				if (definitionName.length() > 255) {
+					definitionName = definitionName.substring(0, 255);
+				}
+				automaticRoleAttributeDto.setName(definitionName);
 
 				// Check if role definition is already exist or not
 				IdmAutomaticRoleFilter automaticRoleFilter = new IdmAutomaticRoleFilter();
@@ -199,12 +213,12 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 					rule.setAutomaticRoleAttribute(automaticRoleId);
 					IdmAutomaticRoleAttributeRuleDto savedRule = automaticRoleAttributeRuleService.save(rule);
 					this.logItemProcessed(savedRule, taskCompleted("Rule created for definition - " + nameBuilder.toString()));
+					++this.counter;
 				});
 
 				automaticRoleAttributeDto.setConcept(false);
 				automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
-
-				++this.counter;
+				this.count = this.counter;
 			});
 		} catch (IOException e) {
 			LOG.error("Can't parse csv", e);
@@ -322,6 +336,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 		IdmFormAttributeDto encodingAttr = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT_ENCODING, PARAM_CSV_ATTACHMENT_ENCODING,
 				PersistentType.SHORTTEXT);
 		encodingAttr.setRequired(true);
+		encodingAttr.setDefaultValue(DEFAULT_ENCODING);
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
@@ -371,11 +386,6 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 
 	private OperationResult taskCompleted(String message) {
 		return new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
-				ImmutableMap.of("message", message))).build();
-	}
-
-	private OperationResult taskNotCompleted(String message) {
-		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
 				ImmutableMap.of("message", message))).build();
 	}
 
