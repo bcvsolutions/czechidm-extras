@@ -69,7 +69,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutorTest extends AbstractRole
 			}
 		}
 		Long count = task.getCount();
-		Long total = 3L;
+		Long total = 7L;
 		assertEquals(task.getCounter(), count);
 		assertEquals(total, count);
 
