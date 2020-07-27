@@ -195,6 +195,51 @@
             "label": "Prefix of column with value of EAV attribute"
           }
         }
+      },
+      "extras-import-automatic-roles-definitions-by-attribute": {
+        "label": "Import definitions of automatic roles by attribute from CSV",
+        "help": "You can import automatic roles definitions by identity attribute, EAV identity, contract attribute, EAV contract",
+        "attributes": {
+          "csvfile": {
+            "label": "Upload CSV file"
+          },
+          "fileencoding": {
+            "label": "File encoding"
+          },
+          "rolescolumn": {
+            "label": "Name of column with roles"
+          },
+          "definitionnamecolumn": {
+            "label": "Name of column with definitions names"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "identityattributecolumnnameprefix": {
+            "label": "Prefix of column name with identity attribute name"
+          },
+          "identityattributecolumnvalueprefix": {
+            "label": "Prefix of column name with identity attribute value"
+          },
+          "identityeavattributecolumnnameprefix": {
+            "label": "Prefix of column name with identity EAV attribute name"
+          },
+          "identityeavattributecolumnvalueprefix": {
+            "label": "Prefix of column name with identity EAV attribute value"
+          },
+          "contractattributecolumnnameprefix": {
+            "label": "Prefix of column name with contract attribute name"
+          },
+          "contractattributecolumnvalueprefix": {
+            "label": "Prefix of column name with contract attribute value"
+          },
+          "contracteavattributecolumnnameprefix": {
+            "label": "Prefix of column name with contract EAV attribute name"
+          },
+          "contracteavattributecolumnvalueprefix": {
+            "label": "Prefix of column name with contract EAV attribute value"
+          }
+        }
       }
     }
   }
