@@ -49,34 +49,36 @@
       "message": "Sloupec [{{name}}] nebyl nenalezen."
     }
   },
-  "long-running-task": {
-    "extras-import-codelist": {
-      "label": "Import číselníků",
-      "help": "Úloha, která vytvoří/aktualizuje číselník a jeho položky z CSV",
-      "attributes": {
-        "importfile": {
-          "label": "Vložte CSV soubor"
-        },
-        "codeofcodelist": {
-          "label": "Kód číselníku"
-        },
-        "nameofcodelist": {
-          "label": "Název číselníku"
-        },
-        "descriptionofcodelist": {
-          "label": "Popis číselníku"
-        },
-        "separator": {
-          "label": "Oddělovač sloupců"
-        },
-        "encoding": {
-          "label": "Kódování souboru"
-        },
-        "eavattributenameprefix": {
-          "label": "Prefix názvu sloupce s názvem EAV atributu"
-        },
-        "eavattributevalueprefix": {
-          "label": "Prefix názvu sloupce s hodnotou EAV atributu"
+  "eav": {
+    "long-running-task": {
+      "extras-import-codelist": {
+        "label": "Import číselníků",
+        "help": "Úloha, která vytvoří/aktualizuje číselník a jeho položky z CSV",
+        "attributes": {
+          "importfile": {
+            "label": "Vložte CSV soubor"
+          },
+          "codeofcodelist": {
+            "label": "Kód číselníku"
+          },
+          "nameofcodelist": {
+            "label": "Název číselníku"
+          },
+          "descriptionofcodelist": {
+            "label": "Popis číselníku"
+          },
+          "separator": {
+            "label": "Oddělovač sloupců"
+          },
+          "encoding": {
+            "label": "Kódování souboru"
+          },
+          "eavattributenameprefix": {
+            "label": "Prefix názvu sloupce s názvem EAV atributu"
+          },
+          "eavattributevalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou EAV atributu"
+          }
         }
       }
     }
