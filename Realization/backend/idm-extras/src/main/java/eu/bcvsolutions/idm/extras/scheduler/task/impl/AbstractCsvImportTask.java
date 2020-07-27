@@ -100,9 +100,22 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 		return new OperationResult.Builder(OperationState.EXECUTED).build();
 	}
 
+	/**
+	 * Process all record from CSV
+	 *
+	 * @param records
+	 */
 	protected abstract void processRecords(List<CSVRecord> records);
 
-	protected void processDynamicAttribute(CSVRecord record, String namePrefix, String valuePrefix) {
+	/**
+	 * Process dynamic attribute
+	 *
+	 * @param record      current row
+	 * @param namePrefix  column prefix for attribute name
+	 * @param valuePrefix column prefix for attribute value
+	 * @param isEav       if attribute is EAV
+	 */
+	protected void processDynamicAttribute(CSVRecord record, String namePrefix, String valuePrefix, boolean isEav) {
 		if (!StringUtils.isBlank(namePrefix) && !StringUtils.isBlank(valuePrefix)) {
 			LOG.info("Prefixes set");
 			int suffix = 1;
@@ -113,7 +126,7 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 				String name = record.get(columnName);
 				String value = record.get(columnValue);
 
-				processOneDynamicAttribute(name, value);
+				processOneDynamicAttribute(namePrefix, name, valuePrefix, value, isEav);
 
 				++suffix;
 				columnName = namePrefix + suffix;
@@ -122,7 +135,17 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 		}
 	}
 
-	protected abstract void processOneDynamicAttribute(String name, String value);
+	/**
+	 * Process pair of name and value for dynamic attribute
+	 *
+	 * @param namePrefix  column prefix for attribute name
+	 * @param name        actual name from the column
+	 * @param valuePrefix column prefix for attribute value
+	 * @param value       actual value from column
+	 * @param isEav       if attribute is EAV
+	 */
+	protected abstract void processOneDynamicAttribute(String namePrefix, String name, String valuePrefix,
+													   String value, boolean isEav);
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -158,11 +181,13 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 				PersistentType.SHORTTEXT);
 		separatorAttribute.setRequired(false);
 		separatorAttribute.setPlaceholder("Separator of columns in CSV, default is ;");
+		separatorAttribute.setDefaultValue(DEFAULT_COLUMN_SEPARATOR);
 
 		IdmFormAttributeDto encodingAttribute = new IdmFormAttributeDto(PARAM_ENCODING, PARAM_ENCODING,
 				PersistentType.SHORTTEXT);
 		encodingAttribute.setRequired(false);
 		encodingAttribute.setPlaceholder("Encoding of CSV, default is utf-8");
+		encodingAttribute.setDefaultValue(DEFAULT_ENCODING);
 
 		return Lists.newArrayList(csvAttachment, separatorAttribute, encodingAttribute);
 	}

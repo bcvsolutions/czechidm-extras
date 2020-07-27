@@ -117,7 +117,7 @@ public class ImportCodeListFromCSV extends AbstractCsvImportTask {
 			codeListItemDto = codeListItemService.save(codeListItemDto);
 			LOG.info("Code list item [{}] saved", key);
 
-			processDynamicAttribute(record, eavAttributeNamePrefix, eavAttributeValuePrefix);
+			processDynamicAttribute(record, eavAttributeNamePrefix, eavAttributeValuePrefix, false);
 
 			++this.counter;
 			this.logItemProcessed(codeListItemDto, taskCompleted("Item was created/updated", ExtrasResultCode.IMPORT_CODE_LIST_EXECUTED));
@@ -125,7 +125,8 @@ public class ImportCodeListFromCSV extends AbstractCsvImportTask {
 	}
 
 	@Override
-	protected void processOneDynamicAttribute(String name, String value) {
+	protected void processOneDynamicAttribute(String namePrefix, String name, String valuePrefix,
+											  String value, boolean isEav) {
 		IdmFormDefinitionDto formDef = formDefinitionService.findOneByTypeAndCode(IdmCodeListItem.class.getName(), code);
 		if (formDef != null) {
 			IdmFormAttributeDto attribute = formAttributeService.findAttribute(IdmCodeListItem.class.getName(), code, name);

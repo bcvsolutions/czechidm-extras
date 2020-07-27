@@ -43,11 +43,11 @@ public class ImportAutomaticRoleByAttributesCSVExecutorTest extends AbstractRole
 		helper.createEavAttribute("eav2", IdmIdentity.class, PersistentType.SHORTTEXT);
 
 		Map<String, Object> configOfLRT = new HashMap<>();
-		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_CSV_ATTACHMENT, attachment.getId());
-		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_CSV_ATTACHMENT_ENCODING, "utf-8");
+		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_PATH_TO_CSV, attachment.getId());
+		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_ENCODING, "utf-8");
 		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_ROLES_COLUMN_NAME, "role");
 		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_DEFINITION_NAME_COLUMN_NAME, "name");
-		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_COLUMN_SEPARATOR, ";");
+		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_SEPARATOR, ";");
 		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_IDENTITY_ATTR_NAME_PREFIX, "identityAttrName");
 		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_IDENTITY_ATTR_VALUE_PREFIX, "identityAttrValue");
 		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_IDENTITY_EAV_ATTR_NAME_PREFIX, "identityEavAttrName");
