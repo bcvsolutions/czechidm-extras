@@ -48,19 +48,21 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  * @author Roman Kucera
  */
 
-@Component
+@Component(ImportCodeListFromCSV.TASK_NAME)
 @Description("Task which will create/update defined code list and it's items from CSV file")
 public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<OperationResult> {
 
+	public static final String TASK_NAME = "extras-import-codelist";
+
 	public static final Logger LOG = LoggerFactory.getLogger(ImportCodeListFromCSV.class);
-	public static final String PARAM_PATH_TO_CSV = "CSV with values for import";
-	public static final String PARAM_CODE_CODE_LIST = "Code of code list";
-	public static final String PARAM_NAME_CODE_LIST = "Name of code list";
-	public static final String PARAM_DESCRIPTION_CODE_LIST = "Description of code list";
-	public static final String PARAM_SEPARATOR = "Separator of csv file";
-	public static final String PARAM_ENCODING = "File encoding";
-	public static final String PARAM_EAV_ATTR_NAME_PREFIX = "EAV attribute name prefix";
-	public static final String PARAM_EAV_ATTR_VALUE_PREFIX = "EAV attribute value prefix";
+	public static final String PARAM_PATH_TO_CSV = "importFile";
+	public static final String PARAM_CODE_CODE_LIST = "codeOfCodelist";
+	public static final String PARAM_NAME_CODE_LIST = "nameOfCodelist";
+	public static final String PARAM_DESCRIPTION_CODE_LIST = "descriptionOfCodelist";
+	public static final String PARAM_SEPARATOR = "separator";
+	public static final String PARAM_ENCODING = "encoding";
+	public static final String PARAM_EAV_ATTR_NAME_PREFIX = "eavAttributeNamePrefix";
+	public static final String PARAM_EAV_ATTR_VALUE_PREFIX = "eavAttributeValuePrefix";
 
 	// Defaults
 	private static final String COLUMN_SEPARATOR = ";";
@@ -86,6 +88,11 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 	private IdmFormAttributeService formAttributeService;
 	@Autowired
 	private FormService formService;
+
+	@Override
+	public String getName() {
+		return TASK_NAME;
+	}
 
 	@Override
 	public OperationResult process() {
@@ -187,12 +194,14 @@ public class ImportCodeListFromCSV extends AbstractSchedulableTaskExecutor<Opera
 				});
 			} catch (IOException e) {
 				LOG.error("Can't parse csv", e);
+				return new OperationResult.Builder(OperationState.EXCEPTION).setCause(e).build();
 			}
 		} catch (IOException e) {
 			LOG.error("Error occurred during input stream preparation", e);
+			return new OperationResult.Builder(OperationState.EXCEPTION).setCause(e).build();
 		}
 
-		return null;
+		return new OperationResult.Builder(OperationState.EXECUTED).build();
 	}
 
 	@Override

@@ -48,5 +48,37 @@
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."
     }
+  },
+  "long-running-task": {
+    "extras-import-codelist": {
+      "label": "Import Code list from CSV",
+      "help": "Task which will create/update defined code list and it's items from CSV file",
+      "attributes": {
+        "importfile": {
+          "label": "Upload CSV file"
+        },
+        "codeofcodelist": {
+          "label": "Code of code list"
+        },
+        "nameofcodelist": {
+          "label": "Name of code list"
+        },
+        "descriptionofcodelist": {
+          "label": "Description of code list"
+        },
+        "separator": {
+          "label": "Column separator"
+        },
+        "encoding": {
+          "label": "File encoding"
+        },
+        "eavattributenameprefix": {
+          "label": "Prefix of column with name of EAV attribute"
+        },
+        "eavattributevalueprefix": {
+          "label": "Prefix of column with value of EAV attribute"
+        }
+      }
+    }
   }
 }
