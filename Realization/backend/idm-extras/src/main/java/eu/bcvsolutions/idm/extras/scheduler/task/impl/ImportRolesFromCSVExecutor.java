@@ -3,6 +3,7 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import java.io.InputStream;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -67,9 +68,11 @@ import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListItemService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
+import eu.bcvsolutions.idm.core.model.entity.IdmRole;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 
@@ -94,7 +97,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public static final String TASK_NAME = "extras-import-roles-from-csv";
 	
 	public static final String PARAM_CSV_ATTACHMENT = "importcsvfile";
-	public static final String PARAM_SYSTEM_NAME = "systemname";
 	public static final String PARAM_ROLES_COLUMN_NAME = "rolenamescolumn";
 	public static final String PARAM_ROLE_CODE_COLUMN_NAME = "rolecodescolumn";
 	public static final String PARAM_DESCRIPTION_COLUMN_NAME = "descriptioncolumn";
@@ -108,11 +110,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	public static final String PARAM_GUARANTEE_ROLE_TYPE_UPDATE = "updateguaranteeroletypes";
 	public static final String PARAM_CATALOGUES_COLUMN_NAME = "cataloguecolumn";
 	public static final String PARAM_SUBROLES_COLUMN_NAME = "subrolescolumn";
+	public static final String PARAM_EAV_COLUMN_NAME = "eavscolumn";
 	public static final String PARAM_FORM_DEFINITION_CODE = "formdefinitioncode";
 	public static final String PARAM_COLUMN_SEPARATOR = "columnseparator";
 	public static final String PARAM_MULTI_VALUE_SEPARATOR = "multivalueseparator";
-	public static final String PARAM_MEMBER_OF_ATTRIBUTE = "memberofname";
-	public static final String PARAM_MEMBER_OF_ATTRIBUTE_VALUE_COLUMN_NAME = "memberofcolumn";
+	public static final String PARAM_SYSTEM_INFO_COLUMN_NAME = "systeminfocolumn";
 	public static final String PARAM_ENVIRONMENT = "roleenvironment";
 	public static final String PARAM_CAN_BE_REQUESTED = "canberequested";
 	private static final String PARAM_ENCODING = "fileencoding";
@@ -127,7 +129,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private static final String OBJECT_CLASSNAME = "__ACCOUNT__";
 
 	private UUID attachmentId;
-	private String systemName;
 	private String rolesColumnName;
 	private String roleCodesColumnName;
 	private String descriptionColumnName;
@@ -139,11 +140,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private String guaranteeRoleTypeColumnName;
 	private String catalogueColumnName;
 	private String subRoleColumnName;
+	private String eavsColumnName;
 	private String formDefinitionCode;
 	private String columnSeparator;
 	private String multiValueSeparator;
-	private String memberOfAttributeFromConfig;
-	private String memberOfAttributeValueColumnName;
+	private String systemInfoColumnName;
 	private String environmentName;
 	private Boolean canBeRequested;
 	private Boolean updateGuaranteeType;
@@ -156,12 +157,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private Boolean hasGuaranteeTypes;
 	private Boolean hasGuaranteeRoles;
 	private Boolean hasGuaranteeRoleTypes;
-	private Boolean hasSystem;
 	private Boolean hasEnvironment;
-	private Boolean hasMemberOf;
-	private Boolean hasMemberOfValue;
+	private Boolean hasSystemInfo;
 	private Boolean hasCatalogue;
 	private Boolean hasSubRoles;
+	private Boolean hasEavs;
 	private String encoding;
 		
 	@Autowired
@@ -198,6 +198,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	private IdmCodeListService codeListService;
 	@Autowired
 	private IdmCodeListItemService codeListItemService;
+	@Autowired
+	private IdmFormDefinitionService formDefinitionService;
 
 	@Override
 	public String getName() {
@@ -207,10 +209,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	@Override
 	public OperationResult process() {
 		LOG.debug("Start process");
-		SysSystemDto system = new SysSystemDto();
-		if(hasSystem) {
-			system = findSystem();
-		}
 
 		// get data from CSV
 		IdmAttachmentDto attachment = attachmentManager.get(attachmentId);
@@ -221,9 +219,9 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		
 		CSVToIdM myParser = new CSVToIdM(attachmentData, rolesColumnName, roleCodesColumnName, descriptionColumnName, 
 				attributesColumnName, criticalityColumnName, guaranteeColumnName, guaranteeTypeColumnName,
-				guaranteeRoleColumnName, guaranteeRoleTypeColumnName, catalogueColumnName, subRoleColumnName, columnSeparator, multiValueSeparator, 
+				guaranteeRoleColumnName, guaranteeRoleTypeColumnName, catalogueColumnName, subRoleColumnName, eavsColumnName, columnSeparator, multiValueSeparator, 
 				hasDescription,	hasAttribute, hasCriticality, hasGuarantees, hasGuaranteeTypes, hasGuaranteeRoles, hasGuaranteeRoleTypes, hasCatalogue, 
-				hasSubRoles, hasRoleCodes, encoding, memberOfAttributeValueColumnName, hasMemberOfValue);
+				hasSubRoles, hasRoleCodes, encoding, systemInfoColumnName, hasSystemInfo, hasEavs);
 		Map<String, String> roleDescriptions = myParser.getRoleDescriptions();
 		Map<String, String> roleCodes = myParser.getRoleCodes();
 		Map<String, List<String>> roleAttributes = myParser.getRoleAttributes();
@@ -234,7 +232,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		Map<String, String> guaranteeRoleTypes = myParser.getGuaranteeRoleTypes();
 		Map<String, List<String>> catalogues = myParser.getCatalogues();
 		Map<String, List<String>> subRoles = myParser.getSubRoles();
-		Map<String, String> memberOfValues = myParser.getMemberOfValues();
+		Map<String, List<String>> systemInfo = myParser.getSystemInfo();
+		Map<String, List<String>> eavs = myParser.getRoleEavs();
 
 		// 
 		if (!roleDescriptions.isEmpty()) {
@@ -264,13 +263,13 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				}
 
 				if (role == null) {
-					role = createRole(roleName, system, roleDescription, roleAttributes.get(roleName), 
+					role = createRole(roleName, roleDescription, roleAttributes.get(roleName), 
 							criticalities.get(roleName), guarantees.get(roleName), guaranteeTypes.get(roleName), guaranteeRoles.get(roleName), 
-							guaranteeRoleTypes.get(roleName), subRoles.get(roleName),roleCodeToSearch, environmentName, memberOfValues);
+							guaranteeRoleTypes.get(roleName), subRoles.get(roleName), eavs.get(roleName), roleCodeToSearch, environmentName, systemInfo.get(roleName));
 				} else {
-					updateRole(roleName, system, role, roleDescription, roleAttributes.get(roleName), criticalities.get(roleName),
+					updateRole(roleName, role, roleDescription, roleAttributes.get(roleName), criticalities.get(roleName),
 							guarantees.get(roleName), guaranteeTypes.get(roleName), guaranteeRoles.get(roleName), guaranteeRoleTypes.get(roleName), 
-							subRoles.get(roleName), memberOfValues);
+							subRoles.get(roleName), eavs.get(roleName), systemInfo.get(roleName));
 				}
 				
 				// creates role catalogues
@@ -307,7 +306,7 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	/**
 	 * @return
 	 */
-	private SysSystemDto findSystem() {
+	private SysSystemDto findSystem(String systemName) {
 //		System.lineSeparator
 		SysSystemFilter systemFilter = new SysSystemFilter();
 		systemFilter.setCodeableIdentifier(systemName);
@@ -332,12 +331,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 	 * @param criticality
 	 * @param guarantees
 	 * @param guaranteesRoles
-	 * @param memberOfValues
+	 * @param systemInfos
 	 * @return
 	 */
-	private IdmRoleDto createRole(String roleName, SysSystemDto system, String description, List<String> roleAttributes,
+	private IdmRoleDto createRole(String roleName, String description, List<String> roleAttributes,
 								  String criticality, List<String> guarantees, String guaranteeType, List<String> guaranteesRoles, String guaranteeRoleType,
-								  List<String> subRoles, String roleCode, String environmentName, Map<String, String> memberOfValues) {
+								  List<String> subRoles, List<String> eavs, String roleCode, String environmentName, List<String> systemInfos) {
 		// Create role
 		IdmRoleDto role = new IdmRoleDto();
 		role.setBaseCode(roleCode);
@@ -376,17 +375,14 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			setGuaranteeRoles(guaranteesRoles, role, guaranteeRoleType);
 		}
 		
+		// Set EAVs
+		if (hasEavs) {
+			setEavs(role, eavs);
+		}
+		
 		// Create role system
-		if(hasSystem) {
-			SysSystemMappingDto systemMapping = getSystemMapping(system);
-			SysRoleSystemDto roleSystem = new SysRoleSystemDto();
-			roleSystem.setSystem(system.getId());
-			roleSystem.setRole(role.getId());
-			roleSystem.setSystemMapping(systemMapping.getId());
-			roleSystemService.save(roleSystem);
-
-			// Create role system mapping with role name	
-			createUpdateRoleSystemMapping(roleName, system, memberOfValues, role);
+		if(hasSystemInfo) {
+			setSystemAndAttributes(roleName, systemInfos, role);	
 		}
 		
 		// Assign subroles
@@ -399,16 +395,60 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		return role;
 	}
 
+	private Boolean setSystemAndAttributes(String roleName, List<String> systemInfos, IdmRoleDto role) {
+		Boolean updated = Boolean.FALSE;
+		for (String systemInfo : systemInfos) {
+			String[] systemInfoParsed = systemInfo.split("\\:");
+			String systemName = "";
+			String attributeCode = "";
+			String attributeValue = "";
+			if (systemInfoParsed.length > 0 && !StringUtils.isEmpty(systemInfoParsed[0])) {
+				systemName = systemInfoParsed[0];
+			}
+			if (systemInfoParsed.length > 1 && !StringUtils.isEmpty(systemInfoParsed[1])) {
+				attributeCode = systemInfoParsed[1];
+			}
+			if (systemInfoParsed.length > 2 && !StringUtils.isEmpty(systemInfoParsed[2])) {
+				attributeValue = systemInfoParsed[2];
+			}
+			
+			if (!StringUtils.isEmpty(systemName)) {
+				SysSystemDto system = findSystem(systemName);
+				SysSystemMappingDto systemMapping = getSystemMapping(system);
+				
+				
+				SysRoleSystemFilter roleSystemFilter = new SysRoleSystemFilter();
+				roleSystemFilter.setSystemId(system.getId());
+				roleSystemFilter.setRoleId(role.getId());
+				roleSystemFilter.setSystemMappingId(systemMapping.getId());
+				long count = roleSystemService.count(roleSystemFilter);
+
+				if (count == 0) {
+					SysRoleSystemDto roleSystem = new SysRoleSystemDto();
+					roleSystem.setSystem(system.getId());
+					roleSystem.setRole(role.getId());
+					roleSystem.setSystemMapping(systemMapping.getId());
+					roleSystemService.save(roleSystem);
+				}
+
+				// Create role system mapping with role name	
+				updated = createUpdateRoleSystemMapping(roleName, system, attributeCode, attributeValue, role);
+			}						
+		}
+		
+		return updated;
+	}
+
 	/**
 	 * Updates canBeRequested and description, role attributes, criticality and guarantees. Only criticality, 
 	 * canBerequested and description can be deleted (by changing), nothing else is deleted. Description 
 	 * will not be deleted if the new value is empty
 	 *  @param role
 	 * @param description
-	 * @param memberOfValues
+	 * @param systemInfos
 	 */
-	private void updateRole(String roleName, SysSystemDto system, IdmRoleDto role, String description, List<String> roleAttributes, String criticality,
-							List<String> guarantees, String guaranteeType, List<String> guaranteesRoles, String guaranteeRoleType, List<String> subRoles, Map<String, String> memberOfValues) {
+	private void updateRole(String roleName, IdmRoleDto role, String description, List<String> roleAttributes, String criticality,
+							List<String> guarantees, String guaranteeType, List<String> guaranteesRoles, String guaranteeRoleType, List<String> subRoles, List<String> eavs, List<String> systemInfos) {
 		
 		Boolean canBeReqUpdated = Boolean.FALSE;
 		if (canBeRequested != null && role.isCanBeRequested() != canBeRequested) {
@@ -439,6 +479,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			guaranteeRoleUpdated = setGuaranteeRoles(guaranteesRoles, role, guaranteeRoleType);
 		}
 		
+		// update EAVs
+		Boolean eavsUpdated = Boolean.FALSE;
+		if (hasEavs) {
+			eavsUpdated = setEavs(role, eavs);
+		}
+		
 		// update attributes
 		Boolean attributesUpdated = Boolean.FALSE;
 		if(hasAttribute && !StringUtils.isEmpty(roleAttributes.get(0).trim())) {
@@ -453,48 +499,40 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 
 		Boolean systemMappingUpdated = Boolean.FALSE;
 		// update role system
-		if(hasSystem) {
-			SysSystemMappingDto systemMapping = getSystemMapping(system);
-
-			SysRoleSystemFilter roleSystemFilter = new SysRoleSystemFilter();
-			roleSystemFilter.setSystemId(system.getId());
-			roleSystemFilter.setRoleId(role.getId());
-			roleSystemFilter.setSystemMappingId(systemMapping.getId());
-			long count = roleSystemService.count(roleSystemFilter);
-
-			if (count == 0) {
-				SysRoleSystemDto roleSystem = new SysRoleSystemDto();
-				roleSystem.setSystem(system.getId());
-				roleSystem.setRole(role.getId());
-				roleSystem.setSystemMapping(systemMapping.getId());
-				roleSystemService.save(roleSystem);
-				systemMappingUpdated = Boolean.TRUE;
-			}
-
-			// update role system mapping with role name
-			systemMappingUpdated = createUpdateRoleSystemMapping(roleName, system, memberOfValues, role);
+		if(hasSystemInfo) {
+			systemMappingUpdated = setSystemAndAttributes(roleName, systemInfos, role);
 		}
 		
 		roleService.save(role);
 
 		if (canBeReqUpdated || descriptionUpdated || attributesUpdated || criticalityUpdated || 
-				guaranteeUpdated || guaranteeRoleUpdated || subRolesUpdated || systemMappingUpdated) {
+				guaranteeUpdated || guaranteeRoleUpdated || subRolesUpdated || systemMappingUpdated || eavsUpdated) {
 			role = roleService.save(role);
 			this.logItemProcessed(role, taskCompleted("Role " + role.getName() + " updated"));			
 		} else {
 			this.logItemProcessed(role, taskNotCompleted("Nothing to update! Role name: " + roleName));
 		}
 	}
-
-	private boolean createUpdateRoleSystemMapping(String roleName, SysSystemDto system, Map<String, String> memberOfValues, IdmRoleDto role) {
-		if(hasMemberOf) {
+	
+	/**
+	 * Creates role system mapping.
+	 * 
+	 * @param roleName
+	 * @param system
+	 * @param attributeCode
+	 * @param attributeValue
+	 * @param role
+	 * @return
+	 */
+	private Boolean createUpdateRoleSystemMapping(String roleName, SysSystemDto system, String attributeCode, String attributeValue, IdmRoleDto role) {
+		if(!StringUtils.isEmpty(attributeCode)) {
 			String transformationScript;
-			if (hasMemberOfValue) {
-				transformationScript = MessageFormat.format("\"{0}\"", memberOfValues.get(roleName));
+			if (!StringUtils.isEmpty(attributeValue)) {
+				transformationScript = MessageFormat.format("\"{0}\"", attributeValue);
 			} else {
 				transformationScript = MessageFormat.format("\"{0}\"", roleName);
 			}
-			roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), memberOfAttributeFromConfig, transformationScript, OBJECT_CLASSNAME);
+			roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), attributeCode, transformationScript, OBJECT_CLASSNAME);
 			return true;
 		}
 		return false;
@@ -782,6 +820,50 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		}
 		return updated;
 	}
+	
+	private Boolean setEavs(IdmRoleDto role, List<String> eavsParsed) {
+		Boolean updated = Boolean.FALSE;
+		Map<String, List<String>> eavs = new HashMap<>();
+		
+		for (String eavParsed : eavsParsed) {
+			String[] eavParsedSplit = eavParsed.split("\\:");
+			
+			if (eavParsedSplit.length == 2) {
+				String eavAttributeCode = eavParsedSplit[0];
+				String eavAttributeValue = eavParsedSplit[1];
+				
+				if (eavs.get(eavAttributeCode) == null) {
+					List<String> values = new ArrayList<>();
+					values.add(eavAttributeValue);
+					eavs.put(eavAttributeCode, values);
+				} else {
+					List<String> values = eavs.get(eavAttributeCode);
+					values.add(eavAttributeValue);
+					eavs.put(eavAttributeCode, values);
+				}
+			}
+		}
+		
+		for (String key : eavs.keySet()) {
+			Boolean eavSet = Boolean.FALSE;
+			
+			IdmFormDefinitionDto definition = formDefinitionService.findOneByMain(IdmRole.class.getCanonicalName());
+			List<IdmFormAttributeDto> attributes = definition.getFormAttributes();
+			for (IdmFormAttributeDto attribute : attributes) {
+				if (attribute.getCode().equals(key)) {
+					formService.saveValues(role.getId(), IdmRole.class, key, Lists.newArrayList(eavs.get(key)));
+					eavSet = Boolean.TRUE;
+					updated = Boolean.TRUE;
+				}
+			} 
+			
+			if (!eavSet) {
+				logItemProcessed(role, taskNotCompleted("Role " + role.getCode() + " did not get an EAV " + key + " set. It does not exist in the main definition!"));
+			}
+		}
+		
+		return updated;
+	}
 
 	/**
 	 * Gets role name and return role code
@@ -940,13 +1022,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		updateGuaranteeRoleType = getParameterConverter().toBoolean(properties, PARAM_GUARANTEE_ROLE_TYPE_UPDATE);
 		catalogueColumnName = getParameterConverter().toString(properties, PARAM_CATALOGUES_COLUMN_NAME);
 		subRoleColumnName = getParameterConverter().toString(properties, PARAM_SUBROLES_COLUMN_NAME);
+		eavsColumnName = getParameterConverter().toString(properties, PARAM_EAV_COLUMN_NAME);
 		formDefinitionCode = getParameterConverter().toString(properties, PARAM_FORM_DEFINITION_CODE);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
-		systemName = getParameterConverter().toString(properties, PARAM_SYSTEM_NAME);
 		environmentName = getParameterConverter().toString(properties, PARAM_ENVIRONMENT);
-		memberOfAttributeFromConfig = getParameterConverter().toString(properties, PARAM_MEMBER_OF_ATTRIBUTE);
-		memberOfAttributeValueColumnName = getParameterConverter().toString(properties, PARAM_MEMBER_OF_ATTRIBUTE_VALUE_COLUMN_NAME);
+		systemInfoColumnName = getParameterConverter().toString(properties, PARAM_SYSTEM_INFO_COLUMN_NAME);
 		canBeRequested = getParameterConverter().toBoolean(properties, PARAM_CAN_BE_REQUESTED);
 		encoding = getParameterConverter().toString(properties, PARAM_ENCODING);
 		// if not filled, init multiValueSeparator and check if csv has description and escape it
@@ -992,25 +1073,15 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		} else {
 			hasGuaranteeRoles = Boolean.FALSE;
 		}
-		if (systemName != null) {
-			hasSystem = Boolean.TRUE;
-		} else {
-			hasSystem = Boolean.FALSE;
-		}
 		if (environmentName != null) {
 			hasEnvironment = Boolean.TRUE;
 		} else {
 			hasEnvironment = Boolean.FALSE;
 		}
-		if (memberOfAttributeFromConfig != null) {
-			hasMemberOf = Boolean.TRUE;
+		if (systemInfoColumnName != null) {
+			hasSystemInfo = Boolean.TRUE;
 		} else {
-			hasMemberOf = Boolean.FALSE;
-		}
-		if (memberOfAttributeValueColumnName != null) {
-			hasMemberOfValue = Boolean.TRUE;
-		} else {
-			hasMemberOfValue = Boolean.FALSE;
+			hasSystemInfo = Boolean.FALSE;
 		}
 		if (catalogueColumnName != null) {
 			hasCatalogue = Boolean.TRUE;
@@ -1021,6 +1092,11 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 			hasSubRoles = Boolean.TRUE;
 		} else {
 			hasSubRoles = Boolean.FALSE;
+		}
+		if (eavsColumnName != null) {
+			hasEavs = Boolean.TRUE;
+		} else {
+			hasEavs = Boolean.FALSE;
 		}
 	}
 
@@ -1042,13 +1118,12 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		props.put(PARAM_GUARANTEE_ROLE_TYPE_UPDATE, updateGuaranteeRoleType);
 		props.put(PARAM_CATALOGUES_COLUMN_NAME, catalogueColumnName);
 		props.put(PARAM_SUBROLES_COLUMN_NAME, subRoleColumnName);
+		props.put(PARAM_EAV_COLUMN_NAME, eavsColumnName);
 		props.put(PARAM_FORM_DEFINITION_CODE, formDefinitionCode);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
-		props.put(PARAM_SYSTEM_NAME, systemName);
 		props.put(PARAM_ENVIRONMENT, environmentName);
-		props.put(PARAM_MEMBER_OF_ATTRIBUTE, memberOfAttributeFromConfig);
-		props.put(PARAM_MEMBER_OF_ATTRIBUTE_VALUE_COLUMN_NAME, memberOfAttributeValueColumnName);
+		props.put(PARAM_SYSTEM_INFO_COLUMN_NAME, systemInfoColumnName);
 		props.put(PARAM_CAN_BE_REQUESTED, canBeRequested);
 		props.put(PARAM_ENCODING, encoding);
 		return props;
@@ -1080,11 +1155,6 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		IdmFormAttributeDto descriptionColumnNameAttribute = new IdmFormAttributeDto(PARAM_DESCRIPTION_COLUMN_NAME, PARAM_DESCRIPTION_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		descriptionColumnNameAttribute.setRequired(true);
-	
-		IdmFormAttributeDto attributesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ATTRIBUTES_COLUMN_NAME, PARAM_ATTRIBUTES_COLUMN_NAME,
-				PersistentType.SHORTTEXT);
-		attributesColumnNameAttribute.setRequired(false);
-		
 		
 		IdmFormAttributeDto criticalityColumnNameAttribute = new IdmFormAttributeDto(PARAM_CRITICALITY_COLUMN_NAME, PARAM_CRITICALITY_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
@@ -1126,6 +1196,14 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 				PersistentType.SHORTTEXT);
 		subRolesColumnNameAttribute.setRequired(false);
 		
+		IdmFormAttributeDto eavsColumnNameAttribute = new IdmFormAttributeDto(PARAM_EAV_COLUMN_NAME, PARAM_EAV_COLUMN_NAME,
+				PersistentType.SHORTTEXT);
+		eavsColumnNameAttribute.setRequired(false);
+		
+		IdmFormAttributeDto attributesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ATTRIBUTES_COLUMN_NAME, PARAM_ATTRIBUTES_COLUMN_NAME,
+				PersistentType.SHORTTEXT);
+		attributesColumnNameAttribute.setRequired(false);
+		
 		IdmFormAttributeDto formDefinitionAttribute = new IdmFormAttributeDto(PARAM_FORM_DEFINITION_CODE, PARAM_FORM_DEFINITION_CODE,
 				PersistentType.SHORTTEXT);
 		descriptionColumnNameAttribute.setRequired(false);
@@ -1138,18 +1216,10 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		IdmFormAttributeDto multiValueSeparatorAttribute = new IdmFormAttributeDto(PARAM_MULTI_VALUE_SEPARATOR, PARAM_MULTI_VALUE_SEPARATOR,
 				PersistentType.CHAR);
 		multiValueSeparatorAttribute.setRequired(false);
-		
-		IdmFormAttributeDto systemNameAttribute = new IdmFormAttributeDto(PARAM_SYSTEM_NAME, PARAM_SYSTEM_NAME,
-				PersistentType.SHORTTEXT);
-		systemNameAttribute.setRequired(false);
-		
-		IdmFormAttributeDto memberOfAttribute = new IdmFormAttributeDto(PARAM_MEMBER_OF_ATTRIBUTE, PARAM_MEMBER_OF_ATTRIBUTE,
-				PersistentType.SHORTTEXT);
-		memberOfAttribute.setRequired(false);
 
-		IdmFormAttributeDto memberOfAttributeValue = new IdmFormAttributeDto(PARAM_MEMBER_OF_ATTRIBUTE_VALUE_COLUMN_NAME, PARAM_MEMBER_OF_ATTRIBUTE_VALUE_COLUMN_NAME,
+		IdmFormAttributeDto systemInfoValue = new IdmFormAttributeDto(PARAM_SYSTEM_INFO_COLUMN_NAME, PARAM_SYSTEM_INFO_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
-		memberOfAttributeValue.setRequired(false);
+		systemInfoValue.setRequired(false);
 		
 		IdmFormAttributeDto environment = new IdmFormAttributeDto(PARAM_ENVIRONMENT, PARAM_ENVIRONMENT,
 				PersistentType.SHORTTEXT);
@@ -1164,8 +1234,8 @@ public class ImportRolesFromCSVExecutor extends AbstractSchedulableTaskExecutor<
 		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, roleCodeColumnNameAttribute, descriptionColumnNameAttribute, 
 				attributesColumnNameAttribute, criticalityColumnNameAttribute, guaranteeColumnNameAttribute, guaranteeTypeColumnNameAttribute, guaranteeTypeUpdateAttribute,
 				guaranteeRolesColumnNameAttribute, guaranteeRoleTypeColumnNameAttribute, guaranteeRoleTypeUpdateAttribute, cataloguesColumnNameAttribute, subRolesColumnNameAttribute, 
-				formDefinitionAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, 
-				systemNameAttribute, memberOfAttribute, memberOfAttributeValue, environment, canBeRequestedAttribute, encodingAttr);
+				eavsColumnNameAttribute, formDefinitionAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, 
+				systemInfoValue, environment, canBeRequestedAttribute, encodingAttr);
 	}
 
 	private OperationResult taskCompleted(String message) {

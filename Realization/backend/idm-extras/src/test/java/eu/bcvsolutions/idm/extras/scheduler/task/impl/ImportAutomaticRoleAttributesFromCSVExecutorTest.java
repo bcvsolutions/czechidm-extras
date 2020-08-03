@@ -42,8 +42,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 	@Test
 	public void importAutomaticRoles() {
 		setPath(path, "importRolesTestFile01.csv");
-		Pair<SysSystemDto, Map<String, Object>> pair = createData();
-		SysSystemDto system = pair.getFirst();
+		Pair<SysSystemDto, Map<String, Object>> pair = createData("testsystem_automatic_roles");
 		Map<String, Object> configOfLRT = pair.getSecond();
 
 		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();

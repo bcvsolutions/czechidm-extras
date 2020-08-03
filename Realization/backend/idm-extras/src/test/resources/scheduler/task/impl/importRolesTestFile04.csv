@@ -1,6 +1,9 @@
-roles;description;attribute;guarantees;guaranteeType;guarantee role;guaranteeRoleType;criticality;catalogue;subroles
-Manager-A;Leader;;;;;;;;
-LAY-SP;Manager;attr1;;;;;;;
-"CORE-CLOSE
-AB-role";desc;attr1;uzivatel1;type1;role1;type1;3;"cat1
-cat3";subrole
+roles;description;attribute;guarantees;guaranteeType;guarantee role;guaranteeRoleType;criticality;catalogue;subroles;eav;systeminfo
+Manager-A;Leader;attr1;uzivatel1;type1;role1;type1;3;"cat1
+cat3";subrole;eav:testvalue;systemtest1
+LAY-SP;Manager;attr1;uzivatel1;type1;role1;type1;3;"cat1
+cat3";subrole;eav:testvalue;systemtest1
+CORE-CLOSE;;attr1;uzivatel1;type1;role1;type1;3;"cat1
+cat3";subrole;eav:testvalue;systemtest1
+AB-role;desc;attr1;uzivatel1;type1;role1;type1;3;"cat1
+cat3";subrole;eav:testvalue;systemtest1

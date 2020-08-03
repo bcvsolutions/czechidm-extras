@@ -36,7 +36,7 @@ public class CSVToIdM {
 	private static final String ROLE_CODES_ATTRIBUTE = "roleCodes";
 	private static final String DESCRIPTION_ATTRIBUTE = "description";
 	private static final String ATTRIBUTE_ATTRIBUTE = "attribute";
-	private static final String MEMBER_OF_ATTRIBUTE_VALUE_ATTRIBUTE = "memberOfAttributeValue";
+	private static final String SYSTEM_INFO_ATTRIBUTE = "systemInfo";
 	private static final String CRITICALITY_ATTRIBUTE = "criticality";
 	private static final String GUARANTEE_ATTRIBUTE = "guarantees";
 	private static final String GUARANTEE_TYPE_ATTRIBUTE = "guaranteeTypes";
@@ -44,6 +44,7 @@ public class CSVToIdM {
 	private static final String GUARANTEE_ROLE_TYPE_ATTRIBUTE = "guaranteeRoleType";
 	private static final String CATALOGUE_ATTRIBUTE = "catalogues";
 	private static final String SUBROLE_ATTRIBUTE = "subroles";
+	private static final String EAVS_ATTRIBUTE = "roleEav";
 
 	private String columnSeparator;
 	private String multiValueSeparator;
@@ -59,7 +60,8 @@ public class CSVToIdM {
 	private Map<String, List<String>> catalogues;
 	private Map<String, List<String>> subRoles;
 	private Map<String, String> roleCodes;
-	private Map<String, String> memberOfValues;
+	private Map<String, List<String>> systemInfo;
+	private Map<String, List<String>> roleEavs;
 
 	String[] header = new String[0];
 
@@ -103,26 +105,31 @@ public class CSVToIdM {
 		return subRoles;
 	}
 
-	public Map<String, String> getMemberOfValues() {
-		return memberOfValues;
+	public Map<String, List<String>> getSystemInfo() {
+		return systemInfo;
+	}
+
+	public Map<String, List<String>> getRoleEavs() {
+		return roleEavs;
 	}
 
 	public CSVToIdM(InputStream attachmentData, String rolesColumnName, String roleCodeColumnName,
 			String descriptionColumnName, String attributeColumnName, String criticalityColumnName,
 			String guaranteeColumnName, String guaranteeTypeColumnName, String guaranteeRoleColumnName,
-			String guaranteeRoleTypeColumnName, String catalogueColumnName, String subRoleColumnName,
-			String columnSeparator, String multiValueSeparator, Boolean hasDescription, Boolean hasAttribute,
-			Boolean hasCriticality, Boolean hasGuarantees, Boolean hasGuaranteeTypes, Boolean hasGuaranteeRoles,
-			Boolean hasGuaranteeRoleTypes, Boolean hasCatalogues, Boolean hasSubRoles, Boolean hasRoleCodes,
-			String encoding, String memberOfAttributeValueColumnName, Boolean hasMemberOfValue) {
+			String guaranteeRoleTypeColumnName, String catalogueColumnName, String subRoleColumnName, 
+			String eavsColumnName, String columnSeparator, String multiValueSeparator, 
+			Boolean hasDescription, Boolean hasAttribute, Boolean hasCriticality, Boolean hasGuarantees, 
+			Boolean hasGuaranteeTypes, Boolean hasGuaranteeRoles, Boolean hasGuaranteeRoleTypes, Boolean hasCatalogues,
+			Boolean hasSubRoles, Boolean hasRoleCodes, String encoding, String systemInfoColumnName, 
+			Boolean hasSystemInfo, Boolean hasEavs) {
 
 		List<Attribute> attributes = new ArrayList<>();
 		attributes.add(new Attribute(ROLES_ATTRIBUTE, rolesColumnName, Boolean.TRUE, Boolean.TRUE));
 		attributes.add(new Attribute(ROLE_CODES_ATTRIBUTE, roleCodeColumnName, Boolean.FALSE, hasRoleCodes));
 		attributes.add(new Attribute(DESCRIPTION_ATTRIBUTE, descriptionColumnName, Boolean.FALSE, hasDescription));
 		attributes.add(new Attribute(ATTRIBUTE_ATTRIBUTE, attributeColumnName, Boolean.TRUE, hasAttribute));
-		attributes.add(new Attribute(MEMBER_OF_ATTRIBUTE_VALUE_ATTRIBUTE, memberOfAttributeValueColumnName,
-				Boolean.FALSE, hasMemberOfValue));
+		attributes.add(new Attribute(SYSTEM_INFO_ATTRIBUTE, systemInfoColumnName,
+				Boolean.TRUE, hasSystemInfo));
 		attributes.add(new Attribute(CRITICALITY_ATTRIBUTE, criticalityColumnName, Boolean.FALSE, hasCriticality));
 		attributes.add(new Attribute(GUARANTEE_ATTRIBUTE, guaranteeColumnName, Boolean.TRUE, hasGuarantees));
 		attributes.add(
@@ -133,6 +140,7 @@ public class CSVToIdM {
 				hasGuaranteeRoleTypes));
 		attributes.add(new Attribute(CATALOGUE_ATTRIBUTE, catalogueColumnName, Boolean.TRUE, hasCatalogues));
 		attributes.add(new Attribute(SUBROLE_ATTRIBUTE, subRoleColumnName, Boolean.TRUE, hasSubRoles));
+		attributes.add(new Attribute(EAVS_ATTRIBUTE, eavsColumnName, Boolean.TRUE, hasEavs));
 
 		this.attachmentData = attachmentData;
 		this.columnSeparator = columnSeparator;
@@ -151,7 +159,8 @@ public class CSVToIdM {
 		this.guaranteeRoleTypes = getValueOfAttribute(GUARANTEE_ROLE_TYPE_ATTRIBUTE, parsedAttributes);
 		this.catalogues = getValuesOfAttribute(CATALOGUE_ATTRIBUTE, parsedAttributes);
 		this.subRoles = getValuesOfAttribute(SUBROLE_ATTRIBUTE, parsedAttributes);
-		this.memberOfValues = getValueOfAttribute(MEMBER_OF_ATTRIBUTE_VALUE_ATTRIBUTE, parsedAttributes);
+		this.systemInfo = getValuesOfAttribute(SYSTEM_INFO_ATTRIBUTE, parsedAttributes);
+		this.roleEavs = getValuesOfAttribute(EAVS_ATTRIBUTE, parsedAttributes);
 	}
 
 	/**

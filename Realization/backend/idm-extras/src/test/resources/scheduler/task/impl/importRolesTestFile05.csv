@@ -1,2 +1,2 @@
-roles;description;attribute;guarantees;guaranteeType;guarantee role;guaranteeRoleType;criticality;catalogue;subroles
-CORE-CLOSE;;attr2;uzivatel2;type1;role2;type1;2;;subrole2
+roles;description;attribute;guarantees;guaranteeType;guarantee role;guaranteeRoleType;criticality;catalogue;subroles;systeminfo;eav
+CORE-CLOSE;;attr2;uzivatel2;type1;role2;type1;2;;subrole2;systemtest2;eav:testvalue2
