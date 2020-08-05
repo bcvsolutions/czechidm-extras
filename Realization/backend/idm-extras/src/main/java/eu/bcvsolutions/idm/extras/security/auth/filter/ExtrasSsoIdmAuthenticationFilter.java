@@ -61,10 +61,12 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 	public boolean authorize(String token, HttpServletRequest request, HttpServletResponse response) {
 		LOG.debug("Starting SSO filter authorization, value of the SSO header is: [{}]", token);
 		if (Strings.isNullOrEmpty(token)) {
-			return true;
+			LOG.warn("Token is null or empty!");
+			return false;
 		}
 		// Remove suffix from the token - typically the domain
 		String userName = removeUidSuffix(token);
+		LOG.debug("UserName with removed uid suffix: [{}]", userName);
 		Set<UUID> uuids = new LinkedHashSet<>();
 
 		List<String> fieldNames = getConfigurationService()
@@ -91,6 +93,7 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 
 		for (String fieldName : fieldNames) {
 			if (StringUtils.isEmpty(fieldName)) {
+				LOG.warn("String fieldName is empty.");
 				return false;
 			}
 			Page<AbstractDto> owners;
@@ -101,12 +104,13 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 				definition = formService.getDefinition(IdmIdentity.class, definitionCode);
 			}
 			if (null == definition) {
-				throw new IdmAuthenticationException(MessageFormat.format("Definition with code [{}] not found", definitionCode));
+				throw new IdmAuthenticationException(MessageFormat.format("Definition with code [{0}] not found", definitionCode));
 			}
 			IdmFormAttributeDto attribute = formService.getAttribute(definition, fieldName);
 			if (null == attribute) {
-				throw new IdmAuthenticationException(MessageFormat.format("Attribute with code [{}] not found", fieldName));
+				throw new IdmAuthenticationException(MessageFormat.format("Attribute with code [{0}] not found", fieldName));
 			}
+			LOG.debug("Found attribute [{}] in definition [{}]", attribute.getCode(), definition.getCode());
 			if (PARAMETER_FIELD_CONTRACT.equals(fieldChoose)) {
 				owners = formService.findOwners(IdmIdentityContract.class, attribute, userName, null);
 				for (AbstractDto owner : owners) {
@@ -128,11 +132,12 @@ public class ExtrasSsoIdmAuthenticationFilter extends SsoIdmAuthenticationFilter
 			}
 			IdmIdentityDto identity = (IdmIdentityDto) lookupService.lookupDto(IdmIdentityDto.class, uuids.iterator().next());
 			if (null == identity) {
+				LOG.warn("Identity does not exist!");
 				return false;
 			}
 			return super.authorize(identity.getUsername(), request, response);
 		}
-
+		LOG.debug("Reached the end of function, returning false.");
 		return false;
 	}
 

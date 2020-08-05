@@ -12,14 +12,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import eu.bcvsolutions.idm.InitApplicationData;
 import eu.bcvsolutions.idm.acc.domain.SystemEntityType;
 import eu.bcvsolutions.idm.acc.domain.SystemOperationType;
+import eu.bcvsolutions.idm.acc.dto.AccIdentityAccountDto;
 import eu.bcvsolutions.idm.acc.dto.SysProvisioningArchiveDto;
 import eu.bcvsolutions.idm.acc.dto.SysSchemaAttributeDto;
 import eu.bcvsolutions.idm.acc.dto.SysSchemaObjectClassDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemAttributeMappingDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
 import eu.bcvsolutions.idm.acc.dto.SysSystemMappingDto;
+import eu.bcvsolutions.idm.acc.dto.filter.AccIdentityAccountFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysProvisioningOperationFilter;
 import eu.bcvsolutions.idm.acc.dto.filter.SysSchemaAttributeFilter;
+import eu.bcvsolutions.idm.acc.service.api.AccIdentityAccountService;
 import eu.bcvsolutions.idm.acc.service.api.SysProvisioningArchiveService;
 import eu.bcvsolutions.idm.acc.service.api.SysSchemaAttributeService;
 import eu.bcvsolutions.idm.acc.service.api.SysSystemAttributeMappingService;
@@ -43,8 +46,6 @@ public class RoleRequestIdentitySystemProcessorTest extends AbstractIntegrationT
 	@Autowired
 	private ConfigurationService configurationService;
 	@Autowired
-	private ExtrasConfiguration extrasConfiguration;
-	@Autowired
 	private SysSystemService systemService;
 	@Autowired
 	private SysSystemMappingService mappingService;
@@ -54,6 +55,8 @@ public class RoleRequestIdentitySystemProcessorTest extends AbstractIntegrationT
 	private SysSystemAttributeMappingService attributeMappingService;
 	@Autowired
 	private IdmRoleRequestService roleRequestService;
+	@Autowired
+	private AccIdentityAccountService identityAccountService;
 	@Autowired
 	private SysProvisioningArchiveService sysProvisioningArchiveService;
 
@@ -104,7 +107,62 @@ public class RoleRequestIdentitySystemProcessorTest extends AbstractIntegrationT
 		// start processor
 		configurationService.setValue("idm.sec.extras.processor.extras-role-request-identity-system-processor.enabled"
 				, "true");
-		configurationService.setValue(extrasConfiguration.EXTRAS_SYSTEM_EXCHANGE_ID, system.getId().toString());
+		configurationService.setValue(ExtrasConfiguration.EXTRAS_SYSTEM_EXCHANGE_ID, system.getId().toString());
+		// new role request should start processor
+		IdmRoleDto newRole = testHelper.createRole();
+		IdmRoleRequestDto roleRequestNew = testHelper.createRoleRequest(identity, newRole);
+		roleRequestNew = roleRequestService.startRequest(roleRequestNew.getId(), true);
+		roleRequestService.executeRequest(roleRequestNew.getId());
+		// test result
+		content = sysProvisioningArchiveService.find(filter, null).getContent();
+		// should be create and one update after setting a processor
+		assertEquals(2, content.size());
+	}
+	
+	@Test
+	public void testCreateSystemAndProvideRoleNoDuplicitProvisionings() {
+		// create system
+		SysSystemDto system = testHelper.createSystem(TestResource.TABLE_NAME);
+		// generate schema
+		List<SysSchemaObjectClassDto> objectClasses = systemService.generateSchema(system);
+		//
+		assertEquals(1, objectClasses.size());
+		// create mapping with one attribute mapped
+		createMappingSystem(SystemEntityType.IDENTITY,
+				objectClasses.get(0), "TestMappingProvisioning");
+		// create role
+		IdmRoleDto role = testHelper.createRole();
+		// create 2 distinct roles for system
+		IdmRoleDto systemRole = testHelper.createRole();
+		IdmRoleDto systemRole2 = testHelper.createRole();
+		// put role on the system
+		testHelper.createRoleSystem(systemRole, system);
+		testHelper.createRoleSystem(systemRole2, system);
+		// create identity
+		IdmIdentityDto identity = testHelper.createIdentity();
+		// give identity system roles
+		IdmRoleRequestDto roleRequestA = testHelper.createRoleRequest(identity, systemRole, systemRole2);
+		roleRequestA = roleRequestService.startRequest(roleRequestA.getId(), true);
+		roleRequestService.executeRequest(roleRequestA.getId());
+		// check that there are 2 identity account mappings
+		AccIdentityAccountFilter accIdentityAccountFilter = new AccIdentityAccountFilter();
+		accIdentityAccountFilter.setIdentityId(identity.getId());
+		List<AccIdentityAccountDto> accIdentityAccounts = identityAccountService.find(accIdentityAccountFilter, null).getContent();
+		assertEquals(2, accIdentityAccounts.size());
+		// give identity another role and test if not provided
+		IdmRoleRequestDto roleRequest = testHelper.createRoleRequest(identity, role);
+		roleRequest = roleRequestService.startRequest(roleRequest.getId(), true);
+		roleRequestService.executeRequest(roleRequest.getId());
+		//
+		SysProvisioningOperationFilter filter = new SysProvisioningOperationFilter();
+		filter.setSystemId(system.getId());
+		List<SysProvisioningArchiveDto> content = sysProvisioningArchiveService.find(filter, null).getContent();
+		// test just created
+		assertEquals(1, content.size());
+		// start processor
+		configurationService.setValue("idm.sec.extras.processor.extras-role-request-identity-system-processor.enabled"
+				, "true");
+		configurationService.setValue(ExtrasConfiguration.EXTRAS_SYSTEM_EXCHANGE_ID, system.getId().toString());
 		// new role request should start processor
 		IdmRoleDto newRole = testHelper.createRole();
 		IdmRoleRequestDto roleRequestNew = testHelper.createRoleRequest(identity, newRole);
