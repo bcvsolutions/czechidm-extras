@@ -42,6 +42,8 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.Map.Entry;
 
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+
 /**
  * @author Petr Hanák
  * 
@@ -152,7 +154,6 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 					continue;
 				}
 				if (identityId != null) {
-//					List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identityId, LocalDate.now(), null);
 					List<IdmIdentityContractDto> contracts = identityContractService.findAllByIdentity(identityId);
 					if (contracts.isEmpty()){
 						continue;
@@ -319,7 +320,8 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 //			IdmFormDefinitionFilter filter = new IdmFormDefinitionFilter();
 //			filter.setCode(contractDefinitionCode);
 //			List<IdmFormDefinitionDto> list = formDefinitionService.find(filter,null).getContent();
-			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode("eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract",contractDefinitionCode);
+//			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode("eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract",contractDefinitionCode);
+			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode(IdmIdentityContract.,contractDefinitionCode);
 			if (definition == null){
 				throw new ResultCodeException(ExtrasResultCode.CONTRACT_EAV_NOT_FOUND, ImmutableMap.of("definition", definition));
 			}
