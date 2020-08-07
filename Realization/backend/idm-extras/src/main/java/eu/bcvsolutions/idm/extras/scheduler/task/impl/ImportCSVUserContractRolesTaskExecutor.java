@@ -317,11 +317,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	public Object getEavValueForContract(UUID contractId, String attributeCode) {
 		//EAV contract definition
 		if (!StringUtils.isEmpty(contractDefinitionCode)){
-//			IdmFormDefinitionFilter filter = new IdmFormDefinitionFilter();
-//			filter.setCode(contractDefinitionCode);
-//			List<IdmFormDefinitionDto> list = formDefinitionService.find(filter,null).getContent();
-//			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode("eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract",contractDefinitionCode);
-			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode(IdmIdentityContract.,contractDefinitionCode);
+			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode(IdmIdentityContract.class.getName(),contractDefinitionCode);
 			if (definition == null){
 				throw new ResultCodeException(ExtrasResultCode.CONTRACT_EAV_NOT_FOUND, ImmutableMap.of("definition", definition));
 			}
