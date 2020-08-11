@@ -80,7 +80,7 @@
           "canberequested": {
             "label": "O roli lze žádat"
           },
-          "fileencoding": {
+          "encoding": {
             "label": "Kódování souboru",
             "placeholder": "Kódování vstupního souboru (např. \"utf-8\")"
           },
@@ -88,16 +88,11 @@
             "label": "Prostředí",
             "placeholder": "Název prostředí, které chcete rolím nastavit"
           },
-          "systeminfocolumn": {
-            "label": "Název sloupce s informacemi o systému (název systému, atribut, jeho hodnota)",
-            "placeholder": "Pokud nenastavujete roli systém, nechte pole prázdné.",
-            "help": "Název systému, kód atributu a jeho hodnotu oddělujte znakem ':' (např. \"AD:ldapGroups:BCV_all\")."
-          },
           "multivalueseparator": {
             "label": "Oddělovač vícehodnotých atributů",
-            "placeholder": "Výchozí: nový řádek"
+            "placeholder": "Výchozí: |"
           },
-          "columnseparator": {
+          "separator": {
             "label": "Oddělovač sloupců"
           },
           "formdefinitioncode": {
@@ -107,11 +102,6 @@
           "subrolescolumn": {
             "label": "Název sloupce s kódy podřazených rolí",
             "placeholder": "Název sloupce s kódy podřazených rolí"
-          },
-          "eavscolumn": {
-            "label": "Název sloupce s kódy EAV atributů a jejich hodnotami",
-            "placeholder": "Název sloupce s kódy EAV atributů a jejich hodnotami",
-            "help": "Kód atributu a jeho hodnotu oddělujte znakem ':' (např. \"attribute:value\")."
           },
           "cataloguecolumn": {
             "label": "Název sloupce s kódy katalogů rolí",
@@ -159,8 +149,23 @@
             "label": "Název sloupce s názvy role",
             "placeholder": "Název sloupce s názvy role"
           },
-          "importcsvfile": {
+          "importfile": {
             "label": "Vložte CSV soubor"
+          },
+          "eavcodeprefix": {
+            "label": "Prefix názvu sloupce s názvem EAV atributu"
+          },
+          "eavvalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou EAV atributu"
+          },
+          "systemnameprefix": {
+            "label": "Prefix názvu sloupce s názvem systému"
+          },
+          "systemattributeprefix": {
+            "label": "Prefix názvu sloupce s názvem atributu mapování systému"
+          },
+          "systemattributevalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou atributu mapování systému"
           }
         }
       },
@@ -236,6 +241,104 @@
           },
           "contracteavattributecolumnvalueprefix": {
             "label": "Prefix názvu sloupce s hodnotou EAV atributu úvazku"
+          }
+        }
+      },
+      "extras-import-automatic-treenode-roles": {
+        "label": "Import automatických rolí podle organizační struktury",
+        "help": "Úloha, která umožňuje importovat z CSV automatické role podle organizační struktury",
+        "attributes": {
+          "importfile": {
+            "label": "Vložte CSV soubor"
+          },
+          "separator": {
+            "label": "Oddělovač sloupců"
+          },
+          "encoding": {
+            "label": "Kódování souboru"
+          },
+          "rolecodescolumn": {
+            "label": "Název sloupce s kódy rolí"
+          },
+          "nodecodescolumn": {
+            "label": "Název sloupce s kódy organizačních jednotek"
+          },
+          "nodeidscolumn": {
+            "label": "Název sloupce s id organizačních jednotek"
+          },
+          "recursiontypecolumn": {
+            "label": "Název sloupce s typem rekurze"
+          }
+        }
+      },
+      "extras-import-assinged-roles": {
+        "label": "Import přiřazených rolí",
+        "help": "Úloha, která umožňuje importem z CSV uživatelům přiřadit role",
+        "attributes": {
+          "importfile": {
+            "label": "Vložte CSV soubor"
+          },
+          "separator": {
+            "label": "Oddělovač sloupců"
+          },
+          "encoding": {
+            "label": "Kódování souboru"
+          },
+          "rolecolumn": {
+            "label": "Název sloupce s kódy rolí"
+          },
+          "usernamecolumn": {
+            "label": "Název sloupce s uživatelskými jmény"
+          },
+          "rolesassignment": {
+            "label": "Typ přidělení rolí",
+            "help": "Vyplňte s volbou: a) 'allContracts' (přiřazení na všechny platné kontrakty), b) 'primeContract' (přiřazení na hlavní kontrakt), c) 'eavContract' (přiřazení podle EAV kontraktu)"
+          },
+          "rolemultivalueseparator": {
+            "label": "Oddělovač rolí",
+            "placeholder": "Pokud je v jednom sloupci více rolí, kterým znakem jsou odděleny"
+          },
+          "isrolecolumnmultivalued": {
+            "label": "Je sloupec s kódy rolí vícehodnotový?"
+          },
+          "contractdefinition": {
+            "label": "Definice kontraktu",
+            "help": "Vyplňte v kombinaci s volbou 'eavContract'"
+          },
+          "contracteavcodeprefix": {
+            "label": "Prefix názvu sloupce s názvem EAV atributu",
+            "help": "Vyplňte v kombinaci s volbou 'eavContract'"
+          },
+          "contracteavvalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou EAV atributu",
+            "help": "Vyplňte v kombinaci s volbou 'eavContract'"
+          }
+        }
+      },
+      "extras-import-system-accounts": {
+        "label": "Import účtů na systému",
+        "help": "Úloha, která umožňuje importem z CSV vytvořit účty na vybraném systému",
+        "attributes": {
+          "importfile": {
+            "label": "Vložte CSV soubor"
+          },
+          "separator": {
+            "label": "Oddělovač sloupců"
+          },
+          "encoding": {
+            "label": "Kódování souboru"
+          },
+          "systemname": {
+            "label": "Název systému"
+          },
+          "nameattribute": {
+            "label": "Název sloupce s atributem __NAME__"
+          },
+          "uidattribute": {
+            "label": "Název sloupce s atributem __UID__"
+          },
+          "multivaluedseparator": {
+            "label": "Oddělovač vícehodnotových atributů"
           }
         }
       }

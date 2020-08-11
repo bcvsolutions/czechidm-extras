@@ -80,7 +80,7 @@
           "canberequested": {
             "label": "Can be requested"
           },
-          "fileencoding": {
+          "encoding": {
             "label": "File encoding",
             "placeholder": "Encoding of input file (e. g., \"utf-8\")"
           },
@@ -88,16 +88,11 @@
             "label": "Role environment",
             "placeholder": "The name of the environment to which you want to add the roles"
           },
-          "systeminfocolumn": {
-            "label": "Column with system informations (name of the system, attribute, its value)",
-            "placeholder": "Leave empty if you don't want to set a system",
-            "help": "Use ':' to separate the system name, attribute code and its value (e. g., \"AD:ldapGroups:BCV_all\")."
-          },
           "multivalueseparator": {
             "label": "Multi value separator",
-            "placeholder": "Default: new line"
+            "placeholder": "Default: |"
           },
-          "columnseparator": {
+          "separator": {
             "label": "Column separator"
           },
           "formdefinitioncode": {
@@ -107,11 +102,6 @@
           "subrolescolumn": {
             "label": "Column with subrole codes",
             "placeholder": "The name of the column with subordinate role codes"
-          },
-          "eavscolumn": {
-            "label": "Column with EAV attribute codes and values",
-            "placeholder": "The name of the column with subordinate role codes",
-            "help": "Use ':' to separate the code of the attribute and its value (e. g., \"attribute:value\")."
           },
           "cataloguecolumn": {
             "label": "Column with catalogue names",
@@ -159,8 +149,23 @@
             "label": "Column with role names",
             "placeholder": "The name of the column with the names of roles to import"
           },
-          "importcsvfile": {
+          "importfile": {
             "label": "Upload a CSV file"
+          },
+          "eavcodeprefix": {
+            "label": "Prefix of column with name of EAV attribute"
+          },
+          "eavvalueprefix": {
+            "label": "Prefix of column with value of EAV attribute"
+          },
+          "systemnameprefix": {
+            "label": "Prefix of column with system name"
+          },
+          "systemattributeprefix": {
+            "label": "Prefix of column with system attribute codes"
+          },
+          "systemattributevalueprefix": {
+            "label": "Prefix of column with system attribute values"
           }
         }
       },
@@ -236,6 +241,104 @@
           },
           "contracteavattributecolumnvalueprefix": {
             "label": "Prefix of column name with contract EAV attribute value"
+          }
+        }
+      },
+      "extras-import-automatic-treenode-roles": {
+        "label": "Import automatic roles on tree nodes",
+        "help": "This task allows you to import automatic tree node roles from a CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          },
+          "rolecodescolumn": {
+            "label": "Column with role codes"
+          },
+          "nodecodescolumn": {
+            "label": "Column with tree node codes"
+          },
+          "nodeidscolumn": {
+            "label": "Column with tree node IDs"
+          },
+          "recursiontypecolumn": {
+            "label": "Column with recursion types"
+          }
+        }
+      },
+      "extras-import-assinged-roles": {
+        "label": "Import assigned roles",
+        "help": "This task allows you to assign roles to user based on an import from a CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          },
+          "rolecolumn": {
+            "label": "Column with roles"
+          },
+          "usernamecolumn": {
+            "label": "Column with username"
+          },
+          "rolesassignment": {
+            "label": "Roles assignment contract type",
+            "help": "Choose from: a) 'allContracts' (assign to all valid contracts), b) 'primeContract' (assign to the main contract), c) 'eavContract' (assign based on a contract EAV)"
+          },
+          "rolemultivalueseparator": {
+            "label": "Multi value separator of roles",
+            "placeholder": "If there are multiple roles on one line, which character separates them"
+          },
+          "isrolecolumnmultivalued": {
+            "label": "Is the roles column multivalued?"
+          },
+          "contractdefinition": {
+            "label": "Contract definition",
+            "help": "Use when 'eavContract' option was used"
+          },
+          "contracteavcodeprefix": {
+            "label": "Prefix of column name with contract attribute name",
+            "help": "Use when 'eavContract' option was used"
+          },
+          "contracteavvalueprefix": {
+            "label": "Prefix of column name with contract attribute value",
+            "help": "Use when 'eavContract' option was used"
+          }
+        }
+      },
+      "extras-import-system-accounts": {
+        "label": "Import system accounts",
+        "help": "This task allows you to import system accounts from a CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          },
+          "systemname": {
+            "label": "Name of system"
+          },
+          "nameattribute": {
+            "label": "Column with attribute __NAME__"
+          },
+          "uidattribute": {
+            "label": "Column with attribute __UID__"
+          },
+          "multivaluedseparator": {
+            "label": "Separator of multivalued attributes"
           }
         }
       }

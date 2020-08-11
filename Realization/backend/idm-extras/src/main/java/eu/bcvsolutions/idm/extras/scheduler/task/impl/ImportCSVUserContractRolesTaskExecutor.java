@@ -54,20 +54,21 @@ import eu.bcvsolutions.idm.extras.utils.Pair;
  * This task reads username, role and optional contract eav attribute from the csv file and find contract with this eav to assign role.
  *  
  */
-@Component
+@Component(ImportCSVUserContractRolesTaskExecutor.TASK_NAME)
 @Description("Parses input CSV (path as parameter) and assigns roles to user contracts. Only role assignment is allowed.")
 public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTask {
-
+	public static final String TASK_NAME = "extras-import-assinged-roles";
+	
 	private static final Logger LOG = LoggerFactory.getLogger(ImportCSVUserContractRolesTaskExecutor.class);
 
-	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	static final String PARAM_USERNAME_COLUMN_NAME = "Column with username";
-	static final String PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE = "Roles assignment contract type";
-	static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
-	static final String PARAM_IS_ROLE_MULTI_VALUE = "Is roles column multi value?";
-	static final String PARAM_CONTRACT_DEFINITION_CODE = "Contract definition";
-	public static final String PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX = "contractEavAttributeColumnNamePrefix";
-	public static final String PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX = "contractEavAttributeColumnValuePrefix";
+	static final String PARAM_ROLES_COLUMN_NAME = "rolecolumn";
+	static final String PARAM_USERNAME_COLUMN_NAME = "usernamecolumn";
+	static final String PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE = "rolesassignment";
+	static final String PARAM_MULTI_VALUE_SEPARATOR = "rolemultivalueseparator";
+	static final String PARAM_IS_ROLE_MULTI_VALUE = "isrolecolumnmultivalued";
+	static final String PARAM_CONTRACT_DEFINITION_CODE = "contractdefinition";
+	public static final String PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX = "contracteavcodeprefix";
+	public static final String PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX = "contracteavvalueprefix";
 
 	// Defaults
 	private static final String CONTRACT_DEFINITION = "default";
@@ -97,6 +98,11 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 	
 	private int nonExistingRolesCounter;
 
+	@Override
+	public String getName() {
+		return TASK_NAME;
+	}
+	
 	@Override
 	protected void processRecords(List<CSVRecord> records) {
 		Map<UUID, List<UUID>> contractRoles = handleRecords(records);
@@ -365,7 +371,6 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 		IdmFormAttributeDto assignedContractTypeAttribute = new IdmFormAttributeDto(PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE,
 				PersistentType.SHORTTEXT);
 		assignedContractTypeAttribute.setDefaultValue(OPTION_ITEM_ALL_CONTRACTS);
-		assignedContractTypeAttribute.setDescription("Napište jednu z následujích hodnot. "+OPTION_ITEM_ALL_CONTRACTS+", "+OPTION_ITEM_PRIME_CONTRACT+", "+OPTION_ITEM_EAV_CONTRACT+ ". \r\n\""+OPTION_ITEM_ALL_CONTRACTS+"\" přiřadí role na všechny validní a budoucí kontrakty. \"" +OPTION_ITEM_PRIME_CONTRACT+"\" přiřadí role na hlavní kontrakt. \""+OPTION_ITEM_EAV_CONTRACT+"\" přiřadí role na EAV kontraktu.");
 		assignedContractTypeAttribute.setRequired(true);
 		attributes.add(assignedContractTypeAttribute);
 
@@ -394,7 +399,6 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 		IdmFormAttributeDto contractDefinitionCodeAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_DEFINITION_CODE, PARAM_CONTRACT_DEFINITION_CODE,
 				PersistentType.SHORTTEXT);
 		contractDefinitionCodeAttribute.setDefaultValue("default");
-		contractDefinitionCodeAttribute.setDescription("Vyplňte s volbou. " + OPTION_ITEM_EAV_CONTRACT);
 		contractDefinitionCodeAttribute.setRequired(false);
 
 		attributes.add(contractDefinitionCodeAttribute);

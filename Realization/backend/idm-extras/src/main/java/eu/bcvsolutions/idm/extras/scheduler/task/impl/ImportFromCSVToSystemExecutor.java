@@ -59,17 +59,15 @@ import eu.bcvsolutions.idm.ic.service.impl.DefaultIcConnectorFacade;
  *
  * @author Marek Klement
  */
-@Component
+@Component(ImportFromCSVToSystemExecutor.TASK_NAME)
 @Description("Get all items on mapping - system and import from CSV to IDM")
 public class ImportFromCSVToSystemExecutor extends AbstractCsvImportTask {
-
+	public static final String TASK_NAME = "extras-import-system-accounts";
 	//
-	static final String PARAM_CSV_FILE_PATH = "Path to file";
-	static final String PARAM_SYSTEM_NAME = "Name of system";
-	static final String PARAM_ATTRIBUTE_SEPARATOR = "Attribute separator";
-	static final String PARAM_NAME_ATTRIBUTE = "Name attribute";
-	static final String PARAM_UID_ATTRIBUTE = "Uid attribute";
-	static final String PARAM_MULTIVALUED_SEPARATOR = "Separator of multivalued attributes";
+	static final String PARAM_SYSTEM_NAME = "systemname";
+	static final String PARAM_NAME_ATTRIBUTE = "nameattribute";
+	static final String PARAM_UID_ATTRIBUTE = "uidattribute";
+	static final String PARAM_MULTIVALUED_SEPARATOR = "multivaluedseparator";
 	private static final Logger LOG = LoggerFactory.getLogger(ImportFromCSVToSystemExecutor.class);
 	//
 	private String DEFAULT_NOTIFY_PROPERTY = "requiredConfirmation";
@@ -89,11 +87,16 @@ public class ImportFromCSVToSystemExecutor extends AbstractCsvImportTask {
 	private SysSchemaAttributeService schemaAttributeService;
 
 	@Override
+	public String getName() {
+		return TASK_NAME;
+	}
+	
 	/**
 	 * Checks for existing properties and than process system
 	 *
 	 * @return
 	 */
+	@Override
 	protected void processRecords(List<CSVRecord> records) {
 		LOG.debug("Start process");
 		//

@@ -16,7 +16,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -39,12 +38,9 @@ import eu.bcvsolutions.idm.extras.utils.Pair;
  *
  * @author Roman Kucera
  */
-@Component(AbstractCsvImportTask.TASK_NAME)
 public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecutor<OperationResult> {
 
 	public static final Logger LOG = LoggerFactory.getLogger(AbstractCsvImportTask.class);
-
-	public static final String TASK_NAME = "extras-abstract-csv-import";
 	
 	public static final String PARAM_PATH_TO_CSV = "importFile";
 	public static final String PARAM_SEPARATOR = "separator";

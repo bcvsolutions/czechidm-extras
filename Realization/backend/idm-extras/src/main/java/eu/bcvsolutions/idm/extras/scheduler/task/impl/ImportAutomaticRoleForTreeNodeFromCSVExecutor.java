@@ -38,15 +38,17 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  *
  */
 
-@Component
+@Component(ImportAutomaticRoleForTreeNodeFromCSVExecutor.TASK_NAME)
 @Description("Create automatic roles for tree nodes from CSV")
 public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractCsvImportTask {
+	public static final String TASK_NAME = "extras-import-automatic-treenode-roles";
+	
 	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleForTreeNodeFromCSVExecutor.class);
 	
-	static final String PARAM_ROLES_COLUMN_NAME = "Column with role codes";
-	static final String PARAM_COLUMN_NODE_CODES = "Column with node codes";
-	static final String PARAM_COLUMN_NODE_IDS = "Column with node IDs";
-	static final String PARAM_COLUMN_RECURSION_TYPE = "Column with recursion type";
+	static final String PARAM_ROLES_COLUMN_NAME = "rolecodescolumn";
+	static final String PARAM_COLUMN_NODE_CODES = "nodecodescolumn";
+	static final String PARAM_COLUMN_NODE_IDS = "nodeidscolumn";
+	static final String PARAM_COLUMN_RECURSION_TYPE = "recursiontypecolumn";
 	
 	private String roleCodesColumnName;
 	private String nodeCodesColumnName;
@@ -61,6 +63,11 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractCsvIm
 	private IdmRoleTreeNodeService roleTreeNodeService;
 	@Autowired
 	private IdmTreeNodeService treeNodeService;
+	
+	@Override
+	public String getName() {
+		return TASK_NAME;
+	}
 	
 	@Override
 	protected void processRecords(List<CSVRecord> records) {
