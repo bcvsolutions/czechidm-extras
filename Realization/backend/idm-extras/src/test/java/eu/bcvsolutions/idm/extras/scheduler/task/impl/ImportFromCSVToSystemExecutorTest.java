@@ -1,33 +1,33 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 
-import eu.bcvsolutions.idm.acc.dto.SysSchemaObjectClassDto;
-import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
-import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
-import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
-import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
-import eu.bcvsolutions.idm.extras.TestHelper;
-import eu.bcvsolutions.idm.extras.TestResource;
-import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
+import javax.transaction.Transactional;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.persistence.EntityManager;
-import javax.persistence.Query;
-import javax.transaction.Transactional;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
+import eu.bcvsolutions.idm.acc.service.api.SysSystemService;
+import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
+import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import eu.bcvsolutions.idm.extras.TestHelper;
+import eu.bcvsolutions.idm.extras.TestResource;
 
 /**
  * Basic test for virtual system importing
  *
  * @author Peter Sourek <peter.sourek@bcvsolutions.eu>
  */
-public class ImportFromCSVToSystemExecutorTest extends AbstractIntegrationTest {
+public class ImportFromCSVToSystemExecutorTest extends AbstractCsvImportTaskTest {
 
 	private static final String FILE_PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importTestFile.csv";
 
@@ -57,18 +57,18 @@ public class ImportFromCSVToSystemExecutorTest extends AbstractIntegrationTest {
 		Assert.assertNotNull(system);
 		//
 		ImportFromCSVToSystemExecutor lrt = new ImportFromCSVToSystemExecutor();
+		// create attachment
+		IdmAttachmentDto attachment = createAttachment(FILE_PATH, "importTestFile.csv");
 		// create setting of lrt
 		Map<String, Object> configOfLRT = new HashMap<>();
-		configOfLRT.put(ImportFromCSVToSystemExecutor.PARAM_ATTRIBUTE_SEPARATOR, ";");
-		configOfLRT.put(ImportFromCSVToSystemExecutor.PARAM_CSV_FILE_PATH, FILE_PATH);
 		configOfLRT.put(ImportFromCSVToSystemExecutor.PARAM_MULTIVALUED_SEPARATOR, ",");
 		configOfLRT.put(ImportFromCSVToSystemExecutor.PARAM_NAME_ATTRIBUTE, "NAME");
 		configOfLRT.put(ImportFromCSVToSystemExecutor.PARAM_UID_ATTRIBUTE, "NAME");
 		configOfLRT.put(ImportFromCSVToSystemExecutor.PARAM_SYSTEM_NAME, system.getName());
+		configOfLRT.put(AbstractCsvImportTask.PARAM_PATH_TO_CSV, attachment.getId());
 		lrt.init(configOfLRT);
-		Boolean obj = longRunningTaskManager.executeSync(lrt);
-		Assert.assertNotNull(obj);
-		Assert.assertTrue(obj);
+
+		longRunningTaskManager.executeSync(lrt);
 		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(lrt);
 		Long count = task.getCount();
 		Long total = 3L;
@@ -85,7 +85,7 @@ public class ImportFromCSVToSystemExecutorTest extends AbstractIntegrationTest {
 		Assert.assertNotNull(system);
 
 		// generate schema for system
-		List<SysSchemaObjectClassDto> objectClasses = systemService.generateSchema(system);
+		systemService.generateSchema(system);
 		return system;
 
 	}

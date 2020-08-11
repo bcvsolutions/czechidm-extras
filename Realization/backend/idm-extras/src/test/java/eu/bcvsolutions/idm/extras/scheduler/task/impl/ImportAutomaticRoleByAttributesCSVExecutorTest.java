@@ -24,7 +24,7 @@ import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 /**
  * @author Roman Kucera
  */
-public class ImportAutomaticRoleByAttributesCSVExecutorTest extends AbstractRoleExecutorTest {
+public class ImportAutomaticRoleByAttributesCSVExecutorTest extends AbstractCsvImportTaskTest {
 	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importAutoRole.csv";
 
 	@Autowired
@@ -35,8 +35,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutorTest extends AbstractRole
 	@Test
 	@Transactional
 	public void importAutoRolesDefinitions() {
-		setPath(path, "importAutoRole.csv");
-		IdmAttachmentDto attachment = createAttachment();
+		IdmAttachmentDto attachment = createAttachment(path, "importAutoRole.csv");
 
 		helper.createRole("role");
 		helper.createEavAttribute("eav1", IdmIdentity.class, PersistentType.SHORTTEXT);

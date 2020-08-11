@@ -3,10 +3,6 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,8 +11,6 @@ import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmProfileDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmCodeListItemDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
@@ -28,16 +22,14 @@ import eu.bcvsolutions.idm.core.eav.api.service.IdmCodeListService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
 import eu.bcvsolutions.idm.core.eav.entity.IdmCodeListItem;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
-import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
-import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 /**
  * @author Roman Kucera
  */
 @Transactional
-public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
+public class ImportCodeListFromCSVTest extends AbstractCsvImportTaskTest {
 
 	private static final String PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importCodeListTestFileCreate.csv";
 
@@ -45,8 +37,6 @@ public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
 	private IdmCodeListService codeListService;
 	@Autowired
 	private LongRunningTaskManager longRunningTaskManager;
-	@Autowired
-	private AttachmentManager attachmentManager;
 	@Autowired
 	private IdmCodeListItemService codeListItemService;
 	@Autowired
@@ -142,25 +132,5 @@ public class ImportCodeListFromCSVTest extends AbstractIntegrationTest {
 		assertEquals(code, codeListDtoUpdated.getCode());
 		assertEquals(nameUpdate, codeListDtoUpdated.getName());
 		assertEquals(descriptionUpdate, codeListDtoUpdated.getDescription());
-	}
-
-	private IdmAttachmentDto createAttachment(String path, String name) {
-		File file = new File(path);
-		DataInputStream stream = null;
-		try {
-			stream = new DataInputStream(new FileInputStream(file));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		assertNotNull(stream);
-		eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto attachment = new IdmAttachmentDto();
-		attachment.setInputData(stream);
-		attachment.setName(name);
-		attachment.setMimetype("text/csv");
-		//
-		IdmIdentityDto identity = getHelper().createIdentity();
-		IdmProfileDto profile = getHelper().createProfile(identity);
-		return attachmentManager.saveAttachment(profile, attachment);
-
 	}
 }

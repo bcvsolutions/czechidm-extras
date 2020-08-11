@@ -25,7 +25,7 @@ import java.util.*;
 
 import static org.junit.Assert.assertNotNull;
 
-public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractRoleExecutorTest {
+public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractCsvImportTaskTest {
 	private static final String PATH = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importAutomaticRolesTest.csv";
 	private static final String FILE_NAME = "importAutomaticRolesTest.csv";
 	
@@ -59,8 +59,8 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractR
 		properties.put(ImportAutomaticRoleForTreeNodeFromCSVExecutor.PARAM_COLUMN_NODE_CODES, "nodecodes");
 		properties.put(ImportAutomaticRoleForTreeNodeFromCSVExecutor.PARAM_COLUMN_NODE_IDS, "nodeids");
 		properties.put(ImportAutomaticRoleForTreeNodeFromCSVExecutor.PARAM_COLUMN_RECURSION_TYPE, "recursiontype");
-		properties.put(ImportAutomaticRoleForTreeNodeFromCSVExecutor.PARAM_COLUMN_SEPARATOR, ";");
-		properties.put(ImportAutomaticRoleForTreeNodeFromCSVExecutor.PARAM_CSV_ATTACHMENT, attachment.getId());
+		properties.put(AbstractCsvImportTask.PARAM_SEPARATOR, ";");
+		properties.put(AbstractCsvImportTask.PARAM_PATH_TO_CSV, attachment.getId());
 		properties.put(ImportAutomaticRoleForTreeNodeFromCSVExecutor.PARAM_ROLES_COLUMN_NAME, "roles");
 		
 		ImportAutomaticRoleForTreeNodeFromCSVExecutor lrt = new ImportAutomaticRoleForTreeNodeFromCSVExecutor();
@@ -92,11 +92,11 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractR
 		
 		// there is a line in the csv faketreenode;faketreenode;testroletwo;UP (the tree node does not exist)
 		// there is a line in the csv testtreenode;testtreenode;fakerole;UP (the role does not exist)
-		// there should be 2 processed items (two were not created)
+		// there should be 4 processed items (2 executed, 2 not executed)
 		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(lrt);
 		
 		long counter = task.getCount();
-		Assert.assertEquals(2L, counter);
+		Assert.assertEquals(4L, counter);
 		
 		// check that the executed and not executed items are logged correctly
 		IdmProcessedTaskItemFilter ptif = new IdmProcessedTaskItemFilter();

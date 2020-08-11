@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -28,6 +30,7 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
+import eu.bcvsolutions.idm.extras.utils.Pair;
 
 /**
  * Abstract LRT task for CSV importing. Out of box you will have parameters for CSV file, encoding and separator
@@ -36,10 +39,13 @@ import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExe
  *
  * @author Roman Kucera
  */
+@Component(AbstractCsvImportTask.TASK_NAME)
 public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecutor<OperationResult> {
 
 	public static final Logger LOG = LoggerFactory.getLogger(AbstractCsvImportTask.class);
 
+	public static final String TASK_NAME = "extras-abstract-csv-import";
+	
 	public static final String PARAM_PATH_TO_CSV = "importFile";
 	public static final String PARAM_SEPARATOR = "separator";
 	public static final String PARAM_ENCODING = "encoding";
@@ -55,6 +61,10 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 	@Autowired
 	private AttachmentManager attachmentManager;
 
+	/**
+	 * Parse the CSV file and create data.
+	 * 
+	 */
 	@Override
 	public OperationResult process() {
 		LOG.info("Processing started");
@@ -134,6 +144,40 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 			}
 		}
 	}
+	
+	/**
+	 * Process pair of name and value for dynamic attribute
+	 *
+	 * @param namePrefix  column prefix for attribute name
+	 * @param name        actual name from the column
+	 * @param valuePrefix column prefix for attribute value
+	 * @param value       actual value from column
+	 * 
+	 * @return            List of parsed pairs of name and value
+	 */
+	protected List<Pair<String, String>> processDynamicAttribute(CSVRecord record, String namePrefix, String valuePrefix) {
+		List<Pair<String, String>> result = new ArrayList<>();
+		
+		if (!StringUtils.isBlank(namePrefix) && !StringUtils.isBlank(valuePrefix)) {
+			LOG.info("Prefixes set");
+			int suffix = 1;
+			String columnName = namePrefix + suffix;
+			String columnValue = valuePrefix + suffix;
+			while (record.isMapped(columnName) && record.isMapped(columnValue)) {
+				LOG.info("Columns mapped: [{}] and [{}]", columnName, columnValue);
+				String name = record.get(columnName);
+				String value = record.get(columnValue);
+
+				result.add(new Pair<>(name, value));
+
+				++suffix;
+				columnName = namePrefix + suffix;
+				columnValue = valuePrefix + suffix;
+			}
+		}
+		
+		return result;
+	}
 
 	/**
 	 * Process pair of name and value for dynamic attribute
@@ -144,8 +188,8 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 	 * @param value       actual value from column
 	 * @param isEav       if attribute is EAV
 	 */
-	protected abstract void processOneDynamicAttribute(String namePrefix, String name, String valuePrefix,
-													   String value, boolean isEav);
+	protected abstract void processOneDynamicAttribute(String namePrefix, String name, String valuePrefix, String value, 
+			boolean isEav);
 
 	@Override
 	public void init(Map<String, Object> properties) {
