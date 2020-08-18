@@ -127,7 +127,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		props.put(SEND_TO_MANAGER_BEFORE_PARAM, sendToManagerBefore);
 		props.put(PREFIX_ADMIN_IDENTITIES, prefixAdmin);
 		props.put(SEND_INVALID_CONTRACTS, sendInvalid);
-		props.put(TECHNICAL_ROLE_CODE, sendInvalid);
+		props.put(TECHNICAL_ROLE_CODE, technicalRoleCode);
 		return props;
 	}
 	
@@ -445,7 +445,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		identityContractFilter.setSubordinatesFor(account.getId());
 		List<IdmIdentityContractDto> subordinates = identityContractService.find(identityContractFilter, null).getContent();
 		return subordinates.stream().filter(subordinate -> isManagerForTechnicalIdentity(subordinate.getIdentity()))
-				.map(subordinate -> identityService.get(subordinate.getIdentity()))
+				//.map(subordinate -> identityService.get(subordinate.getIdentity()))
+				.map(subordinate -> DtoUtils.getEmbedded(subordinate, IdmIdentityContract_.identity, IdmIdentityDto.class))
 				.collect(Collectors.toList());
 	}
 
