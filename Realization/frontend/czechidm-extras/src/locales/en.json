@@ -48,5 +48,29 @@
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."
     }
+  },
+  "eav": {
+    "authorization-evaluator": {
+      "identity-by-tree-node-evaluator": {
+        "help": "Permissions for identtiy that have one or more relationships on a selected organizational structure.",
+        "attributes": {
+          "tree-node": {
+            "label": "Organizational structure element",
+            "help": "Select the element to which the selected rights will apply. The rights will also apply to all elements with a downward spread.",
+            "placeholder": "Organizational structure element ..."
+          }
+        }
+      },
+      "role-by-role-catalogue-evaluator": {
+        "help": "Permissions for roles that are in the selected catalog.",
+        "attributes": {
+          "role-catalogue": {
+            "label": "Catalog",
+              "help": "Select the catalog that contains the roles to which will be apply given permissions. The rights will also apply to all roles with a downward spread.",
+            "placeholder": "Catalog ..."
+          }
+        }
+      }
+    }
   }
 }
