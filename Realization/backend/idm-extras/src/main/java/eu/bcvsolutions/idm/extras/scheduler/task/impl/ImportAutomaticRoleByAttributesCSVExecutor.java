@@ -177,7 +177,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractCsvImpor
 			handleEav(nameBuilder, isEav, name, automaticRoleAttributeRule, type);
 
 			nameBuilder.append(name);
-			nameBuilder.append("-");
+			nameBuilder.append('-');
 			nameBuilder.append(value);
 
 			rules.add(automaticRoleAttributeRule);
@@ -206,7 +206,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractCsvImpor
 				LOG.error("EAV attribute: [{}] not found can't create rule by EAV", attrName);
 			}
 		} else {
-			nameBuilder.append("|");
+			nameBuilder.append('|');
 		}
 	}
 

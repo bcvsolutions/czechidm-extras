@@ -87,21 +87,16 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 					.withDelimiter(separator.charAt(0));
 
 			// Load CSV via parser
-			try (CSVParser csvParser = csvFormat.parse(attachmentReader)) {
-				List<CSVRecord> records = csvParser.getRecords();
-				this.count = (long) records.size();
-				this.counter = 0L;
+			CSVParser csvParser = csvFormat.parse(attachmentReader); 
+			List<CSVRecord> records = csvParser.getRecords();
+			this.count = (long) records.size();
+			this.counter = 0L;
 
-				processRecords(records);
-
-			} catch (IOException e) {
-				LOG.error("Can't parse csv", e);
-				return new OperationResult.Builder(OperationState.EXCEPTION).setCause(e).build();
-			}
+			processRecords(records);
 		} catch (IOException e) {
-			LOG.error("Error occurred during input stream preparation", e);
+			LOG.error("Can't parse csv", e);
 			return new OperationResult.Builder(OperationState.EXCEPTION).setCause(e).build();
-		}
+		} 
 
 		return new OperationResult.Builder(OperationState.EXECUTED).build();
 	}

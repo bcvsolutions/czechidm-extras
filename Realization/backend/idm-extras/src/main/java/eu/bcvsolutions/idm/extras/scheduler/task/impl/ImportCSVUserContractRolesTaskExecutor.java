@@ -128,67 +128,76 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 	private Map<UUID, List<UUID>> handleRecords(List<CSVRecord> records) {
 		Map<UUID, List<UUID>> contractRoles = new TreeMap<>();
 		
-		records.forEach(record -> {
+		for(CSVRecord record : records) {
 			String username = record.get(usernameColumnName);
 			String roleCode = record.get(rolesColumnName);
 			
 			if (!StringUtils.isEmpty(roleCode) && !StringUtils.isEmpty(username)) {
 				IdmIdentityDto identity = identityService.getByUsername(username);
-				UUID identityId;
-				if (identity != null) {
-					identityId = identity.getId();
-					
-					List<IdmIdentityContractDto> contractsToAssign = new ArrayList<>();
-					List<IdmIdentityContractDto> contracts = identityContractService.findAllByIdentity(identityId);
-					if (!contracts.isEmpty()){
-						if (assignedContractType.equals(OPTION_ITEM_EAV_CONTRACT)) {
-							contractsToAssign = getContractsByEav(contracts, record);
 				
-						} else if (assignedContractType.equals(OPTION_ITEM_ALL_CONTRACTS)){
-							contractsToAssign = contracts;
-						} else if (assignedContractType.equals(OPTION_ITEM_PRIME_CONTRACT)){
-							IdmIdentityContractDto primeContract = identityContractService.getPrimeContract(identityId);
-							if (primeContract != null){
-								contractsToAssign.add(primeContract);
-							}
-						} else {
-							//No choice - skip assignment
-						}
-
-						//add roles to contracts
-						for (IdmIdentityContractDto contract : contractsToAssign) {
-							if (contract != null) {
-								if (!contract.isValidNowOrInFuture()){
-									continue;
-								}
-								UUID contractId = contract.getId();
-								if (!contractRoles.containsKey(contractId)) {
-									contractRoles.put(contractId, new ArrayList<>());
-								}
-								System.out.println("roleName line:" + roleCode + ".");
-								String[] roles = {roleCode};
-								if (isMultiValue){
-									 roles = roleCode.split(multiValueSeparator);
-								}
-								for (String roleStr : roles){
-									IdmRoleDto role = roleService.getByCode(roleStr);
-									if (role != null) {
-										contractRoles.get(contractId).add(role.getId());
-									} else {
-										nonExistingRolesCounter++;
-										this.logItemProcessed(contract, taskNotCompleted("Role does not exist: " + roleCode));
-									}
-								}
-								if (contractRoles.get(contractId).isEmpty()) {
-									contractRoles.remove(contractId);
-								}
-							}
-						}
-					}
-					
+				if (identity != null) {
+					List<IdmIdentityContractDto> contractsToAssign = getContracts(identity, record);
+					//add roles to contracts
+					contractRoles = getRolesToAssign(contractRoles, contractsToAssign, roleCode);
 				} 
 			}
-		});
+		}
+		
+		return contractRoles;
+	}
+	
+	private List<IdmIdentityContractDto> getContracts(IdmIdentityDto identity, CSVRecord record) {
+		UUID identityId = identity.getId();
+		
+		List<IdmIdentityContractDto> contractsToAssign = new ArrayList<>();
+		List<IdmIdentityContractDto> contracts = identityContractService.findAllByIdentity(identityId);
+		
+		if (!contracts.isEmpty()){
+			if (assignedContractType.equals(OPTION_ITEM_EAV_CONTRACT)) {
+				contractsToAssign = getContractsByEav(contracts, record);
+			} else if (assignedContractType.equals(OPTION_ITEM_ALL_CONTRACTS)){
+				contractsToAssign = contracts;
+			} else if (assignedContractType.equals(OPTION_ITEM_PRIME_CONTRACT)){
+				IdmIdentityContractDto primeContract = identityContractService.getPrimeContract(identityId);
+				if (primeContract != null){
+					contractsToAssign.add(primeContract);
+				}
+			} else {
+				//No choice - skip assignment
+			}
+		}
+		
+		return contractsToAssign;
+	}
+	
+	private Map<UUID, List<UUID>> getRolesToAssign(Map<UUID, List<UUID>> contractRoles, List<IdmIdentityContractDto> contractsToAssign, String roleCode) {
+		for (IdmIdentityContractDto contract : contractsToAssign) {
+			if (contract != null) {
+				if (!contract.isValidNowOrInFuture()){
+					continue;
+				}
+				UUID contractId = contract.getId();
+				if (!contractRoles.containsKey(contractId)) {
+					contractRoles.put(contractId, new ArrayList<>());
+				}
+				String[] roles = {roleCode};
+				if (isMultiValue){
+					 roles = roleCode.split(multiValueSeparator);
+				}
+				for (String roleStr : roles){
+					IdmRoleDto role = roleService.getByCode(roleStr);
+					if (role != null) {
+						contractRoles.get(contractId).add(role.getId());
+					} else {
+						nonExistingRolesCounter++;
+						this.logItemProcessed(contract, taskNotCompleted("Role does not exist: " + roleCode));
+					}
+				}
+				if (contractRoles.get(contractId).isEmpty()) {
+					contractRoles.remove(contractId);
+				}
+			}
+		}
 		
 		return contractRoles;
 	}
@@ -198,18 +207,18 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 		List<Pair<String, String>> eavCodesAndValues = getEavs(record);
 		for (IdmIdentityContractDto contract : contracts) {
 			// get contract eavs from contract
-			List<Object> existingEavs = new ArrayList<>();
+			int existingEavsSize = 0;
 			for (Pair<String, String> eavCodeAndValue : eavCodesAndValues) {
 				Object eavValue = getEavValueForContract(contract.getId(), eavCodeAndValue.getFirst());
 				if (eavValue != null) {
 					String contractEavValue = eavValue.toString();
 					if (contractEavValue != null && contractEavValue.equals(eavCodeAndValue.getSecond())) {
-						existingEavs.add(eavValue);
+						existingEavsSize++;
 					}
 				}
 			}
 			
-			if (!eavCodesAndValues.isEmpty() && eavCodesAndValues.size() == existingEavs.size()) {
+			if (!eavCodesAndValues.isEmpty() && eavCodesAndValues.size() == existingEavsSize) {
 				foundContracts.add(contract);
 			}
 		}
@@ -239,7 +248,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 			IdmIdentityRoleFilter filter = new IdmIdentityRoleFilter();
 			filter.setIdentityContractId(contractId);
 			List<IdmIdentityRoleDto> result = identityRoleService.find(filter, null).getContent();
-			if (result.size() > 0) {
+			if (!result.isEmpty()) {
 				for (IdmIdentityRoleDto identityRole : result) {
 					if (identityRole.getRole().equals(roleId)) {
 						roleAssigned = true;
@@ -296,7 +305,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 		if (!StringUtils.isEmpty(contractDefinitionCode)){
 			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode(IdmIdentityContract.class.getName(),contractDefinitionCode);
 			if (definition == null){
-				throw new ResultCodeException(ExtrasResultCode.CONTRACT_EAV_NOT_FOUND, ImmutableMap.of("definition", definition));
+				throw new ResultCodeException(ExtrasResultCode.CONTRACT_EAV_NOT_FOUND, ImmutableMap.of());
 			}
 			return getOneValue(formService.getValues(contractId, IdmIdentityContractDto.class, definition, attributeCode).stream().findFirst());
 		}
@@ -398,7 +407,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 
 		IdmFormAttributeDto contractDefinitionCodeAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_DEFINITION_CODE, PARAM_CONTRACT_DEFINITION_CODE,
 				PersistentType.SHORTTEXT);
-		contractDefinitionCodeAttribute.setDefaultValue("default");
+		contractDefinitionCodeAttribute.setDefaultValue(CONTRACT_DEFINITION);
 		contractDefinitionCodeAttribute.setRequired(false);
 
 		attributes.add(contractDefinitionCodeAttribute);

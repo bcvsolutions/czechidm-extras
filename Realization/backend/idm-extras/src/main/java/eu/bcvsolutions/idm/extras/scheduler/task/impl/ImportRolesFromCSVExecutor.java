@@ -544,9 +544,9 @@ public class ImportRolesFromCSVExecutor extends AbstractCsvImportTask {
 				transformationScript = MessageFormat.format("\"{0}\"", roleName);
 			}
 			roleSystemAttributeService.addRoleMappingAttribute(system.getId(), role.getId(), attributeCode, transformationScript, OBJECT_CLASSNAME);
-			return true;
+			return Boolean.TRUE;
 		}
-		return false;
+		return Boolean.FALSE;
 	}
 	
 	/**
@@ -969,12 +969,12 @@ public class ImportRolesFromCSVExecutor extends AbstractCsvImportTask {
 				String name = getRecordValue(record, columnSystemName);
 				sb.append(name);
 				if (!StringUtils.isEmpty(columnAttribute) && record.isMapped(columnAttribute)) {
-					sb.append(":");
+					sb.append(':');
 					sb.append(record.get(columnAttribute));
 					columnAttribute = systemAttributePrefix + suffix; 
 				}
 				if (!StringUtils.isEmpty(columnValue) && record.isMapped(columnValue)) {
-					sb.append(":");
+					sb.append(':');
 					sb.append(record.get(columnValue));
 					columnValue = systemAttributeValuePrefix + suffix;
 				}

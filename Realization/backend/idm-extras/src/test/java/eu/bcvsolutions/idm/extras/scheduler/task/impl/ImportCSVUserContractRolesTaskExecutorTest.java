@@ -37,9 +37,9 @@ import eu.bcvsolutions.idm.test.api.TestHelper;
  */
 public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImportTaskTest {
 
-	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importContractEavRolesTestFile.csv";
-	private static final String path1 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importContractEavRolesTestFilePrimeContract.csv";
-	private static final String path2 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importContractEavRolesTestFileAllContractsMultiValue.csv";
+	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesEav.csv";
+	private static final String path1 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesPrime.csv";
+	private static final String path2 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesAll.csv";
 	
 	@Autowired
 	private FormService formService;
@@ -56,7 +56,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 	public void assignRolesToEavContractTest() {
 		loginAsAdmin();
 		
-		IdmAttachmentDto attachement = createAttachment(path, "importContractEavRolesTestFile.csv");
+		IdmAttachmentDto attachement = createAttachment(path, "importRolesEav.csv");
 
 		testHelper.createRole("testRole1");
 		testHelper.createRole("testRole2");
@@ -113,7 +113,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 	public void assignRolesToPrimeContractTest() {
 		loginAsAdmin();
 		
-		IdmAttachmentDto attachement = createAttachment(path1, "importContractEavRolesTestFilePrimeContract.csv");
+		IdmAttachmentDto attachement = createAttachment(path1, "importRolesPrime.csv");
 		
 		// create Roles
 		testHelper.createRole("testMainContractRole1");
@@ -181,7 +181,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 	public void assignRolesToAllContractTest() {
 		loginAsAdmin();
 		
-		IdmAttachmentDto attachement = createAttachment(path2, "importContractEavRolesTestFileAllContractsMultiValue.csv");
+		IdmAttachmentDto attachement = createAttachment(path2, "importRolesAll.csv");
 
 		testHelper.createRole("testMainContractRole5");
 		testHelper.createRole("testMainContractRole6");
@@ -194,7 +194,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 
 		IdmTreeNodeDto position = testHelper.createTreeNode();
 		LocalDate validStartDate =  LocalDate.of(2019, 1, 8);
-		LocalDate futureDate =  LocalDate.of(2030, 12, 12);
+		LocalDate futureDate =  LocalDate.now().plusDays(40L);
 
 		testHelper.createIdentityContact(identity1,position,futureDate,null);
 		testHelper.createIdentityContact(identity1,position,validStartDate,futureDate);
