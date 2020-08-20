@@ -2,6 +2,9 @@ package eu.bcvsolutions.idm.extras.event.processor.tree;
 
 import static org.junit.Assert.assertEquals;
 
+import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -22,6 +25,8 @@ import eu.bcvsolutions.idm.test.api.TestHelper;
 
 public class NewTreeNodeProcessorTest extends AbstractIntegrationTest {
 
+	private final static String PROCESSOR_ENABLED = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID +".processor.new-node-processor.enabled";
+
 	@Autowired
 	private ConfigurationService configurationService;
 	@Autowired
@@ -33,6 +38,17 @@ public class NewTreeNodeProcessorTest extends AbstractIntegrationTest {
 	@Autowired
 	private IdmNotificationTemplateService notificationTemplateService;
 
+	@Before
+	public void init(){
+		loginAsAdmin();
+		configurationService.setValue(PROCESSOR_ENABLED, "true");
+	}
+
+	@After
+	public void clean(){
+		configurationService.setValue(PROCESSOR_ENABLED, "false");
+		logout();
+	}
 
 	@Test
 	public void createTestAndSendNotification() {

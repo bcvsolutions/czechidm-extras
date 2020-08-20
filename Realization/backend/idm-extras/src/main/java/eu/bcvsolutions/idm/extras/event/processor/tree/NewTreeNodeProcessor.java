@@ -33,7 +33,7 @@ public class NewTreeNodeProcessor extends AbstractEntityEventProcessor<IdmTreeNo
 
 	public static final String PROCESSOR_NAME = "new-node-processor";
 	public static final String TREE_NODE_CREATE_ROLE =
-			IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + "treeNodeRecipient";
+			IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".treeNodeRecipient";
 
 	@Autowired
 	private NotificationManager notificationManager;

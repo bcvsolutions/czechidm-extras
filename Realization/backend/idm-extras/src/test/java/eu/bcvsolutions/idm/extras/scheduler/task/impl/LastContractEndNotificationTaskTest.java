@@ -18,17 +18,13 @@ import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
-import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationFilter;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationTemplateFilter;
-import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationConfigurationService;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationLogService;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationTemplateService;
 import eu.bcvsolutions.idm.core.notification.entity.IdmEmailLog;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
-import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 /**
@@ -47,8 +43,6 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	private LongRunningTaskManager lrtManager;
 	@Autowired
 	private IdmNotificationLogService notificationLogService;
-	@Autowired
-	private IdmNotificationConfigurationService notificationConfigurationService;
 	@Autowired
 	private IdmNotificationTemplateService notificationTemplateService;
 	@Autowired
