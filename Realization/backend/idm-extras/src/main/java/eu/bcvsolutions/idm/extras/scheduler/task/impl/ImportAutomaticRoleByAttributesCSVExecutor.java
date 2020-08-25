@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
+import eu.bcvsolutions.idm.core.api.exception.CoreException;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleService;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
@@ -138,7 +140,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 
 			records.forEach(record -> {
 				IdmRoleDto roleDto = roleService.getByCode(record.get(rolesColumnName));
-				if(roleDto == null) {
+				if (roleDto == null) {
 					LOG.info("Role with code [{}] not found", record.get(rolesColumnName));
 					return;
 				}
@@ -151,21 +153,39 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				nameBuilder.append(roleDto.getName());
 
 				List<IdmAutomaticRoleAttributeRuleDto> rules = new LinkedList<>();
-				//iterate through identity attributes and create rules from it
-				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY, false,
-						identityAttributeNamePrefix, identityAttributeValuePrefix);
 
-				//iterate through identity EAV attributes and create rules from it
-				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY_EAV, true,
-						identityEavAttributeNamePrefix, identityEavAttributeValuePrefix);
+				List<CoreException> exceptions = new ArrayList<>();
+				try {
+					//iterate through identity attributes and create rules from it
+					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY, false,
+							identityAttributeNamePrefix, identityAttributeValuePrefix);
+				} catch (CoreException e) {
+					exceptions.add(e);
+				}
 
-				//iterate through contract attributes and create rules from it
-				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT, false,
-						contractAttributeNamePrefix, contractAttributeValuePrefix);
+				try {
+					//iterate through identity EAV attributes and create rules from it
+					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY_EAV, true,
+							identityEavAttributeNamePrefix, identityEavAttributeValuePrefix);
+				} catch (CoreException e) {
+					exceptions.add(e);
+				}
 
-				//iterate through contract EAV attributes and create rules from it
-				prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, true,
-						contractEavAttributeNamePrefix, contractEavAttributeValuePrefix);
+				try {
+					//iterate through contract attributes and create rules from it
+					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT, false,
+							contractAttributeNamePrefix, contractAttributeValuePrefix);
+				} catch (CoreException e) {
+					exceptions.add(e);
+				}
+
+				try {
+					//iterate through contract EAV attributes and create rules from it
+					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, true,
+							contractEavAttributeNamePrefix, contractEavAttributeValuePrefix);
+				} catch (CoreException e) {
+					exceptions.add(e);
+				}
 
 				if (!StringUtils.isBlank(definitionNameColumnName) && !StringUtils.isBlank(record.get(definitionNameColumnName))) {
 					automaticRoleAttributeDto.setName(record.get(definitionNameColumnName));
@@ -190,6 +210,13 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				} else {
 					LOG.info("Definition: [{}] not found, we will create it", automaticRoleAttributeDto.getName());
 					automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
+				}
+
+				if (!exceptions.isEmpty()) {
+					IdmAutomaticRoleAttributeDto finalAutomaticRoleAttributeDto = automaticRoleAttributeDto;
+					exceptions.forEach(e -> {
+						this.logItemProcessed(finalAutomaticRoleAttributeDto, taskNotCompleted(e.getMessage()));
+					});
 				}
 
 				final UUID automaticRoleId = automaticRoleAttributeDto.getId();
@@ -262,6 +289,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				filter.setDefinitionType(IdmIdentityContract.class.getName());
 			} else {
 				LOG.info("Type is other type then identity EAV or identity contract EAV, filtering only by code");
+				throw new CoreException("Type is other type then identity EAV or identity contract EAV, filtering only by code");
 			}
 
 			List<IdmFormAttributeDto> attributes = formAttributeService.find(filter, null).getContent();
@@ -269,6 +297,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				automaticRoleAttributeRule.setFormAttribute(attributes.get(0).getId());
 			} else {
 				LOG.error("EAV attribute: [{}] not found can't create rule by EAV", attrName);
+				throw new CoreException(String.format("EAV attribute: [%s] not found can't create rule by EAV", attrName));
 			}
 		} else {
 			nameBuilder.append("|");
@@ -370,12 +399,12 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 	}
 
 	private OperationResult taskCompleted(String message) {
-		return new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+		return new OperationResult.Builder(OperationState.EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.AUTO_ROLE_ITEM_COMPLETED,
 				ImmutableMap.of("message", message))).build();
 	}
 
 	private OperationResult taskNotCompleted(String message) {
-		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.TEST_ITEM_COMPLETED,
+		return new OperationResult.Builder(OperationState.NOT_EXECUTED).setModel(new DefaultResultModel(ExtrasResultCode.AUTO_ROLE_ITEM_ERROR,
 				ImmutableMap.of("message", message))).build();
 	}
 

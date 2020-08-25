@@ -47,7 +47,9 @@ public enum ExtrasResultCode implements ResultCode {
 	IDENTITY_ROLE_CANNOT_BE_MODIFIED(HttpStatus.BAD_REQUEST, "Role [%s] cannot be modified, you are not guarantee of the role!"),
 	EMPTY_ATTACHMENT_ID(HttpStatus.BAD_REQUEST, "Choose file to import!"),
 	CONTRACT_END_NOTIFICATION_DAYS_BEFORE(HttpStatus.BAD_REQUEST, "'Days before contract end' parameter is required and has to be number greater or equal to zero, given [%s]."),
-	NO_RECIPIENTS_FOUND(HttpStatus.BAD_REQUEST, "No recipients found! Notification will not be sent!");
+	NO_RECIPIENTS_FOUND(HttpStatus.BAD_REQUEST, "No recipients found! Notification will not be sent!"),
+	AUTO_ROLE_ITEM_COMPLETED(HttpStatus.OK, "[%s]"),
+	AUTO_ROLE_ITEM_ERROR(HttpStatus.BAD_REQUEST, "Definition was not created: [%s]");
 	
 	private final HttpStatus status;
 	private final String message;
