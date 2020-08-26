@@ -45,6 +45,7 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 import eu.bcvsolutions.idm.extras.utils.Pair;
@@ -62,7 +63,8 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	
 	static final String PARAM_CSV_ATTACHMENT = "Import csv file";
 	static final String PARAM_CSV_ATTACHMENT_ENCODING = "Import file encoding";
-	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
+	static final String PARAM_ROLES_COLUMN_NAME = "Column with role names";
+	static final String PARAM_ROLES_USE_CODES = "Use role codes instead of role names";
 	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
 	static final String PARAM_MULTI_VALUE_SEPARATOR = "Multi value separator";
 	static final String PARAM_COLUMN_FIRST_ATTRIBUTE = "Column with first attribute";
@@ -84,6 +86,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	private String secondAttributeColumnName;
 	private String secondContractEavAttributeName;
 	private Boolean hasSecondAttribute;
+	private Boolean useRoleCodes;
 	
 	private IdmFormAttributeDto firstFormAttribute;
 	private IdmFormAttributeDto secondFormAttribute;
@@ -116,7 +119,12 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 
 			for (Pair<String, List<String>> rolePair : roleAttributeValues) {
 				String roleName = rolePair.getFirst();
-				IdmRoleDto role = roleService.getByCode(roleNameToCode(roleName));
+				IdmRoleDto role = null;
+				if (!useRoleCodes) {
+					role = roleService.getByCode(roleNameToCode(roleName));
+				} else {
+					role = roleService.getByCode(roleName);
+				}
 				
 				if (role != null) {
 					List<String> attributeValues = rolePair.getSecond();
@@ -148,8 +156,8 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 					// task completed
 					this.logItemProcessed(role, taskCompleted("Automatic role: " + automaticRoleAttribute.getName() + " created"));
 				} else {
+					this.logItemProcessed(new IdmRoleDto(UUID.randomUUID()), taskNotCompleted("Role " + roleName + " not found."));
 					LOG.debug(String.format("Role %s not found.", roleName));
-					--this.count;
 				}
 				
 				++this.counter;
@@ -210,6 +218,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 	private IdmFormAttributeDto findFormAttribute(String attributeCode) {
 		IdmFormAttributeFilter filter = new IdmFormAttributeFilter();
 		filter.setCode(attributeCode);
+		filter.setDefinitionType(IdmIdentityContract.class.getCanonicalName());
 		
 		List<IdmFormAttributeDto> result = formAttributeService.find(filter, null).getContent();
 		if (!result.isEmpty()) {
@@ -355,6 +364,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
 		encoding = getParameterConverter().toString(properties, PARAM_CSV_ATTACHMENT_ENCODING);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
+		useRoleCodes = getParameterConverter().toBoolean(properties, PARAM_ROLES_USE_CODES);
 		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
 		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
 		firstAttributeColumnName = getParameterConverter().toString(properties, PARAM_COLUMN_FIRST_ATTRIBUTE);
@@ -370,6 +380,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		} else {
 			hasSecondAttribute = Boolean.FALSE;
 		}
+		if (useRoleCodes == null) {
+			useRoleCodes = false;
+		}
 	}
 
 	@Override
@@ -379,6 +392,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
 		props.put(PARAM_CSV_ATTACHMENT_ENCODING, encoding);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
+		props.put(PARAM_ROLES_USE_CODES, useRoleCodes);
 		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
 		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
 		props.put(PARAM_COLUMN_FIRST_ATTRIBUTE, firstAttributeColumnName);
@@ -399,6 +413,9 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
+		IdmFormAttributeDto rolesUseCodes = new IdmFormAttributeDto(PARAM_ROLES_USE_CODES, PARAM_ROLES_USE_CODES,
+				PersistentType.BOOLEAN);
+		rolesUseCodes.setRequired(false);
 		IdmFormAttributeDto columnSeparatorAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SEPARATOR, PARAM_COLUMN_SEPARATOR,
 				PersistentType.CHAR);
 		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
@@ -420,7 +437,7 @@ public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedu
 				PersistentType.SHORTTEXT);
 		columnSecondContractEavAttribute.setRequired(false);
 		//
-		return Lists.newArrayList(csvAttachment, encodingAttr, rolesColumnNameAttribute, columnSeparatorAttribute, multiValueSeparatorAttribute, columnFirstAttrAttribute, columnFirstContractEavAttribute, columnSecondAttrAttribute, columnSecondContractEavAttribute);
+		return Lists.newArrayList(csvAttachment, encodingAttr, rolesColumnNameAttribute, rolesUseCodes, columnSeparatorAttribute, multiValueSeparatorAttribute, columnFirstAttrAttribute, columnFirstContractEavAttribute, columnSecondAttrAttribute, columnSecondContractEavAttribute);
 	}
 
 	private OperationResult taskCompleted(String message) {

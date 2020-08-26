@@ -14,15 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
-import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationFilter;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationTemplateFilter;
-import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationConfigurationService;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationLogService;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationTemplateService;
 import eu.bcvsolutions.idm.core.notification.entity.IdmEmailLog;
@@ -31,20 +29,20 @@ import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 /**
  * @author Tomáš Doischer
+ * @author Marek Klement
  */
 
 public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest {
 	
 	private static IdmNotificationTemplateDto templateFuture;
 	private static IdmNotificationTemplateDto templateNow;
+	private static IdmNotificationTemplateDto templateTec;
 	public static boolean initRan = false;
 	
 	@Autowired
 	private LongRunningTaskManager lrtManager;
 	@Autowired
 	private IdmNotificationLogService notificationLogService;
-	@Autowired
-	private IdmNotificationConfigurationService notificationConfigurationService;
 	@Autowired
 	private IdmNotificationTemplateService notificationTemplateService;
 	@Autowired
@@ -117,25 +115,13 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 			tf.setText("ContractEndInFuture");
 			templateFuture = notificationTemplateService.find(tf, null).getContent().get(0);
 
-			NotificationConfigurationDto notificationConfigurationFuture = new NotificationConfigurationDto();
-			notificationConfigurationFuture.setTopic("extras:contractEndInXDays");
-			notificationConfigurationFuture.setNotificationType("email");
-			notificationConfigurationFuture.setLevel(NotificationLevel.SUCCESS);
-			notificationConfigurationFuture.setTemplate(templateFuture.getId());
-
-			notificationConfigurationService.save(notificationConfigurationFuture);
-
 			IdmNotificationTemplateFilter tfTwo = new IdmNotificationTemplateFilter();
 			tfTwo.setText("ContractEndNow");
 			templateNow = notificationTemplateService.find(tfTwo, null).getContent().get(0);
 
-			NotificationConfigurationDto notificationConfigurationNow = new NotificationConfigurationDto();
-			notificationConfigurationNow.setTopic("extras:contractEnd");
-			notificationConfigurationNow.setNotificationType("email");
-			notificationConfigurationNow.setLevel(NotificationLevel.SUCCESS);
-			notificationConfigurationNow.setTemplate(templateNow.getId());
-
-			notificationConfigurationService.save(notificationConfigurationNow);
+			IdmNotificationTemplateFilter tfThree = new IdmNotificationTemplateFilter();
+			tfThree.setText("ContractEndTechnical");
+			templateTec = notificationTemplateService.find(tfThree, null).getContent().get(0);
 			
 			initRan = true;
 		}
@@ -144,7 +130,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	@Test
 	public void getFormAttributesTest() {
 		List<IdmFormAttributeDto> attributes = notification.getFormAttributes();
-		Assert.assertEquals(3, attributes.size());
+		Assert.assertEquals(6, attributes.size());
 	}
 	
 	@After
@@ -205,6 +191,92 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		
 		getHelper().deleteIdentity(subject.getId());
 	}
+
+	@Test
+	public void testTechnicalInFuture() {
+		IdmRoleDto tecRole = getHelper().createRole("technicalRoleName001");
+		IdmIdentityDto subject = getHelper().createIdentity("tec_username_to_test");
+		IdmIdentityContractDto subjectContract = getHelper().getPrimeContract(subject);
+		IdmIdentityRoleDto identityRole = getHelper().createIdentityRole(subject, tecRole);
+
+		IdmIdentityDto manager = getHelper().createIdentity("ts-managerTec");
+		getHelper().createContractGuarantee(subjectContract, manager);
+		IdmIdentityContractDto managerContract = getHelper().getPrimeContract(manager);
+		managerContract.setValidTill(new LocalDate().plusDays(6));
+		managerContract = identityContractService.saveInternal(managerContract);
+
+		// recipient guarantee of manager
+		IdmIdentityDto managerForManager = getHelper().createIdentity("ts-managerForManagerTec");
+		getHelper().createContractGuarantee(managerContract, managerForManager);
+
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "6");
+		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
+		properties.put(LastContractEndNotificationTask.SEND_INVALID_CONTRACTS, false);
+		properties.put(LastContractEndNotificationTask.TECHNICAL_ROLE_CODE, tecRole.getId());
+
+		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
+		notificationThree.init(properties);
+
+		lrtManager.executeSync(notificationThree);
+
+		IdmNotificationFilter filterTwo = new IdmNotificationFilter();
+		filterTwo.setRecipient("ts-managerForManagerTec");
+		filterTwo.setNotificationType(IdmEmailLog.class);
+
+		// we should find 1 email notification on manager
+		long count2 = notificationLogService.count(filterTwo);
+		IdmNotificationTemplateDto usedTemplateTwo = notificationLogService.find(filterTwo, null).getContent().
+				get(0).getMessage().getTemplate();
+
+		Assert.assertEquals(1, count2);
+		Assert.assertEquals(templateTec, usedTemplateTwo);
+
+		getHelper().deleteIdentity(subject.getId());
+		getHelper().deleteIdentity(manager.getId());
+		getHelper().deleteIdentity(managerForManager.getId());
+	}
+
+	@Test
+	public void testAdminInFuture() {
+		IdmIdentityDto admin = getHelper().createIdentity("adm_usernameTest");
+
+		IdmIdentityDto identity = getHelper().createIdentity("usernameTest");
+		IdmIdentityContractDto identityContract = getHelper().getPrimeContract(identity);
+		identityContract.setValidTill(new LocalDate().plusDays(8));
+		identityContract = identityContractService.saveInternal(identityContract);
+
+		// recipient guarantee of manager
+		IdmIdentityDto managerForAdmin = getHelper().createIdentity("adm-guarantee");
+		getHelper().createContractGuarantee(identityContract, managerForAdmin);
+
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "8");
+		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
+		properties.put(LastContractEndNotificationTask.PREFIX_ADMIN_IDENTITIES, "adm_");
+		properties.put(LastContractEndNotificationTask.SEND_INVALID_CONTRACTS, false);
+
+		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
+		notificationThree.init(properties);
+
+		lrtManager.executeSync(notificationThree);
+
+		IdmNotificationFilter filterTwo = new IdmNotificationFilter();
+		filterTwo.setRecipient("adm-guarantee");
+		filterTwo.setNotificationType(IdmEmailLog.class);
+
+		// we should find 1 email notification on manager
+		long count2 = notificationLogService.count(filterTwo);
+		IdmNotificationTemplateDto usedTemplateTwo = notificationLogService.find(filterTwo, null).getContent().
+				get(0).getMessage().getTemplate();
+
+		Assert.assertEquals(1, count2);
+		Assert.assertEquals(templateTec, usedTemplateTwo);
+
+		getHelper().deleteIdentity(admin.getId());
+		getHelper().deleteIdentity(identity.getId());
+		getHelper().deleteIdentity(managerForAdmin.getId());
+	}
 	
 	@Test
 	public void testLrtEndsToday() {
@@ -230,17 +302,17 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 		LastContractEndNotificationTask notificationTwo = new LastContractEndNotificationTask();
 		
-		notificationTwo.init(propertiesTwo); 
-		
+		notificationTwo.init(propertiesTwo);
+
 		lrtManager.executeSync(notificationTwo);
-		
+
 		IdmNotificationFilter filterThree = new IdmNotificationFilter();
 		filterThree.setRecipient("alternateRecipient");
 		filterThree.setNotificationType(IdmEmailLog.class);
 
 		// we should find 1 email notification on testRecipient
 		long countThree = notificationLogService.count(filterThree);
-		
+
 		IdmNotificationTemplateDto usedTemplateThree = notificationLogService.find(filterThree, null).getContent().
 				get(0).getMessage().getTemplate();
 		

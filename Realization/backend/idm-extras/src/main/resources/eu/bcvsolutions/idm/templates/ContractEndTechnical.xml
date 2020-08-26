@@ -1,0 +1,45 @@
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes"?>
+<!--
+	Notification to role holders and optionally manager that the contract is ending today.
+parameters:
+	userIdentity - full IdmIdentityDto
+    user - full name and login
+    department -
+    ppvEnd -
+    manager
+ -->
+
+<template>
+    <name>Contract end technical</name>
+    <code>contractEndTechnical</code>
+    <subject>IdM - Uživateli $!user bude dnes ukončen PPV</subject>
+    <bodyHtml>
+        <![CDATA[
+            <html>
+                <body>
+                    Dobrý den,<br />
+                    <br />
+                    zaměstnanec $!user odchází ke dni $ppvEnd (konec pracovního poměru) z oddělení $!department.<br />
+                    <br />
+                    <b>Účty v jeho vlastnictví:</b><br />
+
+                    #if( !$technicalOrAdminAccounts.isEmpty() )
+                    #foreach( $account in $technicalOrAdminAccounts)
+                        <li>$!account.getUsername() </li><br />
+					#end
+					#end
+					<br />
+                    Přejeme Vám pěkný den.<br />
+                    <br />
+                <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
+			        CzechIdM © 2019&nbsp;BCV Solutions s.r.o.&nbsp;
+		        </div>
+                </body>
+            </html>
+        ]]>
+    </bodyHtml>
+    <bodyText></bodyText>
+    <parameter>user, userIdentity, department, ppvEnd, manager, technicalOrAdminAccounts</parameter>
+    <systemTemplate>false</systemTemplate>
+    <moduleId>extras</moduleId>
+</template>

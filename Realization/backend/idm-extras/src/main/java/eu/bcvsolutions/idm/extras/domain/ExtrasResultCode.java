@@ -49,8 +49,10 @@ public enum ExtrasResultCode implements ResultCode {
 	CONTRACT_END_NOTIFICATION_DAYS_BEFORE(HttpStatus.BAD_REQUEST, "'Days before contract end' parameter is required and has to be number greater or equal to zero, given [%s]."),
 	NO_RECIPIENTS_FOUND(HttpStatus.BAD_REQUEST, "No recipients found! Notification will not be sent!"),
 	AUTO_ROLE_ITEM_COMPLETED(HttpStatus.OK, "[%s]"),
-	AUTO_ROLE_ITEM_ERROR(HttpStatus.BAD_REQUEST, "Definition was not created: [%s]");
-	
+	AUTO_ROLE_ITEM_ERROR(HttpStatus.BAD_REQUEST, "Definition was not created: [%s]"),
+	IMPORT_CODE_LIST_EXECUTED(HttpStatus.OK, "[%s]"),
+	IMPORT_CODE_LIST_ERROR(HttpStatus.BAD_REQUEST, "[%s]");
+
 	private final HttpStatus status;
 	private final String message;
 

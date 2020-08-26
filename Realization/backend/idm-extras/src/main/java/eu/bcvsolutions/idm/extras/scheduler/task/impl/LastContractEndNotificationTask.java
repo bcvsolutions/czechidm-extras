@@ -1,18 +1,23 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.LocalDate;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -52,8 +57,11 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
  * This task sends a notification to those with a specified role and optionally the manager of the contract. The
  * notifications says that the user is leaving in a specified number of days, i. e., the user's last contract
  * ends.
+ *
+ * Also it can filter technical identities.
  * 
  * @author Tomáš Doischer
+ * @author Marek Klement
  */
 @Service
 @DisallowConcurrentExecution
@@ -65,12 +73,19 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected static final String PARAMETER_DAYS_BEFORE = "How many days before the end of the contract should the notification be sent";
 	protected static final String RECIPIENT_ROLE_BEFORE_PARAM = "Recipient role of notification";
 	protected static final String SEND_TO_MANAGER_BEFORE_PARAM = "Should the manager of the contract receive the notification?";
-	
+	protected static final String PREFIX_ADMIN_IDENTITIES = "Identity is owner of technical account with this prefix";
+	protected static final String SEND_INVALID_CONTRACTS = "Send invalid contracts - for example if task does not run" +
+			" for couple days and it is necessary to notify, that someone already left";
+	protected static final String TECHNICAL_ROLE_CODE = "Code of the role used for technical identities";
+
 	private Long daysBeforeEnd;
 	private LocalDate currentDate = new LocalDate();
 	private LocalDate validMinusXDays = new LocalDate();
 	private UUID recipientRoleBefore = null;
 	private Boolean sendToManagerBefore;
+	private String prefixAdmin;
+	private Boolean sendInvalid;
+	private UUID technicalRoleCode;
 	
 	@Autowired
 	private IdmIdentityService identityService;
@@ -99,6 +114,9 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 			throw new ResultCodeException(ExtrasResultCode.CONTRACT_END_NOTIFICATION_DAYS_BEFORE,
 					ImmutableMap.of("daysBeforeEnd", daysBeforeEnd == null ? "null" : daysBeforeEnd));
 		}
+		prefixAdmin = getParameterConverter().toString(properties, PREFIX_ADMIN_IDENTITIES);
+		sendInvalid = getParameterConverter().toBoolean(properties, SEND_INVALID_CONTRACTS);
+		technicalRoleCode = getParameterConverter().toUuid(properties, TECHNICAL_ROLE_CODE);
 	}
 	
 	@Override
@@ -107,40 +125,96 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		props.put(PARAMETER_DAYS_BEFORE, daysBeforeEnd);
 		props.put(RECIPIENT_ROLE_BEFORE_PARAM, recipientRoleBefore);
 		props.put(SEND_TO_MANAGER_BEFORE_PARAM, sendToManagerBefore);
+		props.put(PREFIX_ADMIN_IDENTITIES, prefixAdmin);
+		props.put(SEND_INVALID_CONTRACTS, sendInvalid);
+		props.put(TECHNICAL_ROLE_CODE, technicalRoleCode);
 		return props;
 	}
 	
 	@Override
 	public Page<IdmIdentityContractDto> getItemsToProcess(Pageable pageable) {
-		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
-		if (daysBeforeEnd == 0) {
-			identityContractFilter.setValidTill(currentDate);
-		} else {
-			identityContractFilter.setValid(Boolean.TRUE);
+		Stream<IdmIdentityContractDto> contractsFilteredByDate = filterByDate();
+		if(!StringUtils.isBlank(prefixAdmin)){
+			contractsFilteredByDate = contractsFilteredByDate.filter(f -> hasTechnicalIdentity(f.getIdentity()));
+		} else if(technicalRoleCode != null) {
+			contractsFilteredByDate = contractsFilteredByDate.filter(this::filterOwnersOfTechnicalIdentities);
 		}
-		return identityContractService.find(identityContractFilter, pageable);
+		List<IdmIdentityContractDto> contracts = contractsFilteredByDate.collect(Collectors.toList());
+		return new PageImpl<>(contracts, pageable, contracts.size());
 	}
-	
+
+	/**
+	 * This method filter contracts which are in the time of ending set by user in task and also finds out if this is
+	 * last contract
+	 * @return
+	 */
+	private Stream<IdmIdentityContractDto> filterByDate() {
+		IdmIdentityContractFilter filter = new IdmIdentityContractFilter();
+		if(sendInvalid != null && !sendInvalid){
+			filter.setValid(true);
+		}
+		List<IdmIdentityContractDto> relevantContracts =
+				identityContractService.find(filter, null).getContent();
+		return relevantContracts.stream()
+				.filter(this::isGoingToEnd)
+				.filter(this::isLastContract);
+	}
+
+	/**
+	 * Checks for ending of contract in interval set by user in this task
+	 * @param contractDto
+	 * @return
+	 */
+	private boolean isGoingToEnd(IdmIdentityContractDto contractDto) {
+		if(Objects.isNull(contractDto.getValidTill())){
+			return false;
+		}
+		LocalDate dateOfNotification = contractDto.getValidTill().minusDays(Math.toIntExact(daysBeforeEnd));
+
+		// this we are interested in contracts which end in x days or sooner
+		return currentDate.isAfter(dateOfNotification.minusDays(1));
+	}
+
+	/**
+	 * Finds identity with given prefix in idm
+	 * @param identity
+	 * @return
+	 */
+	private boolean hasTechnicalIdentity(UUID identity){
+		IdmIdentityDto identityDto = identityService.get(identity);
+		String username = identityDto.getUsername();
+		IdmIdentityDto byUsername = identityService.getByUsername(prefixAdmin + username);
+		return !Objects.isNull(byUsername);
+	}
+
+	/**
+	 * This is filter method for handleTechnical
+	 * @param guarantee
+	 * @return
+	 */
+	private boolean filterOwnersOfTechnicalIdentities(IdmIdentityContractDto guarantee){
+		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
+		identityContractFilter.setSubordinatesFor(guarantee.getIdentity());
+		List<IdmIdentityContractDto> subordinates = identityContractService.find(identityContractFilter, null).getContent();
+		return subordinates.stream().anyMatch(subordinate -> isManagerForTechnicalIdentity(subordinate.getIdentity()));
+	}
+
+	/**
+	 * Checks if identity starts with given prefix and so it is technical identity
+	 * @param id
+	 * @return
+	 */
+	private boolean isManagerForTechnicalIdentity(UUID id){
+		IdmIdentityDto identityDto = identityService.get(id);
+		if(Objects.isNull(identityDto)){
+			throw new IllegalArgumentException("Identity doesn't exist!");
+		}
+		List<IdmIdentityRoleDto> allRolesByIdentity = identityRoleService.findAllByIdentity(id);
+		return allRolesByIdentity.stream().anyMatch(role -> role.getRole().equals(technicalRoleCode));
+	}
+
 	@Override
 	public Optional<OperationResult> processItem(IdmIdentityContractDto dto) {
-		if (dto.getValidTill() == null) {
-			// the contract has infinite validity, leave alone
-			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
-		}
-
-		validMinusXDays = dto.getValidTill().minusDays(Math.toIntExact(daysBeforeEnd));
-		
-		// this we are interested in contracts which end in x days or sooner 
-		if (!currentDate.isAfter(validMinusXDays.minusDays(1))) {
-			// the contract ends on different times than specified, leave alone
-			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
-		}
-		
-		if (!isLastContract(dto)) {
-			// the contract owner has more contracts valid in the future and is not leaving, leave alone
-			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
-		}
-		
 		IdmIdentityDto identity = DtoUtils.getEmbedded(dto, IdmIdentityContract_.identity, IdmIdentityDto.class);
 		String fullName = identity.getFirstName() + " " + identity.getLastName() + " (" + 
 				identity.getUsername() + ")";
@@ -161,7 +235,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		}
 		
 		// end of contract today and daysBeforeEnd set to 0
-		if (daysBeforeEnd == 0L && currentDate.isEqual(validMinusXDays)) {
+		if (daysBeforeEnd == 0L) {
 			return getRecipientsAndSend(guarantee, false, fullName, identity, position, ppvEnd);
 		} 
 
@@ -174,7 +248,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	}
 	
 	private void sendNotification(String topic, List<IdmIdentityDto> recipients, IdmIdentityDto manager, String fullName,
-			IdmIdentityDto identity, String position, String ppvEnd) {
+			IdmIdentityDto identity, String position, String ppvEnd, List<IdmIdentityDto> subordinatesTechOrAdm) {
 		notificationManager.send(
 				topic,
 				new IdmMessageDto
@@ -185,6 +259,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 						.addParameter("department", position)
 						.addParameter("ppvEnd", ppvEnd)
 						.addParameter("manager", manager)
+						.addParameter("technicalOrAdminAccounts", subordinatesTechOrAdm)
 						.build(),
 				recipients
 		);
@@ -213,6 +288,28 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 				SEND_TO_MANAGER_BEFORE_PARAM,
 				PersistentType.BOOLEAN);
 		attributes.add(sendToManagerBeforeAttr);
+
+		IdmFormAttributeDto technicalIdentity = new IdmFormAttributeDto(
+				PREFIX_ADMIN_IDENTITIES,
+				PREFIX_ADMIN_IDENTITIES,
+				PersistentType.TEXT);
+		technicalIdentity.setPlaceholder("For example prefix_name - name will be taken");
+		attributes.add(technicalIdentity);
+
+		IdmFormAttributeDto invalid = new IdmFormAttributeDto(
+				SEND_INVALID_CONTRACTS,
+				SEND_INVALID_CONTRACTS,
+				PersistentType.BOOLEAN);
+		attributes.add(invalid);
+
+		IdmFormAttributeDto technicalRole = new IdmFormAttributeDto(
+				TECHNICAL_ROLE_CODE,
+				TECHNICAL_ROLE_CODE,
+				PersistentType.UUID);
+		technicalRole.setFaceType(BaseFaceType.ROLE_SELECT);
+		technicalRole.setPlaceholder("Choose role assigned to technical identities. Use blank if not using " +
+				"technical identities.");
+		attributes.add(technicalRole);
 
 		return attributes;
 	}
@@ -322,15 +419,41 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 					setModel(new DefaultResultModel(ExtrasResultCode.NO_RECIPIENTS_FOUND)).
 					build()); 
 		}
-		if (sendBefore) {
+		if (!StringUtils.isBlank(prefixAdmin)) {
+			// todo get Admin account
+			List<IdmIdentityDto> adminIdentitiesForAccount = getAdminIdentitiesForAccount(identity);
+			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END, new ArrayList<>(recipients), guarantee,
+					fullName, identity, position, ppvEnd, adminIdentitiesForAccount);
+		} else if (technicalRoleCode!= null) {
+			List<IdmIdentityDto> technicalIdentitiesForAccount = getTechnicalIdentitiesForAccount(identity);
+			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END, new ArrayList<>(recipients),
+					guarantee,
+					fullName, identity, position, ppvEnd, technicalIdentitiesForAccount);
+		} else if (sendBefore) {
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END_IN_X_DAYS, new ArrayList<>(recipients), guarantee, 
-				fullName, identity, position, ppvEnd);
+				fullName, identity, position, ppvEnd, null);
 		} else {
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END, new ArrayList<>(recipients), guarantee, 
-					fullName, identity, position, ppvEnd);
+					fullName, identity, position, ppvEnd, null);
 		}
 		
 		return Optional.of(new OperationResult.Builder(OperationState.EXECUTED).build());
+	}
+
+	private List<IdmIdentityDto> getTechnicalIdentitiesForAccount(IdmIdentityDto account){
+		IdmIdentityContractFilter identityContractFilter = new IdmIdentityContractFilter();
+		identityContractFilter.setSubordinatesFor(account.getId());
+		List<IdmIdentityContractDto> subordinates = identityContractService.find(identityContractFilter, null).getContent();
+		return subordinates.stream().filter(subordinate -> isManagerForTechnicalIdentity(subordinate.getIdentity()))
+				//.map(subordinate -> identityService.get(subordinate.getIdentity()))
+				.map(subordinate -> DtoUtils.getEmbedded(subordinate, IdmIdentityContract_.identity, IdmIdentityDto.class))
+				.collect(Collectors.toList());
+	}
+
+	private List<IdmIdentityDto> getAdminIdentitiesForAccount(IdmIdentityDto account){
+		String username = account.getUsername();
+		IdmIdentityDto byUsername = identityService.getByUsername(prefixAdmin + username);
+		return Collections.singletonList(byUsername);
 	}
 
 	protected void setDatesForTest(LocalDate currentDate, Long daysBeforeEnd) {

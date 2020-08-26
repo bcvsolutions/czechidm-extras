@@ -34,6 +34,8 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 	public static final String TOPIC_STATUS = String.format("%s:status", MODULE_ID);
 	public static final String TOPIC_CONTRACT_END = String.format("%s:contractEnd", MODULE_ID);
 	public static final String TOPIC_CONTRACT_END_IN_X_DAYS = String.format("%s:contractEndInXDays", MODULE_ID);
+	public static final String TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END = String.format("%s:contractEndTechnical",
+			MODULE_ID);
 	public static final String TOPIC_NEW_TREE_NODE = String.format("%s:newTreeNode", MODULE_ID);
 
 	@Autowired
@@ -78,6 +80,13 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 				IdmEmailLog.NOTIFICATION_TYPE,
 				"Contract end in x days notification",
 				contractEndInXDaysNow != null ? contractEndInXDaysNow.getId() : null));
+		IdmNotificationTemplateDto contractEndTechnical = notificationTemplateService.getByCode("contractEndTechnical");
+		configs.add(new NotificationConfigurationDto(
+				TOPIC_CONTRACT_TECHNICAL_OR_ADMIN_END,
+				NotificationLevel.INFO,
+				IdmEmailLog.NOTIFICATION_TYPE,
+				"Contract end in x days notification for owner of technical or admin identity",
+				contractEndTechnical != null ? contractEndTechnical.getId() : null));
 		return configs;
 	}
 
