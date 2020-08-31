@@ -14,9 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleService;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
+import eu.bcvsolutions.idm.core.eav.api.dto.filter.IdmFormAttributeFilter;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
@@ -31,15 +35,29 @@ public class ImportAutomaticRoleByAttributesCSVExecutorTest extends AbstractCsvI
 	private IdmAutomaticRoleAttributeService automaticRoleAttributeService;
 	@Autowired
 	private IdmAutomaticRoleAttributeRuleService automaticRoleAttributeRuleService;
+	@Autowired
+	private IdmFormAttributeService formAttributeService;
 
 	@Test
 	@Transactional
 	public void importAutoRolesDefinitions() {
 		IdmAttachmentDto attachment = createAttachment(path, "importAutoRole.csv");
 
-		helper.createRole("role");
-		helper.createEavAttribute("eav1", IdmIdentity.class, PersistentType.SHORTTEXT);
-		helper.createEavAttribute("eav2", IdmIdentity.class, PersistentType.SHORTTEXT);
+		if (roleService.getByCode("role") == null) {
+			helper.createRole("role");
+		}
+
+		IdmFormAttributeFilter formAttributeFilter = new IdmFormAttributeFilter();
+		formAttributeFilter.setCode("eav1");
+		formAttributeFilter.setDefinitionType(IdmIdentity.class.getTypeName());
+
+		if (formAttributeService.find(formAttributeFilter, null) == null) {
+			helper.createEavAttribute("eav1", IdmIdentity.class, PersistentType.SHORTTEXT);
+		}
+		formAttributeFilter.setCode("eav2");
+		if (formAttributeService.find(formAttributeFilter, null) == null) {
+			helper.createEavAttribute("eav2", IdmIdentity.class, PersistentType.SHORTTEXT);
+		}
 
 		Map<String, Object> configOfLRT = new HashMap<>();
 		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_PATH_TO_CSV, attachment.getId());
