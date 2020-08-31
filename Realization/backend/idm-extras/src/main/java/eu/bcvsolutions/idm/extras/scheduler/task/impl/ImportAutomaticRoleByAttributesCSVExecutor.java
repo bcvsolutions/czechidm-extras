@@ -155,37 +155,21 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				List<IdmAutomaticRoleAttributeRuleDto> rules = new LinkedList<>();
 
 				List<CoreException> exceptions = new ArrayList<>();
-				try {
-					//iterate through identity attributes and create rules from it
-					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY, false,
-							identityAttributeNamePrefix, identityAttributeValuePrefix);
-				} catch (CoreException e) {
-					exceptions.add(e);
-				}
+				//iterate through identity attributes and create rules from it
+				exceptions.addAll(prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY, false,
+						identityAttributeNamePrefix, identityAttributeValuePrefix));
 
-				try {
-					//iterate through identity EAV attributes and create rules from it
-					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY_EAV, true,
-							identityEavAttributeNamePrefix, identityEavAttributeValuePrefix);
-				} catch (CoreException e) {
-					exceptions.add(e);
-				}
+				//iterate through identity EAV attributes and create rules from it
+				exceptions.addAll(prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.IDENTITY_EAV, true,
+						identityEavAttributeNamePrefix, identityEavAttributeValuePrefix));
 
-				try {
-					//iterate through contract attributes and create rules from it
-					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT, false,
-							contractAttributeNamePrefix, contractAttributeValuePrefix);
-				} catch (CoreException e) {
-					exceptions.add(e);
-				}
+				//iterate through contract attributes and create rules from it
+				exceptions.addAll(prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT, false,
+						contractAttributeNamePrefix, contractAttributeValuePrefix));
 
-				try {
-					//iterate through contract EAV attributes and create rules from it
-					prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, true,
-							contractEavAttributeNamePrefix, contractEavAttributeValuePrefix);
-				} catch (CoreException e) {
-					exceptions.add(e);
-				}
+				//iterate through contract EAV attributes and create rules from it
+				exceptions.addAll(prepareRules(record, rules, nameBuilder, AutomaticRoleAttributeRuleType.CONTRACT_EAV, true,
+						contractEavAttributeNamePrefix, contractEavAttributeValuePrefix));
 
 				if (!StringUtils.isBlank(definitionNameColumnName) && !StringUtils.isBlank(record.get(definitionNameColumnName))) {
 					automaticRoleAttributeDto.setName(record.get(definitionNameColumnName));
@@ -238,8 +222,9 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 		}
 	}
 
-	private void prepareRules(CSVRecord record, List<IdmAutomaticRoleAttributeRuleDto> rules, StringBuilder nameBuilder, AutomaticRoleAttributeRuleType type,
-							  boolean isEav, String attrNamePrefix, String attrValuePrefix) {
+	private List<CoreException> prepareRules(CSVRecord record, List<IdmAutomaticRoleAttributeRuleDto> rules, StringBuilder nameBuilder, AutomaticRoleAttributeRuleType type,
+											 boolean isEav, String attrNamePrefix, String attrValuePrefix) {
+		List<CoreException> exceptions = new ArrayList<>();
 		if (!StringUtils.isBlank(attrNamePrefix) && !StringUtils.isBlank(attrValuePrefix)) {
 			LOG.info("Identity attribute prefix filled, we will search and craete rule for it");
 			int attrSuffix = 1;
@@ -255,7 +240,13 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 					automaticRoleAttributeRule.setValue(attrValue);
 					automaticRoleAttributeRule.setComparison(AutomaticRoleAttributeRuleComparison.EQUALS);
 
-					handleEav(nameBuilder, isEav, attrName, automaticRoleAttributeRule, type);
+					try {
+						handleEav(nameBuilder, isEav, attrName, automaticRoleAttributeRule, type);
+					} catch (CoreException e) {
+						exceptions.add(e);
+						++attrSuffix;
+						continue;
+					}
 
 					nameBuilder.append(attrName);
 					nameBuilder.append("-");
@@ -266,6 +257,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractSchedula
 				++attrSuffix;
 			}
 		}
+		return exceptions;
 	}
 
 	private String getValue(CSVRecord record, String attrValuePrefix, int attrSuffix) {
