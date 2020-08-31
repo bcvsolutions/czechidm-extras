@@ -24,6 +24,7 @@ import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.domain.ResultCode;
 import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
+import eu.bcvsolutions.idm.core.api.exception.CoreException;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
@@ -116,7 +117,8 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 	 * @param valuePrefix column prefix for attribute value
 	 * @param isEav       if attribute is EAV
 	 */
-	protected void processDynamicAttribute(CSVRecord record, String namePrefix, String valuePrefix, boolean isEav) {
+	protected List<CoreException> processDynamicAttribute(CSVRecord record, String namePrefix, String valuePrefix, boolean isEav) {
+		List<CoreException> exceptions = new ArrayList<>();
 		if (!StringUtils.isBlank(namePrefix) && !StringUtils.isBlank(valuePrefix)) {
 			LOG.info("Prefixes set");
 			int suffix = 1;
@@ -127,23 +129,30 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 				String name = record.get(columnName);
 				String value = record.get(columnValue);
 
-				processOneDynamicAttribute(namePrefix, name, valuePrefix, value, isEav);
+				try {
+					processOneDynamicAttribute(namePrefix, name, valuePrefix, value, isEav);
+				} catch (CoreException e) {
+					exceptions.add(e);
+					++suffix;
+					columnName = namePrefix + suffix;
+					columnValue = valuePrefix + suffix;
+					continue;
+				}
 
 				++suffix;
 				columnName = namePrefix + suffix;
 				columnValue = valuePrefix + suffix;
 			}
 		}
+		return exceptions;
 	}
 	
 	/**
 	 * Process pair of name and value for dynamic attribute
 	 *
 	 * @param namePrefix  column prefix for attribute name
-	 * @param name        actual name from the column
 	 * @param valuePrefix column prefix for attribute value
-	 * @param value       actual value from column
-	 * 
+	 *
 	 * @return            List of parsed pairs of name and value
 	 */
 	protected List<Pair<String, String>> processDynamicAttribute(CSVRecord record, String namePrefix, String valuePrefix) {

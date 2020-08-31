@@ -1,5 +1,6 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -22,6 +23,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmAutomaticRoleFilter;
+import eu.bcvsolutions.idm.core.api.exception.CoreException;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeRuleService;
 import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
@@ -103,17 +105,19 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractCsvImpor
 			nameBuilder.append(roleDto.getName());
 
 			rules = new LinkedList<>();
+			List<CoreException> exceptions = new ArrayList<>();
+
 			//iterate through identity attributes and create rules from it
-			processDynamicAttribute(record, identityAttributeNamePrefix, identityAttributeValuePrefix, false);
+			exceptions.addAll(processDynamicAttribute(record, identityAttributeNamePrefix, identityAttributeValuePrefix, false));
 
 			//iterate through identity EAV attributes and create rules from it
-			processDynamicAttribute(record, identityEavAttributeNamePrefix, identityEavAttributeValuePrefix, true);
+			exceptions.addAll(processDynamicAttribute(record, identityEavAttributeNamePrefix, identityEavAttributeValuePrefix, true));
 
 			//iterate through contract attributes and create rules from it
-			processDynamicAttribute(record, contractAttributeNamePrefix, contractAttributeValuePrefix, false);
+			exceptions.addAll(processDynamicAttribute(record, contractAttributeNamePrefix, contractAttributeValuePrefix, false));
 
 			//iterate through contract EAV attributes and create rules from it
-			processDynamicAttribute(record, contractEavAttributeNamePrefix, contractEavAttributeValuePrefix, true);
+			exceptions.addAll(processDynamicAttribute(record, contractEavAttributeNamePrefix, contractEavAttributeValuePrefix, true));
 
 			String definitionName;
 			if (!StringUtils.isBlank(definitionNameColumnName) && !StringUtils.isBlank(record.get(definitionNameColumnName))) {
@@ -145,13 +149,20 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractCsvImpor
 				automaticRoleAttributeDto = automaticRoleAttributeService.save(automaticRoleAttributeDto);
 			}
 
+			if (!exceptions.isEmpty()) {
+				IdmAutomaticRoleAttributeDto finalAutomaticRoleAttributeDto = automaticRoleAttributeDto;
+				exceptions.forEach(e -> {
+					this.logItemProcessed(finalAutomaticRoleAttributeDto, taskNotCompleted(e.getMessage(), ExtrasResultCode.AUTO_ROLE_ITEM_ERROR));
+				});
+			}
+
 			final UUID automaticRoleId = automaticRoleAttributeDto.getId();
 
 			// set id of automatic role to all rules and save it
 			rules.forEach(rule -> {
 				rule.setAutomaticRoleAttribute(automaticRoleId);
 				IdmAutomaticRoleAttributeRuleDto savedRule = automaticRoleAttributeRuleService.save(rule);
-				this.logItemProcessed(savedRule, taskCompleted("Rule created for definition - " + nameBuilder.toString(), ExtrasResultCode.TEST_ITEM_COMPLETED));
+				this.logItemProcessed(savedRule, taskCompleted("Rule created for definition - " + nameBuilder.toString(), ExtrasResultCode.AUTO_ROLE_ITEM_COMPLETED));
 				++this.counter;
 			});
 
@@ -197,6 +208,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractCsvImpor
 				filter.setDefinitionType(IdmIdentityContract.class.getName());
 			} else {
 				LOG.info("Type is other type then identity EAV or identity contract EAV, filtering only by code");
+				throw new CoreException("Type is other type then identity EAV or identity contract EAV, filtering only by code");
 			}
 
 			List<IdmFormAttributeDto> attributes = formAttributeService.find(filter, null).getContent();
@@ -204,6 +216,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutor extends AbstractCsvImpor
 				automaticRoleAttributeRule.setFormAttribute(attributes.get(0).getId());
 			} else {
 				LOG.error("EAV attribute: [{}] not found can't create rule by EAV", attrName);
+				throw new CoreException(String.format("EAV attribute: [%s] not found can't create rule by EAV", attrName));
 			}
 		} else {
 			nameBuilder.append('|');
