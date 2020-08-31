@@ -1,0 +1,4 @@
+role;name;identityAttrName1;identityAttrValue1;identityAttrName2;identityAttrValue2;identityEavAttrName1;identityEavAttrValue1;contractAttrName1;contractAttrValue1;contractEavAttrName1;contractEavAttrValue1
+role;5 rules;username;kucerar;externalCode;12345;eav1;987654321;main;false;eav2;officer
+role;username;username;kucerar;;;;;;;;
+role;officer;;;;;;;;;eav2;officer
