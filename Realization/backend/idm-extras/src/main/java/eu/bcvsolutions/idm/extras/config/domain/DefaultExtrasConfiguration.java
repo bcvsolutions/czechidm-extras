@@ -75,4 +75,9 @@ public class DefaultExtrasConfiguration
 	public String getCustomApprovalScriptCode() {
 		return getConfigurationService().getValue(EXTRAS_APPROVAL_WF_CUSTOM_SCRIPT);
 	}
+
+	@Override
+	public List<String> getValidApproverStates() {
+		return getConfigurationService().getValues(EXTRAS_APPROVAL_WF_APPROVER_STATES);
+	}
 }
