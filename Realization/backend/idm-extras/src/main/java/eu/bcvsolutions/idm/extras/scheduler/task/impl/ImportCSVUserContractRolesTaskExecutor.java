@@ -1,28 +1,15 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.opencsv.CSVParser;
-import com.opencsv.CSVParserBuilder;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
-import eu.bcvsolutions.idm.core.api.domain.CoreResultCode;
-import eu.bcvsolutions.idm.core.api.domain.OperationState;
-import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
-import eu.bcvsolutions.idm.core.api.dto.*;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
-import eu.bcvsolutions.idm.core.api.entity.OperationResult;
-import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
-import eu.bcvsolutions.idm.core.api.service.*;
-import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
-import eu.bcvsolutions.idm.core.eav.api.service.FormService;
-import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
-import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager;
-import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
-import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.UUID;
+
+import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,13 +17,36 @@ import org.springframework.context.annotation.Description;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.Map.Entry;
+import com.google.common.collect.ImmutableMap;
+
+import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
+import eu.bcvsolutions.idm.core.api.domain.OperationState;
+import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
+import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
+import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
+import eu.bcvsolutions.idm.core.api.entity.OperationResult;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
+import eu.bcvsolutions.idm.core.api.service.IdmConceptRoleRequestService;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
+import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
+import eu.bcvsolutions.idm.core.eav.api.service.FormService;
+import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
+import eu.bcvsolutions.idm.extras.utils.Pair;
 
 /**
  * @author Petr Hanák
@@ -44,30 +54,38 @@ import java.util.Map.Entry;
  * This task reads username, role and optional contract eav attribute from the csv file and find contract with this eav to assign role.
  *  
  */
-@Component
+@Component(ImportCSVUserContractRolesTaskExecutor.TASK_NAME)
 @Description("Parses input CSV (path as parameter) and assigns roles to user contracts. Only role assignment is allowed.")
-public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
-
+public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTask {
+	public static final String TASK_NAME = "extras-import-assinged-roles";
+	
 	private static final Logger LOG = LoggerFactory.getLogger(ImportCSVUserContractRolesTaskExecutor.class);
 
-	static final String PARAM_CSV_ATTACHMENT = "Import csv file";
-	static final String PARAM_ROLES_COLUMN_NAME = "Column with roles";
-	static final String PARAM_USERNAME_COLUMN_NAME = "Column with username";
-	static final String PARAM_CONTRACT_EAV_COLUMN_NAME = "Column with contract eav";
-	static final String PARAM_CONTRACT_EAV_NAME = "Name of contract eav attribute";
-	static final String PARAM_COLUMN_SEPARATOR = "Column separator";
+	static final String PARAM_ROLES_COLUMN_NAME = "rolecolumn";
+	static final String PARAM_USERNAME_COLUMN_NAME = "usernamecolumn";
+	static final String PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE = "rolesassignment";
+	static final String PARAM_MULTI_VALUE_SEPARATOR = "rolemultivalueseparator";
+	static final String PARAM_IS_ROLE_MULTI_VALUE = "isrolecolumnmultivalued";
+	static final String PARAM_CONTRACT_DEFINITION_CODE = "contractdefinition";
+	public static final String PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX = "contracteavcodeprefix";
+	public static final String PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX = "contracteavvalueprefix";
 
 	// Defaults
-	private static final String COLUMN_SEPARATOR = ";";
-	private static final String MULTI_VALUE_SEPARATOR = "\\r?\\n"; // new line separator
+	private static final String CONTRACT_DEFINITION = "default";
+	private static final String MULTI_VALUE_SEPARATOR_DEFAULT = ",";
 
-	private UUID attachmentId;
+	private static final String OPTION_ITEM_ALL_CONTRACTS = "allContracts";
+	private static final String OPTION_ITEM_PRIME_CONTRACT = "primeContract";
+	private static final String OPTION_ITEM_EAV_CONTRACT = "eavContract";
+
 	private String rolesColumnName;
 	private String usernameColumnName;
-	private String contractEavColumnName;
-	private String contractEavName;
-	private String columnSeparator;
+	private String assignedContractType;
 	private String multiValueSeparator;
+	private Boolean isMultiValue;
+	private String contractDefinitionCode;
+	private String contractEavAttributeNamePrefix;
+	private String contractEavAttributeValuePrefix;
 
 	@Autowired private IdmIdentityService identityService;
 	@Autowired private IdmRoleService roleService;
@@ -76,14 +94,18 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	@Autowired private IdmConceptRoleRequestService conceptRoleRequestService;
 	@Autowired private IdmIdentityContractService identityContractService;
 	@Autowired private FormService formService;
-	@Autowired private AttachmentManager attachmentManager;
+	@Autowired private IdmFormDefinitionService formDefinitionService;
 	
 	private int nonExistingRolesCounter;
 
 	@Override
-	public OperationResult process() {
-		//
-		Map<UUID, List<UUID>> contractRoles = parseCSV();
+	public String getName() {
+		return TASK_NAME;
+	}
+	
+	@Override
+	protected void processRecords(List<CSVRecord> records) {
+		Map<UUID, List<UUID>> contractRoles = handleRecords(records);
 		//
 		this.count = (long) contractRoles.size() + nonExistingRolesCounter;
 		this.counter = 0L;
@@ -95,106 +117,116 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 				break;
 			}
 		}
-		return new OperationResult.Builder(OperationState.CREATED).build();
+	}
+
+	@Override
+	protected void processOneDynamicAttribute(String namePrefix, String name, String valuePrefix, String value,
+			boolean isEav) {
+		throw new UnsupportedOperationException("No dynamic attributes present");
 	}
 	
-	private Map<UUID, List<UUID>> parseCSV() {
-		try {
+	private Map<UUID, List<UUID>> handleRecords(List<CSVRecord> records) {
 		Map<UUID, List<UUID>> contractRoles = new TreeMap<>();
-		// Parse CSV
-		CSVParser parser = new CSVParserBuilder().withEscapeChar(CSVParser.DEFAULT_ESCAPE_CHARACTER).withQuoteChar('"')
-				.withSeparator(columnSeparator.charAt(0)).build();
-		CSVReader reader = null;
-		// Check attachment id
-		if (attachmentId != null) {
-			InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
-			BufferedReader br = new BufferedReader(new InputStreamReader(attachmentData));
-			reader = new CSVReaderBuilder(br).withCSVParser(parser).build();
-		} else {
-			throw new ResultCodeException(ExtrasResultCode.EMPTY_ATTACHMENT_ID);
-		}
 		
-		String[] header = reader.readNext();
-		// find numbers of columns
-		int usernameColumnNumber = findColumnNumber(header, usernameColumnName);
-		int roleColumnNumber = findColumnNumber(header, rolesColumnName);
-		int contractEavColumnNumber = findColumnNumber(header, contractEavColumnName);
-		
-		for (String[] line : reader) {
-			String username = line[usernameColumnNumber];
-			String contractEav = line[contractEavColumnNumber];
-			String roleName = line[roleColumnNumber];
+		for(CSVRecord record : records) {
+			String username = record.get(usernameColumnName);
+			String roleCode = record.get(rolesColumnName);
 			
-			if (!StringUtils.isEmpty(roleName) && !StringUtils.isEmpty(username)) {
+			if (!StringUtils.isEmpty(roleCode) && !StringUtils.isEmpty(username)) {
 				IdmIdentityDto identity = identityService.getByUsername(username);
-				UUID identityId;
+				
 				if (identity != null) {
-					identityId = identity.getId();
-				} else {
-					continue;
-				}
-				if (identityId != null) {
-					List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identityId, LocalDate.now(), null);
-					if (!contractEav.isEmpty()) {
-						List<IdmIdentityContractDto> foundContracts = getContractsByEav(contracts, contractEav);
-						if (!foundContracts.isEmpty()) {
-							for (IdmIdentityContractDto contract : foundContracts) {
-								if (contract != null) {
-									UUID contractId = contract.getId();
-									if (!contractRoles.containsKey(contractId)) {
-										contractRoles.put(contractId, new ArrayList<>());
-									}
-									IdmRoleDto role = roleService.getByCode(roleName);
-									if (role != null) {
-										contractRoles.get(contractId).add(role.getId());
-									} else {
-										nonExistingRolesCounter++;
-										this.logItemProcessed(contract, taskNotCompleted("Role does not exist: " + roleName));
-										if (contractRoles.get(contractId).isEmpty()) {
-											contractRoles.remove(contractId);
-										}
-									}
-								}
-							}
-						}
-					} else {
-						for (IdmIdentityContractDto contract : contracts) {
-							UUID contractId = contract.getId();
-							if (!contractRoles.containsKey(contractId)) {
-								contractRoles.put(contractId, new ArrayList<>());
-							}
-							contractRoles.get(contractId).add(roleService.getByCode(roleName).getId());
-						}
-					}
-				} else {
-					continue;
-				}
+					List<IdmIdentityContractDto> contractsToAssign = getContracts(identity, record);
+					//add roles to contracts
+					contractRoles = getRolesToAssign(contractRoles, contractsToAssign, roleCode);
+				} 
 			}
 		}
-		return contractRoles;
 		
-		} catch (IOException e) {
-			IdmAttachmentDto attachment = attachmentManager.get(attachmentId);
-			LOG.error("An error occurred while reading input CSV file [{}], error: [{}].", attachment.getName(), e);
-			// TODO change to reading error
-			throw new ResultCodeException(CoreResultCode.NOT_FOUND, "File '" + attachment.getName() + "' not found.", e);
-		}
+		return contractRoles;
 	}
 	
-	private List<IdmIdentityContractDto> getContractsByEav(List<IdmIdentityContractDto> contracts, String contractEavCsvValue) {
-		List<IdmIdentityContractDto> foundContracts = new ArrayList<IdmIdentityContractDto>();
-		for (IdmIdentityContractDto contract : contracts) {
-			// get contract eav from contract
-			Object eavValue = getEavValueForContract(contract.getId(), contractEavName);
-			if (eavValue != null) {
-				String contractEavValue = eavValue.toString();
-				if (contractEavValue != null && contractEavValue.equals(contractEavCsvValue)) {
-					foundContracts.add(contract);
+	private List<IdmIdentityContractDto> getContracts(IdmIdentityDto identity, CSVRecord record) {
+		UUID identityId = identity.getId();
+		
+		List<IdmIdentityContractDto> contractsToAssign = new ArrayList<>();
+		List<IdmIdentityContractDto> contracts = identityContractService.findAllByIdentity(identityId);
+		
+		if (!contracts.isEmpty()){
+			if (assignedContractType.equals(OPTION_ITEM_EAV_CONTRACT)) {
+				contractsToAssign = getContractsByEav(contracts, record);
+			} else if (assignedContractType.equals(OPTION_ITEM_ALL_CONTRACTS)){
+				contractsToAssign = contracts;
+			} else if (assignedContractType.equals(OPTION_ITEM_PRIME_CONTRACT)){
+				IdmIdentityContractDto primeContract = identityContractService.getPrimeContract(identityId);
+				if (primeContract != null){
+					contractsToAssign.add(primeContract);
+				}
+			} else {
+				//No choice - skip assignment
+			}
+		}
+		
+		return contractsToAssign;
+	}
+	
+	private Map<UUID, List<UUID>> getRolesToAssign(Map<UUID, List<UUID>> contractRoles, List<IdmIdentityContractDto> contractsToAssign, String roleCode) {
+		for (IdmIdentityContractDto contract : contractsToAssign) {
+			if (contract != null) {
+				if (!contract.isValidNowOrInFuture()){
+					continue;
+				}
+				UUID contractId = contract.getId();
+				if (!contractRoles.containsKey(contractId)) {
+					contractRoles.put(contractId, new ArrayList<>());
+				}
+				String[] roles = {roleCode};
+				if (isMultiValue){
+					 roles = roleCode.split(multiValueSeparator);
+				}
+				for (String roleStr : roles){
+					IdmRoleDto role = roleService.getByCode(roleStr);
+					if (role != null) {
+						contractRoles.get(contractId).add(role.getId());
+					} else {
+						nonExistingRolesCounter++;
+						this.logItemProcessed(contract, taskNotCompleted("Role does not exist: " + roleCode));
+					}
+				}
+				if (contractRoles.get(contractId).isEmpty()) {
+					contractRoles.remove(contractId);
 				}
 			}
 		}
-		System.out.println(foundContracts);
+		
+		return contractRoles;
+	}
+	
+	private List<IdmIdentityContractDto> getContractsByEav(List<IdmIdentityContractDto> contracts, CSVRecord record) {
+		List<IdmIdentityContractDto> foundContracts = new ArrayList<>();
+		List<Pair<String, String>> eavCodesAndValues = getEavs(record);
+		for (IdmIdentityContractDto contract : contracts) {
+			// get contract eavs from contract
+			int existingEavsSize = 0;
+			for (Pair<String, String> eavCodeAndValue : eavCodesAndValues) {
+				Object eavValue = getEavValueForContract(contract.getId(), eavCodeAndValue.getFirst());
+				if (eavValue != null) {
+					String contractEavValue = eavValue.toString();
+					if (contractEavValue != null && contractEavValue.equals(eavCodeAndValue.getSecond())) {
+						existingEavsSize++;
+					}
+				}
+			}
+			
+			if (!eavCodesAndValues.isEmpty() && eavCodesAndValues.size() == existingEavsSize) {
+				foundContracts.add(contract);
+			}
+		}
 		return foundContracts;
+	}
+	
+	private List<Pair<String, String>> getEavs(CSVRecord record) {
+		return processDynamicAttribute(record, contractEavAttributeNamePrefix, contractEavAttributeValuePrefix);
 	}
 	
 	private void addRolesToContract(UUID contractId, List<UUID> roleIds) {
@@ -216,7 +248,7 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 			IdmIdentityRoleFilter filter = new IdmIdentityRoleFilter();
 			filter.setIdentityContractId(contractId);
 			List<IdmIdentityRoleDto> result = identityRoleService.find(filter, null).getContent();
-			if (result.size() > 0) {
+			if (!result.isEmpty()) {
 				for (IdmIdentityRoleDto identityRole : result) {
 					if (identityRole.getRole().equals(roleId)) {
 						roleAssigned = true;
@@ -242,7 +274,6 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		}
 		
 		roleRequestService.startRequestInternal(roleRequest.getId(), true);
-		
 		if (!roleIds.isEmpty()) {
 			this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
 		} else {
@@ -270,6 +301,14 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 	 * @return
 	 */
 	public Object getEavValueForContract(UUID contractId, String attributeCode) {
+		//EAV contract definition
+		if (!StringUtils.isEmpty(contractDefinitionCode)){
+			IdmFormDefinitionDto definition = formDefinitionService.findOneByTypeAndCode(IdmIdentityContract.class.getName(),contractDefinitionCode);
+			if (definition == null){
+				throw new ResultCodeException(ExtrasResultCode.CONTRACT_EAV_NOT_FOUND, ImmutableMap.of());
+			}
+			return getOneValue(formService.getValues(contractId, IdmIdentityContractDto.class, definition, attributeCode).stream().findFirst());
+		}
 		return getOneValue(formService.getValues(contractId, IdmIdentityContractDto.class, attributeCode).stream().findFirst());
 	}
 	
@@ -285,78 +324,97 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 		}
 		return null;
 	}
-	
-	/**
-	 * finds number of column
-	 * 
-	 * @param header
-	 * @param columnName
-	 * @return
-	 */
-	private int findColumnNumber(String[] header, String columnName) {
-		int counterHeader = 0;
-		for (String item : header){
-			if(item.equals(columnName)){
-				return counterHeader;
-			}
-			counterHeader++;
-		}
-		throw new ResultCodeException(ExtrasResultCode.COLUMN_NOT_FOUND, ImmutableMap.of("column name", columnName));
-	}
 
 	@Override
 	public void init(Map<String, Object> properties) {
 		LOG.debug("Start init");
 		super.init(properties);
-		attachmentId = getParameterConverter().toUuid(properties, PARAM_CSV_ATTACHMENT);
 		rolesColumnName = getParameterConverter().toString(properties, PARAM_ROLES_COLUMN_NAME);
 		usernameColumnName = getParameterConverter().toString(properties, PARAM_USERNAME_COLUMN_NAME);
-		contractEavColumnName = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_COLUMN_NAME);
-		contractEavName = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_NAME);
-		columnSeparator = getParameterConverter().toString(properties, PARAM_COLUMN_SEPARATOR);
-		// if not filled, init multiValueSeparator and check if csv has description
-		if (multiValueSeparator == null) {
-			multiValueSeparator = MULTI_VALUE_SEPARATOR;
+		contractEavAttributeNamePrefix = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX);
+		contractEavAttributeValuePrefix = getParameterConverter().toString(properties, PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX);
+		assignedContractType = getParameterConverter().toString(properties, PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE);
+		multiValueSeparator = getParameterConverter().toString(properties, PARAM_MULTI_VALUE_SEPARATOR);
+		isMultiValue = getParameterConverter().toBoolean(properties, PARAM_IS_ROLE_MULTI_VALUE);
+		contractDefinitionCode = getParameterConverter().toString(properties, PARAM_CONTRACT_DEFINITION_CODE);
+
+		if (isMultiValue == null || multiValueSeparator == null || StringUtils.isEmpty(multiValueSeparator)) {
+			isMultiValue = Boolean.FALSE;
 		}
+		if (contractDefinitionCode == null || StringUtils.isEmpty(contractDefinitionCode)){
+			contractDefinitionCode = CONTRACT_DEFINITION;
+		}
+
+
 	}
 
 	@Override
 	public Map<String, Object> getProperties() {
 		LOG.debug("Start getProperties");
 		Map<String, Object> props = super.getProperties();
-		props.put(PARAM_CSV_ATTACHMENT, attachmentId);
 		props.put(PARAM_ROLES_COLUMN_NAME, rolesColumnName);
 		props.put(PARAM_USERNAME_COLUMN_NAME, usernameColumnName);
-		props.put(PARAM_CONTRACT_EAV_COLUMN_NAME, contractEavColumnName);
-		props.put(PARAM_CONTRACT_EAV_NAME, contractEavName);
-		props.put(PARAM_COLUMN_SEPARATOR, columnSeparator);
+		props.put(PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX, contractEavAttributeNamePrefix);
+		props.put(PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX, contractEavAttributeValuePrefix);
+		props.put(PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, assignedContractType);
+		props.put(PARAM_MULTI_VALUE_SEPARATOR, multiValueSeparator);
+		props.put(PARAM_IS_ROLE_MULTI_VALUE, isMultiValue);
+		props.put(PARAM_CONTRACT_DEFINITION_CODE, contractDefinitionCode);
 		return props;
 	}
 
 	@Override
-	public List<IdmFormAttributeDto> getFormAttributes() {
-		// csv file attachment
-		IdmFormAttributeDto csvAttachment = new IdmFormAttributeDto(PARAM_CSV_ATTACHMENT, PARAM_CSV_ATTACHMENT,
-				PersistentType.ATTACHMENT);
-		csvAttachment.setRequired(true);
+	public List<IdmFormAttributeDto> getFormAttributes() {	
+		List<IdmFormAttributeDto> attributes = super.getFormAttributes();
+
 		IdmFormAttributeDto rolesColumnNameAttribute = new IdmFormAttributeDto(PARAM_ROLES_COLUMN_NAME, PARAM_ROLES_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		rolesColumnNameAttribute.setRequired(true);
+		attributes.add(rolesColumnNameAttribute);
+
 		IdmFormAttributeDto usernameColumnNameAttribute = new IdmFormAttributeDto(PARAM_USERNAME_COLUMN_NAME, PARAM_USERNAME_COLUMN_NAME,
 				PersistentType.SHORTTEXT);
 		usernameColumnNameAttribute.setRequired(true);
-		IdmFormAttributeDto contractEavColumnNameAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_EAV_COLUMN_NAME, PARAM_CONTRACT_EAV_COLUMN_NAME,
+		attributes.add(usernameColumnNameAttribute);
+
+		IdmFormAttributeDto assignedContractTypeAttribute = new IdmFormAttributeDto(PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE,
 				PersistentType.SHORTTEXT);
-		contractEavColumnNameAttribute.setRequired(true);
-		IdmFormAttributeDto contractEavNameAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_EAV_NAME, PARAM_CONTRACT_EAV_NAME,
+		assignedContractTypeAttribute.setDefaultValue(OPTION_ITEM_ALL_CONTRACTS);
+		assignedContractTypeAttribute.setRequired(true);
+		attributes.add(assignedContractTypeAttribute);
+
+		IdmFormAttributeDto contractEavAttrNameAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX, PARAM_CONTRACT_EAV_ATTR_NAME_PREFIX,
 				PersistentType.SHORTTEXT);
-		contractEavNameAttribute.setRequired(true);
-		IdmFormAttributeDto columnSeparatorAttribute = new IdmFormAttributeDto(PARAM_COLUMN_SEPARATOR, PARAM_COLUMN_SEPARATOR,
+		contractEavAttrNameAttribute.setRequired(false);
+		
+		attributes.add(contractEavAttrNameAttribute);
+
+		IdmFormAttributeDto contractEavAttrValueAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX, PARAM_CONTRACT_EAV_ATTR_VALUE_PREFIX,
+				PersistentType.SHORTTEXT);
+		contractEavAttrValueAttribute.setRequired(false);
+		
+		attributes.add(contractEavAttrValueAttribute);
+
+		IdmFormAttributeDto multiValueSeparatorAttribute = new IdmFormAttributeDto(PARAM_MULTI_VALUE_SEPARATOR, PARAM_MULTI_VALUE_SEPARATOR,
 				PersistentType.CHAR);
-		columnSeparatorAttribute.setDefaultValue(COLUMN_SEPARATOR);
-		columnSeparatorAttribute.setRequired(true);
-		//
-		return Lists.newArrayList(csvAttachment, rolesColumnNameAttribute, usernameColumnNameAttribute, contractEavColumnNameAttribute, contractEavNameAttribute, columnSeparatorAttribute);
+		multiValueSeparatorAttribute.setDefaultValue(MULTI_VALUE_SEPARATOR_DEFAULT);
+		multiValueSeparatorAttribute.setRequired(false);
+		attributes.add(multiValueSeparatorAttribute);
+
+		IdmFormAttributeDto isMultiValueAttribute = new IdmFormAttributeDto(PARAM_IS_ROLE_MULTI_VALUE,PARAM_IS_ROLE_MULTI_VALUE,
+				PersistentType.BOOLEAN);
+		attributes.add(isMultiValueAttribute);
+
+		IdmFormAttributeDto contractDefinitionCodeAttribute = new IdmFormAttributeDto(PARAM_CONTRACT_DEFINITION_CODE, PARAM_CONTRACT_DEFINITION_CODE,
+				PersistentType.SHORTTEXT);
+		contractDefinitionCodeAttribute.setDefaultValue(CONTRACT_DEFINITION);
+		contractDefinitionCodeAttribute.setRequired(false);
+
+		attributes.add(contractDefinitionCodeAttribute);
+
+
+		
+		return attributes;
 	}
 	
 	private OperationResult taskCompleted(String message) {
@@ -374,4 +432,3 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractSchedulableT
 				ImmutableMap.of("message", message))).build();
 	}
 }
-

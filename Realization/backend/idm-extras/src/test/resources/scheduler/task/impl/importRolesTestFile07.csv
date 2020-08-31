@@ -1,2 +1,2 @@
-roles;description;comCode
-Admin (14);Všechna práva;Admin1
+roles;description;systemName1;systemAttribute1;systemValue1
+Admin (14);Všechna práva;systemtest4;rights;Admin1

@@ -55,7 +55,8 @@ import eu.bcvsolutions.idm.extras.utils.Pair;
  * @author Petr Hanák
  */
 @Component
-@Description("Create automatic role definitons from CSV")
+@Deprecated
+@Description("Create automatic role definitons from CSV - this task is deprecated and will be soon removed, use ImportAutomaticRoleByAttributesCSVExecutor instead")
 public class ImportAutomaticRoleAttributesFromCSVExecutor extends AbstractSchedulableTaskExecutor<OperationResult> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportAutomaticRoleAttributesFromCSVExecutor.class);
