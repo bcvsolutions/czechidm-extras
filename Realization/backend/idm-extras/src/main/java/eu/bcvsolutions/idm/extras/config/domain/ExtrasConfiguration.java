@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /**
  * Extras configuration - interface
- * 
+ * s
  * @author peter.sourek@bcvsolutions.eu
  */
 public interface ExtrasConfiguration extends Configurable {
@@ -24,6 +24,7 @@ public interface ExtrasConfiguration extends Configurable {
 	String EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_A = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".wf.approval.guaranteeTypeA";
 	String EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_B = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".wf.approval.guaranteeTypeB";
 	String EXTRAS_APPROVAL_WF_CUSTOM_SCRIPT = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".wf.approval.customScript";
+	String EXTRAS_APPROVAL_WF_APPROVER_STATES = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".wf.approval.approver.states";
 
 	@Override
 	default String getConfigurableType() {
@@ -74,4 +75,10 @@ public interface ExtrasConfiguration extends Configurable {
 	 */
 	String getCustomApprovalScriptCode();
 
+	/**
+	 * Return property valid states of role assign approver
+	 *
+	 * @return
+	 */
+	List<String> getValidApproverStates();
 }

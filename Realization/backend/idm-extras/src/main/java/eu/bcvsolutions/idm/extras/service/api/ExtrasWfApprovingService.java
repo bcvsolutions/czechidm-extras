@@ -20,4 +20,6 @@ public interface ExtrasWfApprovingService {
 	String getApproversFromScript (IdmConceptRoleRequestDto roleConcept);
 	
 	boolean isUserInCandidates (String candidates, String user);
+
+	String processCandidates(List<IdmIdentityDto> approvalCandidates);
 }

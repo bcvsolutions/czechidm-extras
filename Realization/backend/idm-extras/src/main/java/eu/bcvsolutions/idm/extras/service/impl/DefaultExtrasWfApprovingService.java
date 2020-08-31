@@ -2,6 +2,7 @@ package eu.bcvsolutions.idm.extras.service.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -55,6 +56,9 @@ public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService
 	@Autowired
 	private ExtrasConfiguration extrasConfiguration;
 
+	public static final List<String> DEFAULT_APPROVER_VALID_STATES = Arrays.asList(new String[]{"CREATED", "VALID", "FUTURE_CONTRACT"});
+
+	
 	
 	public List<IdmIdentityDto> getDirectRoleGuarantees(UUID idmRoleUUID, String guaranteeType) {
 		List<IdmIdentityDto> result = new ArrayList<IdmIdentityDto>();
@@ -173,9 +177,27 @@ public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService
 		}
 		throw new PermissionDeniedException("Candidate for approve role not found.");
 	}
-	
-	private String processCandidates(List<IdmIdentityDto> candidates) {
-		candidates.removeIf(IdmIdentityDto::isDisabled);
+
+
+	/**
+	 * Remove approval candidates in invalid states
+	 * 
+	 * @param candidates
+	 * @return
+	 */
+	public String processCandidates(List<IdmIdentityDto> candidates) {
+		List <String> statesValue = extrasConfiguration.getValidApproverStates();
+		if (statesValue == null || statesValue.isEmpty()) {
+			statesValue = DEFAULT_APPROVER_VALID_STATES;
+		}
+		
+		Iterator<IdmIdentityDto> it  = candidates.iterator();
+		while(it.hasNext()) {
+			IdmIdentityDto candidate = (IdmIdentityDto) it.next();
+		    if (!statesValue.contains(candidate.getState().toString())) {
+		    	it.remove();
+		    }
+		}
 		return identityService.convertIdentitiesToString(candidates.stream().distinct().collect(Collectors.toList()));
 	}
 		
