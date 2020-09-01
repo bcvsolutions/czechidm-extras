@@ -1,6 +1,15 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import eu.bcvsolutions.idm.acc.dto.SysSystemDto;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeRuleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
@@ -14,21 +23,13 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormAttributeService;
+import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
-import eu.bcvsolutions.idm.extras.utils.Pair;
-import org.junit.Assert;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
+@Deprecated
 public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRoleExecutorTest {
 
-	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile01.csv";
+	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesTestFile02.csv";
 
 	@Autowired
 	private FormService formService;
@@ -41,14 +42,6 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 
 	@Test
 	public void importAutomaticRoles() {
-		setPath(path, "importRolesTestFile01.csv");
-		Pair<SysSystemDto, Map<String, Object>> pair = createData();
-		SysSystemDto system = pair.getFirst();
-		Map<String, Object> configOfLRT = pair.getSecond();
-
-		ImportRolesFromCSVExecutor lrt = new ImportRolesFromCSVExecutor();
-		lrt.init(configOfLRT);
-		longRunningTaskManager.executeSync(lrt);
 		// create formAttributes
 		String eavNameNode = "nodeAttribute";
 		String eavTreeName = "treeAttribute";
@@ -56,6 +49,18 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 		createFormAttribute(eavNameNode, definition.getId());
 		createFormAttribute(eavTreeName, definition.getId());
 		//
+		getHelper().createRole("Manager-A");
+		getHelper().createRole("MISTER_RL");
+		getHelper().createRole("LAY-OP");
+		getHelper().createRole("LAY-SP");
+		getHelper().createRole("LAY-BLL");
+		getHelper().createRole("AMG-BLK");
+		getHelper().createRole("ACC-CLOSE");
+		getHelper().createRole("CORE-CLOSE");
+		
+		setPath(path, "importRolesTestFile02.csv");
+		IdmAttachmentDto attachment = createAttachment();
+		
 		Map<String, Object> config = new HashMap<>();
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_CSV_ATTACHMENT, attachment.getId());
 		config.put(ImportAutomaticRoleAttributesFromCSVExecutor.PARAM_ROLES_COLUMN_NAME, ROLE_ROW);
@@ -69,14 +74,11 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 		automaticRolesLRT.init(config);
 		longRunningTaskManager.executeSync(automaticRolesLRT);
 		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(automaticRolesLRT);
-		Long count = task.getCount();
 		Long total = 8L;
-		Long counterTotal = 9L;
 		Assert.assertEquals(total, task.getCounter());
-		Assert.assertEquals(counterTotal, count);
 		// check automatic roles settings
 		List<IdmRoleDto> roles = roleService.find(new IdmRoleFilter(), null).getContent();
-		List<IdmRoleDto> idmRoleDtoStream = roles.stream().filter(r -> r.getName().equals(CHECK_NAME)).collect(Collectors.toList());
+		List<IdmRoleDto> idmRoleDtoStream = roles.stream().filter(r -> r.getCode().equals(CHECK_NAME)).collect(Collectors.toList());
 		Assert.assertFalse(idmRoleDtoStream.isEmpty());
 		IdmAutomaticRoleFilter automaticRoleFilter = new IdmAutomaticRoleFilter();
 		automaticRoleFilter.setRoleId(idmRoleDtoStream.get(0).getId());

@@ -1,8 +1,9 @@
 roles;position;organizational unit
 Manager-A;Leader;Business
-"MISTER RL
-LAY-OP
-LAY-SP
-LAY-BLL
-AMG-BLK
-CORE-CLOSE";Manager;Business
+MISTER_RL;Manager;Business
+LAY-OP;Manager;Business
+LAY-SP;Manager;Business
+LAY-BLL;Manager;Business
+AMG-BLK;Manager;Business
+CORE-CLOSE;Manager;Business
+ACC_CLOSE;Manager;Business
