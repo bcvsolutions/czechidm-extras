@@ -19,6 +19,7 @@ import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 
 /**
@@ -40,7 +41,7 @@ public class ImportAutomaticRoleByAttributesCSVExecutorTest extends AbstractRole
 
 		helper.createRole("role");
 		helper.createEavAttribute("eav1", IdmIdentity.class, PersistentType.SHORTTEXT);
-		helper.createEavAttribute("eav2", IdmIdentity.class, PersistentType.SHORTTEXT);
+		helper.createEavAttribute("eav2", IdmIdentityContract.class, PersistentType.SHORTTEXT);
 
 		Map<String, Object> configOfLRT = new HashMap<>();
 		configOfLRT.put(ImportAutomaticRoleByAttributesCSVExecutor.PARAM_CSV_ATTACHMENT, attachment.getId());
