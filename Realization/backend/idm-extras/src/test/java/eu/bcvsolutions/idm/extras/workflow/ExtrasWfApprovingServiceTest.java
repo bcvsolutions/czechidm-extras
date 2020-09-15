@@ -1,13 +1,16 @@
 package eu.bcvsolutions.idm.extras.workflow;
 
 import eu.bcvsolutions.idm.core.api.config.domain.RoleConfiguration;
+import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleComparison;
 import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
 import eu.bcvsolutions.idm.core.api.domain.IdmScriptCategory;
 import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
 import eu.bcvsolutions.idm.core.api.domain.ScriptAuthorityType;
+import eu.bcvsolutions.idm.core.api.dto.IdmAutomaticRoleAttributeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmScriptAuthorityDto;
@@ -21,14 +24,20 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmScriptAuthorityService;
 import eu.bcvsolutions.idm.core.api.service.IdmScriptService;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentity_;
 import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 import eu.bcvsolutions.idm.extras.service.api.ExtrasWfApprovingService;
 import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
+import eu.bcvsolutions.idm.core.api.domain.AutomaticRoleAttributeRuleType;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
+
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,8 +62,8 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	private static final String GUARANTEE_IDENTITY_A = "guaranteeIdentityTypeA";
 	private static final String GUARANTEE_IDENTITY_B = "guaranteeIdentityTypeB";
 	
-	private static final String MANAGER_FOR_CONTRACT_1 = "managerForContract1";
-	private static final String MANAGER_FOR_CONTRACT_2 = "managerForContract2";
+	private static final String MANAGER_FOR_CONTRACT_1 = "managerForContract_1";
+	private static final String MANAGER_FOR_CONTRACT_2 = "managerForContract_2";
 	
 	@Autowired
 	private IdmConfigurationService configurationService;
@@ -78,22 +87,21 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	private IdmRoleService roleService;
 	@Autowired
 	SecurityService securityService;
+	@Autowired
+	IdmIdentityRoleService identityRoleService;
 
 
 	private IdmRoleDto roleForApproval;
 	private IdmRoleDto roleForApproval2;
-	private IdmRoleDto adminRole;
 	private IdmIdentityContractDto identityContractWithManager1;
 	private IdmIdentityContractDto identityContractWithManager2;
-	private IdmIdentityDto adminIdentity;
-	
-	@Before
-	@Transactional
+
+
 	public void init() {
 		configurationService.setValue(ExtrasConfiguration.EXTRAS_APPROVAL_WF_CUSTOM_SCRIPT, APPROVAL_CUSTOM_SCRIPT);
 		configurationService.setValue(ExtrasConfiguration.EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_A, GUARANTEE_TYPE_A);
 		configurationService.setValue(ExtrasConfiguration.EXTRAS_APPROVAL_WF_GUARANTEE_TYPE_B, GUARANTEE_TYPE_B);
-			
+		
 		//Identity
 		IdmIdentityDto conceptIdentity = getHelper().createIdentity();
 		
@@ -125,12 +133,6 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 		getHelper().createRoleGuarantee(roleForApproval, guaranteeIdentityTypeB, GUARANTEE_TYPE_B);
 		//
 		getHelper().createRoleGuarantee(roleForApproval2, guaranteeIdentity);
-		
-		//Administrator
-		adminRole = roleService.getByCode(RoleConfiguration.DEFAULT_ADMIN_ROLE);
-		adminIdentity = getHelper().createIdentity(getHelper().createName());
-		getHelper().createIdentityContact(adminIdentity);
-		getHelper().createIdentityRole(adminIdentity, adminRole);
 	}
 
 	@After
@@ -141,6 +143,7 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	@Test
 	@Transactional
 	public void approvalByContractManager() {
+		init();
 		IdmConceptRoleRequestDto concept = createRoleConcept(roleForApproval, identityContractWithManager1);	
 		String approver =  extrasWfApprovingService.getContractManagersForApproval(concept);
 		assertEquals(MANAGER_FOR_CONTRACT_1, approver);
@@ -149,6 +152,7 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	@Test
 	@Transactional
 	public void approvalByRoleGuranteeWithouGuaranteesByType() {
+		init();
 		IdmConceptRoleRequestDto concept = createRoleConcept(roleForApproval2, identityContractWithManager1);	
 		String approver =  extrasWfApprovingService.getRoleGuaranteesForApproval(concept, ExtrasWfApprovingService.APPROVE_BY_GUARANTEE_A);
 		assertEquals(GUARANTEE_IDENTITY, approver);
@@ -157,6 +161,7 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	@Test
 	@Transactional
 	public void approvalByRoleGuranteeForTypeA() {
+		init();
 		IdmConceptRoleRequestDto concept = createRoleConcept(roleForApproval, identityContractWithManager1);	
 		String approver =  extrasWfApprovingService.getRoleGuaranteesForApproval(concept, ExtrasWfApprovingService.APPROVE_BY_GUARANTEE_A);
 		assertEquals(GUARANTEE_IDENTITY_A, approver);
@@ -165,6 +170,7 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	@Test
 	@Transactional
 	public void approvalByRoleGuranteeForTypeB() {
+		init();
 		IdmConceptRoleRequestDto concept = createRoleConcept(roleForApproval, identityContractWithManager1);	
 		String approver =  extrasWfApprovingService.getRoleGuaranteesForApproval(concept, ExtrasWfApprovingService.APPROVE_BY_GUARANTEE_B);
 		assertEquals(GUARANTEE_IDENTITY_B, approver);
@@ -173,6 +179,14 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	@Test
 	@Transactional
 	public void getAdminAsApprover() {
+		IdmIdentityDto adminIdentity;
+		IdmRoleDto adminRole;
+		//Administrator
+		adminRole = roleService.getByCode(RoleConfiguration.DEFAULT_ADMIN_ROLE);
+		adminIdentity = getHelper().createIdentity(getHelper().createName());
+		getHelper().createIdentityContact(adminIdentity);
+		getHelper().createIdentityRole(adminIdentity, adminRole);
+		//
 		String approvers =  extrasWfApprovingService.getAdminAsCandidate();
 		assertTrue(approvers.contains(adminIdentity.getCode()));
 	}
@@ -191,6 +205,7 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	@Test
 	@Transactional
 	public void testEvaluateScriptWithAnotherCategory() {
+		init();
 		IdmScriptDto subScript = new IdmScriptDto();
 		subScript.setCategory(IdmScriptCategory.SYSTEM);
 		subScript.setCode(APPROVAL_CUSTOM_SCRIPT);
@@ -206,7 +221,29 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 		String approvers = extrasWfApprovingService.getApproversFromScript(null);
 		assertEquals(APPROVER_IDENTITY_FORM_CUSTOM_SCRIPT, approvers);	
 	}
-
+	
+	@Test
+	public void testSetApprovalRoleAsAutomatic() {
+		//Behavior for use advanced approval workflow is the same for all approval WF in extras module
+		configurationService.setValue("idm.sec.core.wf.role.approval.4", "extras-approve-role-by-contract-manager");
+		
+		//Identity for automatic role
+		IdmIdentityDto autoRoleIdentity = getHelper().createIdentity("AutoroleIdentity");
+		getHelper().createIdentityContact(autoRoleIdentity);
+		IdmRoleDto roleForAutomaticTest = getHelper().createRole();
+		//Use advanced approval WF for this role
+		roleForAutomaticTest.setPriority(4);
+		
+		IdmAutomaticRoleAttributeDto automaticRole = getHelper().createAutomaticRole(roleForAutomaticTest.getId());
+		getHelper().createAutomaticRoleRule(automaticRole.getId(), AutomaticRoleAttributeRuleComparison.EQUALS, AutomaticRoleAttributeRuleType.IDENTITY, IdmIdentity_.username.getName(), null, autoRoleIdentity.getUsername());
+		getHelper().recalculateAutomaticRoleByAttribute(automaticRole.getId());
+		
+		List<IdmIdentityRoleDto> identityRoles = identityRoleService.findAllByIdentity(autoRoleIdentity.getId());
+		List<UUID> rolesIds = identityRoles.stream().map(IdmIdentityRoleDto::getRole).collect(Collectors.toList());
+			
+		assertTrue(rolesIds.contains(roleForAutomaticTest.getId()));
+	}
+	
 	private String createListScript() {
 		StringBuilder script = new StringBuilder();
 		script.append("import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;\n");
