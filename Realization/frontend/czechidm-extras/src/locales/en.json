@@ -48,5 +48,300 @@
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."
     }
+  },
+  "eav": {
+    "authorization-evaluator": {
+      "contract-subordinate-and-projection-evaluator": {
+        "help": "Permissions to user by type. Add permisson by selected user type or by default type (user without type is specified).",
+        "attributes": {
+          "form-projection": {
+            "label": "User type",
+            "help": "Add permission to selected user type or to default type (user without type is specified).",
+            "placeholder": "Default (empty) user type or select ..."
+          }
+        }
+      },
+      "subordinate-and-projection-evaluator": {
+        "help": "Permissions to user by type. Add permisson by selected user type or by default type (user without type is specified).",
+        "attributes": {
+          "form-projection": {
+            "label": "User type",
+            "help": "Add permission to selected user type or to default type (user without type is specified).",
+            "placeholder": "Default (empty) user type or select ..."
+          }
+        }
+      }
+    },
+    "long-running-task": {
+      "extras-import-roles-from-csv": {
+        "label": "Import roles from CSV",
+        "help": "This tool allows you to import roles from a CSV file and set them various attributes.",
+        "attributes": {
+          "canberequested": {
+            "label": "Can be requested"
+          },
+          "encoding": {
+            "label": "File encoding",
+            "placeholder": "Encoding of input file (e. g., \"utf-8\")"
+          },
+          "roleenvironment": {
+            "label": "Role environment",
+            "placeholder": "The name of the environment to which you want to add the roles"
+          },
+          "multivalueseparator": {
+            "label": "Multi value separator",
+            "placeholder": "Default: |"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "formdefinitioncode": {
+            "label": "Form definition code",
+            "placeholder": "If you are importing role attributes, set the code of the definition"
+          },
+          "subrolescolumn": {
+            "label": "Column with subrole codes",
+            "placeholder": "The name of the column with subordinate role codes"
+          },
+          "cataloguecolumn": {
+            "label": "Column with catalogue names",
+            "placeholder": "The name of the column with catalogue names"
+          },
+          "updateguaranteeroletypes": {
+            "label": "Update guarantee role types"
+          },
+          "guaranteeroletypescolumn": {
+            "label": "Column with guarantee role types",
+            "placeholder": "The name of the column with the types of role guarantees by roles"
+          },
+          "guaranteerolescolumn": {
+            "label": "Column with guarantee roles",
+            "placeholder": "The name of the column with role guarantees by roles"
+          },
+          "updateguaranteetypes": {
+            "label": "Update guarantee types"
+          },
+          "guaranteetypescolumn": {
+            "label": "Column with guarantee types",
+            "placeholder": "The name of the column with the types of role guarantees by login"
+          },
+          "guaranteescolumn": {
+            "label": "Column with guarantees",
+            "placeholder": "The name of the column with role guarantees by login"
+          },
+          "criticalitycolumn": {
+            "label": "Column with criticality",
+            "placeholder": "Default: 0"
+          },
+          "roleattributescolumn": {
+            "label": "Column with role attributes",
+            "placeholder": "The name of the column with the role attributes"
+          },
+          "descriptioncolumn": {
+            "label": "Column with description",
+            "placeholder": "The name of the column with the description of roles"
+          },
+          "rolecodescolumn": {
+            "label": "Column with role codes",
+            "placeholder": "The name of the column with the codes of roles to import"
+          },
+          "rolenamescolumn": {
+            "label": "Column with role names",
+            "placeholder": "The name of the column with the names of roles to import"
+          },
+          "importfile": {
+            "label": "Upload a CSV file"
+          },
+          "eavcodeprefix": {
+            "label": "Prefix of column with name of EAV attribute"
+          },
+          "eavvalueprefix": {
+            "label": "Prefix of column with value of EAV attribute"
+          },
+          "systemnameprefix": {
+            "label": "Prefix of column with system name"
+          },
+          "systemattributeprefix": {
+            "label": "Prefix of column with system attribute codes"
+          },
+          "systemattributevalueprefix": {
+            "label": "Prefix of column with system attribute values"
+          }
+        }
+      },
+      "extras-import-codelist": {
+        "label": "Import Code list from CSV",
+        "help": "Task which will create/update defined code list and it's items from CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "codeofcodelist": {
+            "label": "Code of code list"
+          },
+          "nameofcodelist": {
+            "label": "Name of code list"
+          },
+          "descriptionofcodelist": {
+            "label": "Description of code list"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          },
+          "eavattributenameprefix": {
+            "label": "Prefix of column with name of EAV attribute"
+          },
+          "eavattributevalueprefix": {
+            "label": "Prefix of column with value of EAV attribute"
+          }
+        }
+      },
+      "extras-import-automatic-roles-definitions-by-attribute": {
+        "label": "Import definitions of automatic roles by attribute from CSV",
+        "help": "You can import automatic roles definitions by identity attribute, EAV identity, contract attribute, EAV contract",
+        "attributes": {
+          "csvfile": {
+            "label": "Upload CSV file"
+          },
+          "fileencoding": {
+            "label": "File encoding"
+          },
+          "rolescolumn": {
+            "label": "Name of column with roles"
+          },
+          "definitionnamecolumn": {
+            "label": "Name of column with definitions names"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "identityattributecolumnnameprefix": {
+            "label": "Prefix of column name with identity attribute name"
+          },
+          "identityattributecolumnvalueprefix": {
+            "label": "Prefix of column name with identity attribute value"
+          },
+          "identityeavattributecolumnnameprefix": {
+            "label": "Prefix of column name with identity EAV attribute name"
+          },
+          "identityeavattributecolumnvalueprefix": {
+            "label": "Prefix of column name with identity EAV attribute value"
+          },
+          "contractattributecolumnnameprefix": {
+            "label": "Prefix of column name with contract attribute name"
+          },
+          "contractattributecolumnvalueprefix": {
+            "label": "Prefix of column name with contract attribute value"
+          },
+          "contracteavattributecolumnnameprefix": {
+            "label": "Prefix of column name with contract EAV attribute name"
+          },
+          "contracteavattributecolumnvalueprefix": {
+            "label": "Prefix of column name with contract EAV attribute value"
+          }
+        }
+      },
+      "extras-import-automatic-treenode-roles": {
+        "label": "Import automatic roles on tree nodes",
+        "help": "This task allows you to import automatic tree node roles from a CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          },
+          "rolecodescolumn": {
+            "label": "Column with role codes"
+          },
+          "nodecodescolumn": {
+            "label": "Column with tree node codes"
+          },
+          "nodeidscolumn": {
+            "label": "Column with tree node IDs"
+          },
+          "recursiontypecolumn": {
+            "label": "Column with recursion types"
+          }
+        }
+      },
+      "extras-import-assinged-roles": {
+        "label": "Import assigned roles",
+        "help": "This task allows you to assign roles to user based on an import from a CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          },
+          "rolecolumn": {
+            "label": "Column with roles"
+          },
+          "usernamecolumn": {
+            "label": "Column with username"
+          },
+          "rolesassignment": {
+            "label": "Roles assignment contract type",
+            "help": "Choose from: a) 'allContracts' (assign to all valid contracts), b) 'primeContract' (assign to the main contract), c) 'eavContract' (assign based on a contract EAV)"
+          },
+          "rolemultivalueseparator": {
+            "label": "Multi value separator of roles",
+            "placeholder": "If there are multiple roles on one line, which character separates them"
+          },
+          "isrolecolumnmultivalued": {
+            "label": "Is the roles column multivalued?"
+          },
+          "contractdefinition": {
+            "label": "Contract definition",
+            "help": "Use when 'eavContract' option was used"
+          },
+          "contracteavcodeprefix": {
+            "label": "Prefix of column name with contract attribute name",
+            "help": "Use when 'eavContract' option was used"
+          },
+          "contracteavvalueprefix": {
+            "label": "Prefix of column name with contract attribute value",
+            "help": "Use when 'eavContract' option was used"
+          }
+        }
+      },
+      "extras-import-system-accounts": {
+        "label": "Import system accounts",
+        "help": "This task allows you to import system accounts from a CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          },
+          "systemname": {
+            "label": "Name of system"
+          },
+          "nameattribute": {
+            "label": "Column with attribute __NAME__"
+          },
+          "uidattribute": {
+            "label": "Column with attribute __UID__"
+          },
+          "multivaluedseparator": {
+            "label": "Separator of multivalued attributes"
+          }
+        }
+      }
+    }
   }
 }

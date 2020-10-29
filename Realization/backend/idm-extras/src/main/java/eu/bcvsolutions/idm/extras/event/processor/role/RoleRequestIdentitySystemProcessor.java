@@ -11,12 +11,14 @@ import eu.bcvsolutions.idm.acc.dto.AccAccountDto;
 import eu.bcvsolutions.idm.acc.event.ProvisioningEvent;
 import eu.bcvsolutions.idm.acc.service.api.AccAccountService;
 import eu.bcvsolutions.idm.acc.service.api.ProvisioningService;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleRequestDto;
 import eu.bcvsolutions.idm.core.api.event.CoreEventProcessor;
 import eu.bcvsolutions.idm.core.api.event.DefaultEventResult;
 import eu.bcvsolutions.idm.core.api.event.EntityEvent;
 import eu.bcvsolutions.idm.core.api.event.EventResult;
 import eu.bcvsolutions.idm.core.api.event.processor.RoleRequestProcessor;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.model.event.RoleRequestEvent.RoleRequestEventType;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 
@@ -40,6 +42,8 @@ public class RoleRequestIdentitySystemProcessor extends CoreEventProcessor<IdmRo
 	@Autowired
 	private AccAccountService accountService;
 	@Autowired
+	private IdmIdentityService identityService;
+	@Autowired
 	private ProvisioningService provisioningService;
 	@Autowired
 	private ExtrasConfiguration extrasConfiguration;
@@ -54,12 +58,19 @@ public class RoleRequestIdentitySystemProcessor extends CoreEventProcessor<IdmRo
 
 		UUID systemId = extrasConfiguration.getSystemId();
 		if (systemId != null) {
-			List<AccAccountDto> accounts = accountService.getAccounts(systemId, requestDto.getApplicant());
+			UUID identityId = requestDto.getApplicant();
+			List<AccAccountDto> accounts = accountService.getAccounts(systemId, identityId);
 
+			IdmIdentityDto identityDto = identityService.get(identityId);
+			if (identityDto == null) {
+				LOG.error("Identity [{}] from role request [{}] was not found, provisioning won't be called for system [{}].",
+						identityId, requestDto.getId(), systemId);
+				return new DefaultEventResult<>(event, this);
+			}
 			// There will be probably only one account but for sure
 			for (AccAccountDto account : accounts) {
 				LOG.info("Do provisioning for system and account uid [{}]", account.getUid());
-				provisioningService.doProvisioning(account);
+				provisioningService.doProvisioning(account, identityDto);
 			}
 		} else {
 			LOG.error("System ID for system isn't defined.");
@@ -89,6 +100,11 @@ public class RoleRequestIdentitySystemProcessor extends CoreEventProcessor<IdmRo
 	@Override
 	public String getName() {
 		return PROCESSOR_NAME;
+	}
+
+	@Override
+	public boolean isDefaultDisabled() {
+		return true;
 	}
 }
 

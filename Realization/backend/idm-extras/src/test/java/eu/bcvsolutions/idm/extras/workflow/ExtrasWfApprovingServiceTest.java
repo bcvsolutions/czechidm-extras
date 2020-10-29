@@ -2,6 +2,7 @@ package eu.bcvsolutions.idm.extras.workflow;
 
 import eu.bcvsolutions.idm.core.api.config.domain.RoleConfiguration;
 import eu.bcvsolutions.idm.core.api.domain.ConceptRoleRequestOperation;
+import eu.bcvsolutions.idm.core.api.domain.IdentityState;
 import eu.bcvsolutions.idm.core.api.domain.IdmScriptCategory;
 import eu.bcvsolutions.idm.core.api.domain.RoleRequestedByType;
 import eu.bcvsolutions.idm.core.api.domain.ScriptAuthorityType;
@@ -21,10 +22,14 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmScriptAuthorityService;
 import eu.bcvsolutions.idm.core.api.service.IdmScriptService;
+import eu.bcvsolutions.idm.core.security.api.service.SecurityService;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 import eu.bcvsolutions.idm.extras.service.api.ExtrasWfApprovingService;
 import eu.bcvsolutions.idm.extras.service.impl.DefaultExtrasWfApprovingService;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
@@ -51,6 +56,7 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	private static final String GUARANTEE_IDENTITY = "guaranteeIdentity";
 	private static final String GUARANTEE_IDENTITY_A = "guaranteeIdentityTypeA";
 	private static final String GUARANTEE_IDENTITY_B = "guaranteeIdentityTypeB";
+	private static final String GUARANTEE_IDENTITY_MANUALLY_DISABLED = "guaranteeIdentityBlocked";
 	
 	private static final String MANAGER_FOR_CONTRACT_1 = "managerForContract1";
 	private static final String MANAGER_FOR_CONTRACT_2 = "managerForContract2";
@@ -75,14 +81,22 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 	GroovyScriptService groovyScriptService;
 	@Autowired
 	private IdmRoleService roleService;
+	@Autowired
+	SecurityService securityService;
+	@Autowired
+	private ExtrasConfiguration extrasConfiguration;
 
 
 	private IdmRoleDto roleForApproval;
 	private IdmRoleDto roleForApproval2;
+	private IdmRoleDto roleForApproval3;
 	private IdmRoleDto adminRole;
 	private IdmIdentityContractDto identityContractWithManager1;
 	private IdmIdentityContractDto identityContractWithManager2;
 	private IdmIdentityDto adminIdentity;
+	private IdmIdentityDto guaranteeIdentity;
+	private IdmIdentityDto guaranteeIdentityBlocked;
+	private IdmIdentityDto managerIdentity1;
 	
 	@Before
 	@Transactional
@@ -99,19 +113,31 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 		identityContractWithManager2 = getHelper().createIdentityContact(conceptIdentity);
 		
 		//Identities for managers
-		IdmIdentityDto managerIdentity1 = getHelper().createIdentity(MANAGER_FOR_CONTRACT_1);
+		managerIdentity1 = getHelper().createIdentity(MANAGER_FOR_CONTRACT_1);
 		IdmIdentityDto managerIdentity2 = getHelper().createIdentity(MANAGER_FOR_CONTRACT_2);		
-		getHelper().createIdentity(APPROVER_IDENTITY_FORM_CUSTOM_SCRIPT); 
+		IdmIdentityDto approverFromScript  = getHelper().createIdentity(APPROVER_IDENTITY_FORM_CUSTOM_SCRIPT);
+		getHelper().createIdentityContact(managerIdentity1);
+		getHelper().createIdentityContact(managerIdentity2);
+		getHelper().createIdentityContact(approverFromScript);
 		
 		//Set Managers to contracts
 		getHelper().createContractGuarantee(identityContractWithManager1, managerIdentity1);
 		getHelper().createContractGuarantee(identityContractWithManager2, managerIdentity2);
 		
 		//Guarantees identity
-		IdmIdentityDto guaranteeIdentity = getHelper().createIdentity(GUARANTEE_IDENTITY);
+		
 		IdmIdentityDto guaranteeIdentityTypeA = getHelper().createIdentity(GUARANTEE_IDENTITY_A);
 		IdmIdentityDto guaranteeIdentityTypeB = getHelper().createIdentity(GUARANTEE_IDENTITY_B);
-		
+		//
+		guaranteeIdentity = getHelper().createIdentity(GUARANTEE_IDENTITY);
+		guaranteeIdentityBlocked = getHelper().createIdentity(GUARANTEE_IDENTITY_MANUALLY_DISABLED);
+		guaranteeIdentityBlocked.setState(IdentityState.DISABLED_MANUALLY);
+		//
+		getHelper().createIdentityContact(guaranteeIdentityTypeA);
+		getHelper().createIdentityContact(guaranteeIdentityTypeB);
+		getHelper().createIdentityContact(guaranteeIdentity);
+		getHelper().createIdentityContact(guaranteeIdentityBlocked);
+
 		// Role for approval
 		roleForApproval =  getHelper().createRole("roleForApproval");
 		roleForApproval2 = getHelper().createRole("roleForApproval2");
@@ -174,6 +200,15 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 		assertTrue(approvers.contains(adminIdentity.getCode()));
 	}
 	
+	@Test
+	@Transactional
+	public void loggedUserInCandidates() {
+		getHelper().loginAdmin();
+		String candidates = "admin";
+		String loggedUserId = securityService.getCurrentId().toString();
+		boolean isAdminCandidate =  extrasWfApprovingService.isUserInCandidates(candidates, loggedUserId);
+		assertTrue(isAdminCandidate);
+	}
 
 	@Test
 	@Transactional
@@ -193,7 +228,33 @@ public class ExtrasWfApprovingServiceTest extends AbstractIntegrationTest {
 		String approvers = extrasWfApprovingService.getApproversFromScript(null);
 		assertEquals(APPROVER_IDENTITY_FORM_CUSTOM_SCRIPT, approvers);	
 	}
+	
+	@Test
+	@Transactional
+	public void selectApproversWithValidStates() {
+	
+	//use default configuration
+	List<IdmIdentityDto> approvalCandidates = new ArrayList<IdmIdentityDto>();
+	approvalCandidates.add(guaranteeIdentity);
+	approvalCandidates.add(guaranteeIdentityBlocked);
 
+	String processedCandidates = extrasWfApprovingService.processCandidates(approvalCandidates);
+	
+	assertEquals(guaranteeIdentity.getUsername(), processedCandidates);
+	
+	//use custom configuration
+	approvalCandidates = new ArrayList<IdmIdentityDto>();
+	approvalCandidates.add(guaranteeIdentity);
+	approvalCandidates.add(guaranteeIdentityBlocked);
+	
+	configurationService.setValue(ExtrasConfiguration.EXTRAS_APPROVAL_WF_APPROVER_STATES, IdentityState.DISABLED_MANUALLY.toString());
+	
+	String processedCandidatesWithCustomProperty = extrasWfApprovingService.processCandidates(approvalCandidates);
+	assertEquals(guaranteeIdentityBlocked.getUsername(), processedCandidatesWithCustomProperty);
+	
+	configurationService.setValue(ExtrasConfiguration.EXTRAS_APPROVAL_WF_APPROVER_STATES, "");
+	}
+	
 	private String createListScript() {
 		StringBuilder script = new StringBuilder();
 		script.append("import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;\n");

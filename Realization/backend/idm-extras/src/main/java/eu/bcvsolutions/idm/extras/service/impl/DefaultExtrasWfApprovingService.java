@@ -1,14 +1,24 @@
 package eu.bcvsolutions.idm.extras.service.impl;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.identityconnectors.framework.common.exceptions.PermissionDeniedException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import eu.bcvsolutions.idm.core.api.config.domain.RoleConfiguration;
 import eu.bcvsolutions.idm.core.api.dto.IdmConceptRoleRequestDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmContractGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleGuaranteeRoleDto;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmContractGuaranteeFilter;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleGuaranteeRoleFilter;
 import eu.bcvsolutions.idm.core.api.service.IdmContractGuaranteeService;
@@ -23,14 +33,6 @@ import eu.bcvsolutions.idm.core.model.entity.IdmRoleGuarantee_;
 import eu.bcvsolutions.idm.core.script.evaluator.DefaultSystemScriptEvaluator;
 import eu.bcvsolutions.idm.extras.config.domain.ExtrasConfiguration;
 import eu.bcvsolutions.idm.extras.service.api.ExtrasWfApprovingService;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import org.identityconnectors.framework.common.exceptions.PermissionDeniedException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service; 
 
 @Service
 public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService {
@@ -54,6 +56,9 @@ public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService
 	@Autowired
 	private ExtrasConfiguration extrasConfiguration;
 
+	public static final List<String> DEFAULT_APPROVER_VALID_STATES = Arrays.asList(new String[]{"CREATED", "VALID", "FUTURE_CONTRACT"});
+
+	
 	
 	public List<IdmIdentityDto> getDirectRoleGuarantees(UUID idmRoleUUID, String guaranteeType) {
 		List<IdmIdentityDto> result = new ArrayList<IdmIdentityDto>();
@@ -133,17 +138,14 @@ public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService
 	
 	public String getContractManagersForApproval(IdmConceptRoleRequestDto roleConcept) {
 		List<IdmIdentityDto> result = new ArrayList<IdmIdentityDto>();
-		
+
 		IdmIdentityContractDto idmIdentityContractDto = idmIdentityContractService.get(roleConcept.getIdentityContract());
 		
-		IdmContractGuaranteeFilter managerFilter = new IdmContractGuaranteeFilter();
+		IdmIdentityFilter managerFilter = new IdmIdentityFilter();
 		if (idmIdentityContractDto != null) {
-			managerFilter.setIdentityContractId(roleConcept.getIdentityContract());
-			List<IdmContractGuaranteeDto> directManagers = contractGuaranteeService.find(managerFilter, null)
-					.getContent();
-	
-			result = directManagers.stream().map(IdmContractGuaranteeDto -> identityService.get(IdmContractGuaranteeDto.getGuarantee()))
-					.collect(Collectors.toList());
+			managerFilter.setManagersByContract(roleConcept.getIdentityContract());
+			managerFilter.setManagersFor(idmIdentityContractDto.getIdentity());
+			result.addAll(identityService.find(managerFilter, null).getContent());
 		}
 		return processCandidates(result);
 	}
@@ -154,6 +156,7 @@ public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService
 		
 		List<IdmIdentityDto> result = new ArrayList<IdmIdentityDto>();
 		if (scriptCode != null) {
+			@SuppressWarnings("unchecked")
 			List<IdmIdentityDto> scriptResult = (List<IdmIdentityDto>) defaultSystemScriptEvaluator.evaluate(defaultSystemScriptEvaluator.newBuilder()
 					.setScriptCode(scriptCode).addParameter("conceptRoleRequestDto", conceptRoleRequestDto).build());
 				if (scriptResult != null) {
@@ -174,11 +177,38 @@ public class DefaultExtrasWfApprovingService implements ExtrasWfApprovingService
 		}
 		throw new PermissionDeniedException("Candidate for approve role not found.");
 	}
-	
-	private String processCandidates(List<IdmIdentityDto> candidates) {
-		candidates.removeIf(identity -> {
-			return identity.isDisabled();
-		});
+
+
+	/**
+	 * Remove approval candidates in invalid states
+	 * 
+	 * @param candidates
+	 * @return
+	 */
+	public String processCandidates(List<IdmIdentityDto> candidates) {
+		List <String> statesValue = extrasConfiguration.getValidApproverStates();
+		if (statesValue == null || statesValue.isEmpty()) {
+			statesValue = DEFAULT_APPROVER_VALID_STATES;
+		}
+		
+		Iterator<IdmIdentityDto> it  = candidates.iterator();
+		while(it.hasNext()) {
+			IdmIdentityDto candidate = (IdmIdentityDto) it.next();
+		    if (!statesValue.contains(candidate.getState().toString())) {
+		    	it.remove();
+		    }
+		}
 		return identityService.convertIdentitiesToString(candidates.stream().distinct().collect(Collectors.toList()));
 	}
+		
+	public boolean isUserInCandidates(String candidates, String user) {
+		if (candidates == null || user == null) {
+			return false;
+		}
+		List<String> listOfCandidates = Arrays.asList(candidates.split(","));
+		return listOfCandidates.stream().anyMatch(identity -> {
+			return identityService.getByUsername(identity).getId().toString().equals(user);
+		});
+	}
+	
 }
