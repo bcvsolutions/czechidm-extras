@@ -1,0 +1,35 @@
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes" ?>
+<!-- 
+	Notification to administrators what users have expired, missing or expiring managers.
+parameters:
+    missingManagers - identities with missing manager
+    expiredManagers - identities and manager identities
+    expiringManagers - identities and managers identities expiring in X days
+ -->
+
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
+    <code>checkExpiredOrMissingManager</code>
+    <name>Check expired, missing or expiring managers (extras)</name>
+    <subject>IdM - Seznam uživatelů s nevalidním garantem</subject>
+    <bodyHtml>
+        <![CDATA[
+            <html>
+                <body>
+                    Dobrý den,<br />
+                    <br />
+                    zaměstnanec $!user odchází ke dni $ppvEnd (konec pracovního poměru) z oddělení $!department.<br />
+                    <br />
+                    Přejeme Vám pěkný den.<br />
+                <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
+			        CzechIdM © 2019&nbsp;BCV Solutions s.r.o.&nbsp;
+		        </div>
+                </body>
+            </html>
+        ]]>
+    </bodyHtml>
+    <bodyText></bodyText>
+    <parameter>missingManagers, expiredManagers, expiringManagers</parameter>
+    <systemTemplate>false</systemTemplate>
+    <moduleId>extras</moduleId>
+</template>
