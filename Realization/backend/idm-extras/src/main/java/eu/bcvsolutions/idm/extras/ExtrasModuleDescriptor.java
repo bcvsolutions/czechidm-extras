@@ -34,6 +34,7 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 	public static final String TOPIC_CONTRACT_END = String.format("%s:contractEnd", MODULE_ID);
 	public static final String TOPIC_CONTRACT_END_IN_X_DAYS = String.format("%s:contractEndInXDays", MODULE_ID);
 	public static final String TOPIC_NEW_TREE_NODE = String.format("%s:newTreeNode", MODULE_ID);
+	public static final String TOPIC_CHECK_EXPIRED_OR_MISSING_MANAGER = String.format("%s:checkExpiredOrMissingManager", MODULE_ID);
 
 	@Autowired
 	private IdmNotificationTemplateService notificationTemplateService;
@@ -77,6 +78,13 @@ public class ExtrasModuleDescriptor extends PropertyModuleDescriptor {
 				IdmEmailLog.NOTIFICATION_TYPE,
 				"Contract end in x days notification",
 				contractEndInXDaysNow != null ? contractEndInXDaysNow.getId() : null));
+		IdmNotificationTemplateDto checkExpiredOrMissingManager = notificationTemplateService.getByCode("checkExpiredOrMissingManager");
+		configs.add(new NotificationConfigurationDto(
+				TOPIC_CHECK_EXPIRED_OR_MISSING_MANAGER,
+				NotificationLevel.INFO,
+				IdmEmailLog.NOTIFICATION_TYPE,
+				"Check for expired or missing manager",
+				checkExpiredOrMissingManager != null ? checkExpiredOrMissingManager.getId() : null));
 		return configs;
 	}
 
