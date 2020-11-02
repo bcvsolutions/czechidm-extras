@@ -1,8 +1,10 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import eu.bcvsolutions.idm.core.api.dto.IdmContractGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
@@ -11,6 +13,8 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormProjectionDto;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormProjectionService;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
+import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
+import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationLogDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationFilter;
@@ -20,11 +24,14 @@ import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationLogServi
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationTemplateService;
 import eu.bcvsolutions.idm.core.notification.entity.IdmEmailLog;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -107,6 +114,38 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 			notificationConfigurationManagers.setTemplate(managersTemplate.getId());
 
 			notificationConfigurationService.save(notificationConfigurationManagers);
+			
+			identita1 = setupIdentity("identita1",true); 
+			identityContract1 = setupContract(identita1, 50);
+			identita2 = setupIdentity("identita2",true); 
+			identityContract2 = setupContract(identita2, 50);
+			identita3 = setupIdentity("identita3",true); 
+			identityContract3 = setupContract(identita3, 50);
+			identita4 = setupIdentity("identita4",false); 
+			identityContract4 = setupContract(identita4, 50);
+			identita5 = setupIdentity("identita5",false); 
+			identityContract5 = setupContract(identita5, 50);
+			identita6 = setupIdentity("identita6",false); 
+			identityContract6 = setupContract(identita6, 50);
+			
+			manager1 = setupIdentity("manager1",true); 
+			managerContract1 = setupContract(manager1, 50);
+			manager2 = setupIdentity("manager2",true); 
+			managerContract2 = setupContract(manager2, -5);
+			manager3 = setupIdentity("manager3",true); 
+			managerContract3 = setupContract(manager3, 3);
+			manager4 = setupIdentity("manager4",false); 
+			managerContract4 = setupContract(manager4, -10);
+			manager5 = setupIdentity("manager5",false); 
+			managerContract5 = setupContract(manager5, 20);
+			manager6 = setupIdentity("manager6",false); 
+			managerContract6 = setupContract(manager6, 50);
+			
+			getHelper().createContractGuarantee(identityContract1, manager1);
+			getHelper().createContractGuarantee(identityContract2, manager2);
+			getHelper().createContractGuarantee(identityContract3, manager3);
+			getHelper().createContractGuarantee(identityContract4, manager4);
+			getHelper().createContractGuarantee(identityContract5, manager5);
 						
 			initRan = true;
 		}
@@ -119,15 +158,19 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		if(useProjection) {
 			identita.setFormProjection(projection.getId());	
 		}
-		identityService.save(identita);
-		return identita;
+		return identityService.save(identita);
 	}
 	
 	private IdmIdentityContractDto setupContract(IdmIdentityDto identita, Integer validDays) {
 		IdmIdentityContractDto contract = getHelper().getPrimeContract(identita);
-		contract.setValidTill(LocalDate.now().plusDays(validDays));
-		identityContractService.save(contract);
-		return contract;
+		if(validDays>0) {
+			contract.setValidTill(LocalDate.now().plusDays(validDays));	
+		}else {
+			contract.setValidTill(LocalDate.now().minusDays(validDays*(-1)));
+		}
+		
+		return identityContractService.save(contract);
+		
 	}
 	
 	@After
@@ -147,55 +190,6 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Test
 	public void testLrtManagersExpiredWithProjection() {
 		
-		identita1 = setupIdentity("identita1",true); 
-		identityContract1 = setupContract(identita1, 50);
-		identita2 = setupIdentity("identita2",true); 
-		identityContract2 = setupContract(identita2, 50);
-		identita3 = setupIdentity("identita3",true); 
-		identityContract3 = setupContract(identita3, 50);
-		identita4 = setupIdentity("identita4",false); 
-		identityContract4 = setupContract(identita4, 50);
-		identita5 = setupIdentity("identita5",false); 
-		identityContract5 = setupContract(identita5, 50);
-		identita6 = setupIdentity("identita6",false); 
-		identityContract6 = setupContract(identita6, 50);
-		
-		manager1 = setupIdentity("manager1",true); 
-		managerContract1 = setupContract(manager1, 50);
-		manager2 = setupIdentity("manager2",true); 
-		managerContract2 = setupContract(manager2, -5);
-		manager3 = setupIdentity("manager3",true); 
-		managerContract3 = setupContract(manager3, 3);
-		manager4 = setupIdentity("manager4",false); 
-		managerContract4 = setupContract(manager4, -10);
-		manager5 = setupIdentity("manager5",false); 
-		managerContract5 = setupContract(manager5, 20);
-		manager6 = setupIdentity("manager6",false); 
-		managerContract6 = setupContract(manager6, 50);
-		
-		getHelper().createContractGuarantee(identityContract1, manager1);
-		identityService.save(manager1);
-		identityService.save(identita1);
-		identityContractService.save(identityContract1);
-		getHelper().createContractGuarantee(identityContract2, manager2);
-		identityService.save(manager2);
-		identityService.save(identita2);
-		identityContractService.save(identityContract2);
-		getHelper().createContractGuarantee(identityContract3, manager3);
-		identityService.save(manager3);
-		identityService.save(identita3);
-		identityContractService.save(identityContract3);
-		getHelper().createContractGuarantee(identityContract4, manager4);
-		identityService.save(manager4);
-		identityService.save(identita4);
-		identityContractService.save(identityContract4);
-		getHelper().createContractGuarantee(identityContract5, manager5);
-		identityService.save(manager5);
-		identityService.save(identita5);
-		identityContractService.save(identityContract5);
-		
-		
-		
 		Map<String, Object> properties = new HashMap<>();
 		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "5");
 		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
@@ -212,9 +206,157 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		lrtManager.executeSync(notificationExpiredManager);
 		
 		HashMap<String,String> expiredManagers = notificationExpiredManager.getManagersAlreadyExpired();
-		
-		
 		Assert.assertEquals(1, expiredManagers.size());
+	}
+	
+	//2. identity that has no manager assigned
+	@Test
+	public void testLrtManagersMissingAllUsers() {
+		
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "30");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "test@bcvsolutions.eu,helpdesk@bcvsolutions.eu");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, false);
+
+		CheckExpiredOrMissingManagerTask notificationMissingManager = new CheckExpiredOrMissingManagerTask();
+		notificationMissingManager.init(properties);
+
+		lrtManager.executeSync(notificationMissingManager);
+		
+		List<String> missingManagers = notificationMissingManager.getManagersMissing();
+		Assert.assertEquals(11, missingManagers.size());
+		
+	}
+	
+	//3. identity that has assigned manager and manager's contract is expiring in X days.
+	@Test
+	public void testLrtManagersExpiringXDays() {
+		
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "30");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "test@bcvsolutions.eu,helpdesk@bcvsolutions.eu");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, true);
+
+		CheckExpiredOrMissingManagerTask notificationExpiringXDaysManager = new CheckExpiredOrMissingManagerTask();
+		notificationExpiringXDaysManager.init(properties);
+
+		lrtManager.executeSync(notificationExpiringXDaysManager);
+		
+		HashMap<String,String> expiringManagers = notificationExpiringXDaysManager.getManagersExpiritingXDays();
+		Assert.assertEquals(2, expiringManagers.size());
+		
+	}
+	
+	//3. identity that has assigned manager and manager's contract is expiring in X days. Not less than.
+		@Test
+		public void testLrtManagersExpiringXDaysExactly() {
+			
+			Map<String, Object> properties = new HashMap<>();
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "20");
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, null);
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "test@bcvsolutions.eu,helpdesk@bcvsolutions.eu");
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, false);
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, false);
+			properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, true);
+
+			CheckExpiredOrMissingManagerTask notificationExpiringXDaysManager = new CheckExpiredOrMissingManagerTask();
+			notificationExpiringXDaysManager.init(properties);
+
+			lrtManager.executeSync(notificationExpiringXDaysManager);
+			
+			HashMap<String,String> expiringManagers = notificationExpiringXDaysManager.getManagersExpiritingXDays();
+			Assert.assertEquals(2, expiringManagers.size());
+			
+		}
+	
+	@Test
+	public void testLrtManagersNoRecipient() {
+		
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "30");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, true);
+
+		CheckExpiredOrMissingManagerTask notificationExpiringXDaysManager = new CheckExpiredOrMissingManagerTask();
+		try {
+			notificationExpiringXDaysManager.init(properties);	
+		}catch(ResultCodeException exception){
+			Assert.assertEquals(exception.getMessage(),ExtrasResultCode.NO_RECIPIENTS_FOUND.getMessage());
+		}
+	}
+	
+	@Test
+	public void testLrtManagersXDaysAttributMissing() {
+		
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, true);
+
+		CheckExpiredOrMissingManagerTask notificationExpiringXDaysManager = new CheckExpiredOrMissingManagerTask();
+		try {
+			notificationExpiringXDaysManager.init(properties);	
+		}catch(ResultCodeException exception){
+			Assert.assertEquals(exception.getMessage(),ExtrasResultCode.CONTRACT_END_NOTIFICATION_DAYS_BEFORE_NOT_SPECIFIED.getMessage());
+		}
+	}
+	
+	
+	@Test
+	public void getUsersByRoleIdTest() {
+		IdmIdentityDto userOne = getHelper().createIdentity();
+		IdmIdentityContractDto userOneContract = getHelper().getPrimeContract(userOne); 
+		IdmIdentityDto userTwo = getHelper().createIdentity();
+		IdmIdentityContractDto userTwoContract = getHelper().getPrimeContract(userTwo);
+		IdmRoleDto roleOne = getHelper().createRole("role");
+		getHelper().createIdentityRole(userOneContract, roleOne);
+		getHelper().createIdentityRole(userTwoContract, roleOne);
+		
+		List<IdmIdentityDto> foundIdentities = managersLRT.getUsersByRoleId(roleOne.getId());
+		Assert.assertEquals(2, foundIdentities.size());
+		Assert.assertTrue(foundIdentities.contains(userOne));
+		Assert.assertTrue(foundIdentities.contains(userTwo));
+	}
+	
+	@Test
+	public void testLrtManagersEmailRecipientSent() {
+		
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "30");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "test@bcvsolutions.eu,helpdesk@bcvsolutions.eu");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, false);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, true);
+
+		CheckExpiredOrMissingManagerTask notificationExpiringXDaysManager = new CheckExpiredOrMissingManagerTask();
+		notificationExpiringXDaysManager.init(properties);
+
+		lrtManager.executeSync(notificationExpiringXDaysManager);
 		
 		IdmNotificationFilter filter = new IdmNotificationFilter();
 		filter.setRecipient("test@bcvsolutions.eu");
@@ -222,54 +364,66 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 
 		// we should find 1 email notification on testRecipient
 		long count = notificationLogService.count(filter);
-		Assert.assertEquals(1, count);
 		
 		IdmNotificationTemplateDto usedTemplateOne = notificationLogService.find(filter, null).getContent().
 				get(0).getMessage().getTemplate();
 		
+		Assert.assertEquals(1, count);
+		Assert.assertEquals(managersTemplate, usedTemplateOne);
+		
+		IdmNotificationFilter filter1 = new IdmNotificationFilter();
+		filter1.setRecipient("helpdesk@bcvsolutions.eu");
+		filter1.setNotificationType(IdmEmailLog.class);
+
+		// we should find 1 email notification on testRecipient
+		long count1 = notificationLogService.count(filter1);
+		
+		IdmNotificationTemplateDto usedTemplateOne1 = notificationLogService.find(filter, null).getContent().
+				get(0).getMessage().getTemplate();
+		
+		Assert.assertEquals(1, count1);
+		Assert.assertEquals(managersTemplate, usedTemplateOne1);
+		
+		
+		
+	}
+	
+	@Test
+	public void testLrtManagersRoleSent() {
+		
+		IdmIdentityDto recipient = getHelper().createIdentity("testRecipient");
+		IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
+		
+		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications");
+		getHelper().createIdentityRole(recipientContract, notificationRole);
+				
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "30");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, notificationRole.getId());
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "");
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, true);
+		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, true);
+
+		CheckExpiredOrMissingManagerTask notificationExpiringXDaysManager = new CheckExpiredOrMissingManagerTask();
+		notificationExpiringXDaysManager.init(properties);
+
+		lrtManager.executeSync(notificationExpiringXDaysManager);
+		
+		IdmNotificationFilter filter = new IdmNotificationFilter();
+		filter.setRecipient("testRecipient");
+		filter.setNotificationType(IdmEmailLog.class);
+
+		// we should find 1 email notification on testRecipient
+		long count = notificationLogService.count(filter);
+		
+		IdmNotificationTemplateDto usedTemplateOne = notificationLogService.find(filter, null).getContent().
+				get(0).getMessage().getTemplate();
+		
+		Assert.assertEquals(1, count);
 		Assert.assertEquals(managersTemplate, usedTemplateOne);
 	}
 	
-//	@Test
-//	public void testLrtEndsToday() {
-//		IdmIdentityDto subjectTwo = getHelper().createIdentity();
-//		subjectTwo.setFormProjection(vfnConfiguration.getExternalUserProjectionId());
-//		
-//		IdmIdentityContractDto subjectTwoContract = getHelper().getPrimeContract(subjectTwo);
-//		subjectTwoContract.setValidTill(LocalDate.now());
-//				
-//		IdmIdentityDto managerTwo = getHelper().createIdentity("alternateManager");
-//		managerTwo.setEmail("manager2.alternate@mail.com");
-//		getHelper().createContractGuarantee(subjectTwoContract, managerTwo);
-//		identityService.save(managerTwo);
-//		identityService.save(subjectTwo);
-//		identityContractService.save(subjectTwoContract);
-//		
-//		Map<String, Object> propertiesTwo = new HashMap<>();
-//		propertiesTwo.put(VfnCheckExpiredExternalUsersTaskExecutor.PARAMETER_DAYS_BEFORE, "0");
-//		propertiesTwo.put(VfnCheckExpiredExternalUsersTaskExecutor.PARAMETER_SENDER_EMAIL, "test@email.com");
-//
-//		VfnCheckExpiredExternalUsersTaskExecutor notificationTwo = new VfnCheckExpiredExternalUsersTaskExecutor();
-//		
-//		notificationTwo.init(propertiesTwo); 
-//		
-//		lrtManager.executeSync(notificationTwo);
-//		
-//		IdmNotificationFilter filterThree = new IdmNotificationFilter();
-//		filterThree.setNotificationType(IdmEmailLog.class);
-//		filterThree.setRecipient("alternateManager");
-//		filterThree.setTemplateId(templateNow.getId());
-//		
-//		// we should find 1 email notification on testRecipient
-//		long countThree = notificationLogService.count(filterThree);
-//		
-//		Assert.assertEquals(1, countThree);
-//		IdmNotificationTemplateDto usedTemplateThree = notificationLogService.find(filterThree, null).getContent().
-//				get(0).getMessage().getTemplate();
-//		
-//		
-//		Assert.assertEquals(templateNow, usedTemplateThree);
-//
-//		getHelper().deleteIdentity(subjectTwo.getId());
-//	}
 }
