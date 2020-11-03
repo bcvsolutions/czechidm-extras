@@ -341,6 +341,48 @@
             "label": "Oddělovač vícehodnotových atributů"
           }
         }
+      },
+      "extras-check-expired-or-missing-manager": {
+        "label": "Notifikace expirovaných a chybějících garantů",
+        "help": "Úloha, která najde identity a jejich expirované nebo chybějící garanty a pošle seznam na email",
+        "attributes": {
+          "xdaysbeforecontractexpires": {
+            "label": "Počet X dní než úvazek garanta vyprší",
+            "help": "Počet dní za které garantovi vyprší úvazek a má pod sebou idnetity"
+          },
+          "xdaysbeforecontractexpireslessthan": {
+            "label": "Zahrnout menší než, místo rovná se počtu dní",
+          },
+          "userprojection": {
+            "label": "Typ identity",
+            "help": "Vyberte typ uživatelů, kterým hledáme garanty.",
+            "placeholder": "Vyberte uživatele nebo nechte prázdné pro všechny ..."
+          },
+          "organizationunit": {
+            "label": "Organizační zařazení",
+            "help": "Vyberte organizační zařazení ze stromové struktury.",
+            "placeholder": "Vyberte zařazení nebo nechte prázdné pro všechny ..."
+          },
+          "manageralreadyexpired": {
+            "label": "Zahrnout již expirované garanty"
+          },
+          "managermissing": {
+            "label": "Zahrnout chybějící garanty"
+          },
+          "managerexpiringinxdays": {
+            "label": "Zahrnout garanty, kteří expirující za X dní."
+          },
+          "recipientrole": {
+            "label": "Role příjemců",
+            "help": "Vyberte roli s identity na které se pošle seznam.",
+            "placeholder": "Vyberte roli, která obsahuje identity ..."
+          },
+          "recipientemail": {
+            "label": "Emaily příjemců oddělené čárkou",
+            "help": "Zadejte email nebo emaily oddělené čárkou.",
+            "placeholder": "Zadejte email ..."
+          }
+        }
       }
     }
   }

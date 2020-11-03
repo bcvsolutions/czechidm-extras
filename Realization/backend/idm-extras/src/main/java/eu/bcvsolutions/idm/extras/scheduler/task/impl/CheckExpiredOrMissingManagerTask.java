@@ -49,7 +49,9 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole_;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity_;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
+import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
 import eu.bcvsolutions.idm.core.notification.api.service.EmailNotificationSender;
+import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationTemplateService;
 import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableTaskExecutor;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
@@ -73,7 +75,8 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CheckExpiredOrMissingManagerTask.class);
 	protected static final String PARAMETER_DAYS_BEFORE = "xdaysbeforecontractexpires";
 	protected static final String PARAMETER_DAYS_BEFORE_LESS_THAN = "xdaysbeforecontractexpireslessthan";
-	protected static final String PARAMETER_USER_PROJECTION = "externalContractExpiredSenderEmail";
+	protected static final String PARAMETER_USER_PROJECTION = "userprojection";
+	protected static final String PARAMETER_ORGANIZATION_UNIT = "organizationunit";
 	protected static final String PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED = "manageralreadyexpired";
 	protected static final String PARAMETER_EMAIL_INFO_MANAGER_MISSING = "managermissing";
 	protected static final String PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS = "managerexpiringinxdays";
@@ -82,7 +85,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	protected static final String RECIPIENT_EMAIL_DIVIDER = ",";
 	
 	
-	public static final String TASK_NAME = "vfn-check-expired-external-users";	
+	public static final String TASK_NAME = "extras-check-expired-or-missing-manager";	
 	
 	private Long daysBeforeExpired;
 	private LocalDate currentDate = LocalDate.now();
@@ -98,6 +101,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	private HashMap<String,String> managersAlreadyExpired;
 	private HashMap<String,String> managersExpiritingXDays;
 	private List<String> managersMissing;
+	private UUID organizationUnit;
 	
 	
 	
@@ -109,6 +113,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	@Autowired private EmailNotificationSender emailNotificationSender;
 	@Autowired private IdmRoleService roleService;
 	@Autowired private IdmIdentityRoleService identityRoleService;
+	@Autowired private IdmNotificationTemplateService notificationTemplateService;
 
 	@Override
 	public Boolean process() {
@@ -116,6 +121,10 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 		IdmIdentityFilter identityFilter = new IdmIdentityFilter();
 		if (projectionUserType!=null) {
 			identityFilter.setFormProjection(projectionUserType);	
+		}
+		
+		if (organizationUnit!=null) {
+			identityFilter.setTreeNode(organizationUnit);
 		}
 		
 		Integer counter=0;
@@ -259,6 +268,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 		recipientRole = getParameterConverter().toUuid(properties, PARAMETER_RECIPIENT_ROLE_PARAM);
 		recipientEmail = getParameterConverter().toString(properties, PARAMETER_RECIPIENT_EMAIL_PARAM);
 		projectionUserType = getParameterConverter().toUuid(properties, PARAMETER_USER_PROJECTION);
+		organizationUnit = getParameterConverter().toUuid(properties, PARAMETER_ORGANIZATION_UNIT);
 		
 		if(isOptionManagerExpiringXDays!=null && isOptionManagerExpiringXDays==true) {
 			if (daysBeforeExpired == null || daysBeforeExpired.compareTo(0L) <= -1) {
@@ -298,6 +308,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 		props.put(PARAMETER_DAYS_BEFORE, daysBeforeExpired);
 		props.put(PARAMETER_DAYS_BEFORE_LESS_THAN, optionLessThanXDays);
 		props.put(PARAMETER_USER_PROJECTION, projectionUserType);
+		props.put(PARAMETER_ORGANIZATION_UNIT,organizationUnit);
 		props.put(PARAMETER_RECIPIENT_ROLE_PARAM, recipientRole);
 		props.put(PARAMETER_RECIPIENT_EMAIL_PARAM, recipientEmail);
 		props.put(PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, isOptionManagerAlreadyExpired);
@@ -315,6 +326,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 				PARAMETER_RECIPIENT_EMAIL_PARAM,
 				PARAMETER_RECIPIENT_EMAIL_PARAM,
 				PersistentType.SHORTTEXT);
+		recipientEmailAttr.setPlaceholder("Email recipients divided by comma.");
 		attributes.add(recipientEmailAttr);
 
 		IdmFormAttributeDto recipientRoleAttr = new IdmFormAttributeDto(
@@ -322,7 +334,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 				PARAMETER_RECIPIENT_ROLE_PARAM,
 				PersistentType.UUID);
 		recipientRoleAttr.setFaceType(BaseFaceType.ROLE_SELECT);
-		recipientRoleAttr.setPlaceholder("Choose role which will be notified...");
+		recipientRoleAttr.setPlaceholder("Choose role which will be notified.");
 		attributes.add(recipientRoleAttr);
 		
 		IdmFormAttributeDto projectionTypeAttr = new IdmFormAttributeDto(
@@ -333,6 +345,14 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 		projectionTypeAttr.setPlaceholder("Choose projection type");
 		attributes.add(projectionTypeAttr);
 		
+		IdmFormAttributeDto organizationUnitAttr = new IdmFormAttributeDto(
+				PARAMETER_ORGANIZATION_UNIT,
+				PARAMETER_ORGANIZATION_UNIT,
+				PersistentType.UUID);
+		organizationUnitAttr.setFaceType(BaseFaceType.TREE_NODE_SELECT);
+		organizationUnitAttr.setPlaceholder("Choose projection type");
+		attributes.add(organizationUnitAttr);
+				
 		IdmFormAttributeDto managerAlreadyExpiredAttr = new IdmFormAttributeDto(
 				PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED,
 				PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED,
@@ -416,10 +436,11 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			return false;
 		}
 		
+		IdmNotificationTemplateDto template = notificationTemplateService.getByCode("checkExpiredOrMissingManager");
 		emailNotificationSender.send(
-				//ExtrasModuleDescriptor.TOPIC_CHECK_EXPIRED_OR_MISSING_MANAGER,
 				new IdmMessageDto
 						.Builder()
+						.setTemplate(template)
 						.setLevel(NotificationLevel.INFO)
 						.addParameter("missingManagers", managersMissing)
 						.addParameter("expiredManagers", managersAlreadyExpired)
