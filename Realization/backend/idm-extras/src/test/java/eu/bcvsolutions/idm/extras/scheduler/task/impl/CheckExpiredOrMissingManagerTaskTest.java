@@ -1,13 +1,11 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
-import eu.bcvsolutions.idm.core.api.dto.IdmContractGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.IdmConfigurationService;
-import eu.bcvsolutions.idm.core.api.service.IdmContractPositionService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
@@ -16,9 +14,6 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormProjectionDto;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormProjectionService;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
-import eu.bcvsolutions.idm.core.notification.api.dto.IdmEmailLogDto;
-import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
-import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationLogDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationFilter;
@@ -33,10 +28,8 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
 
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -94,12 +87,11 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Autowired private IdmNotificationTemplateService notificationTemplateService;
 	@Autowired private IdmIdentityContractService identityContractService;
 	@Autowired private CheckExpiredOrMissingManagerTask managersLRT;
-	@Autowired private IdmConfigurationService configurationService;
 	@Autowired private IdmFormProjectionService projectionService;
 	@Autowired private LookupService lookupService;
 	@Autowired private IdmIdentityService identityService;
 	@Autowired private IdmTreeNodeService treeService;
-	@Autowired private IdmEmailLogService emailService;
+
 
 	@Before
 	public void init() {
