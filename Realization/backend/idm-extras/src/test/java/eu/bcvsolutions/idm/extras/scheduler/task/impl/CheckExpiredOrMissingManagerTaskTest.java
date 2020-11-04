@@ -16,12 +16,14 @@ import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormProjectionDto;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormProjectionService;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
+import eu.bcvsolutions.idm.core.notification.api.dto.IdmEmailLogDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationLogDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationFilter;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationTemplateFilter;
+import eu.bcvsolutions.idm.core.notification.api.service.IdmEmailLogService;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationConfigurationService;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationLogService;
 import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationTemplateService;
@@ -97,6 +99,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Autowired private LookupService lookupService;
 	@Autowired private IdmIdentityService identityService;
 	@Autowired private IdmTreeNodeService treeService;
+	@Autowired private IdmEmailLogService emailService;
 
 	@Before
 	public void init() {
@@ -165,6 +168,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		IdmIdentityDto identita = getHelper().createIdentity(name+"_username");
 		identita.setFirstName("Jmeno-"+name);
 		identita.setLastName("Prijmeni-"+name);
+		identita.setEmail(name + "@bcvsolutions.eu");
 		if(useProjection) {
 			identita.setFormProjection(projection.getId());	
 		}
@@ -371,38 +375,6 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		
 		List<String> missingManagers = notificationMissingManager.getManagersMissing();
 		Assert.assertEquals(1, missingManagers.size());
-	}
-	
-	@Test
-	public void testLrtManagersEmailRecipientSent() {
-		
-		Map<String, Object> properties = new HashMap<>();
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE, "30");
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_DAYS_BEFORE_LESS_THAN, true);
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_USER_PROJECTION, null);
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_ROLE_PARAM, null);
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_RECIPIENT_EMAIL_PARAM, "test1@bcvsolutions.eu");
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED, false);
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_MISSING, false);
-		properties.put(CheckExpiredOrMissingManagerTask.PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS, true);
-
-		CheckExpiredOrMissingManagerTask notificationExpiringXDaysManager = new CheckExpiredOrMissingManagerTask();
-		notificationExpiringXDaysManager.init(properties);
-
-		lrtManager.executeSync(notificationExpiringXDaysManager);
-		
-		IdmNotificationFilter filter = new IdmNotificationFilter();
-		filter.setRecipient("test1@bcvsolutions.eu");
-		filter.setNotificationType(IdmEmailLog.class);
-				
-		// we should find 1 email notification on testRecipient
-		long count = notificationLogService.count(filter);
-		
-		List <IdmNotificationLogDto> notifications = notificationLogService.find(filter, null).getContent();
-		IdmNotificationTemplateDto usedTemplateOne = notifications.get(0).getMessage().getTemplate();
-		
-		Assert.assertEquals(1, count);
-		Assert.assertEquals(managersTemplate, usedTemplateOne);
 	}
 	
 	@Test
