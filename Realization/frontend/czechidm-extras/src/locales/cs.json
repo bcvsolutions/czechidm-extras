@@ -351,7 +351,7 @@
             "help": "Počet dní za které garantovi vyprší úvazek a má pod sebou idnetity"
           },
           "xdaysbeforecontractexpireslessthan": {
-            "label": "Zahrnout menší než, místo rovná se počtu dní",
+            "label": "Zahrnout menší než, místo rovná se počtu dní"
           },
           "userprojection": {
             "label": "Typ identity",

@@ -351,7 +351,7 @@
             "help": "This includes only manager's contracts, identity contract must be valid. Number of days equals."
           },
           "xdaysbeforecontractexpireslessthan": {
-            "label": "Number X days is lower than",
+            "label": "Number X days is lower than"
           },
           "userprojection": {
             "label": "User type",

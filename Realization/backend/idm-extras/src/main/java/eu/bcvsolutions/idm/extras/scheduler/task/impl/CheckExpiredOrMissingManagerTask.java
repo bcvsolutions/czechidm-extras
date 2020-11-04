@@ -241,7 +241,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 					String ppvEnd = "";
 					ppvEnd = contract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
 
-					if (optionLessThanXDays==true) {
+					if (optionLessThanXDays!=null && optionLessThanXDays==true) {
 						if (currentDate.isAfter(validMinusXDays.minusDays(1))) {
 							managersExpiritingXDays.put(transformIdentityToString(identity), transformIdentityToString(manager)+" "+ppvEnd);
 						}
@@ -290,11 +290,11 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			}
 		}
 		
-		if (isOptionManagerAlreadyExpired==true) {
+		if (isOptionManagerAlreadyExpired!=null && isOptionManagerAlreadyExpired==true) {
 			managersAlreadyExpired = new HashMap<String,String>();
 		}
 
-		if (isOptionManagerMissing==true) {
+		if (isOptionManagerMissing!=null && isOptionManagerMissing==true) {
 			managersMissing= new ArrayList<String>();	
 		}
 		
