@@ -170,7 +170,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 					}
 					
 					if(managers==null || managers.isEmpty()) {
-						if (isOptionManagerMissing==true) {
+						if (isOptionManagerMissing!=null && isOptionManagerMissing==true) {
 							managersMissing.add(transformIdentityToString(identity));
 							logItemProcessed(identity, new OperationResult.Builder(OperationState.EXECUTED).build());
 						}
@@ -214,14 +214,14 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(manager.getId(), currentDate, null);
 
 			if(contracts==null || contracts.isEmpty()) {
-				if (isOptionManagerAlreadyExpired==true) {
+				if (isOptionManagerAlreadyExpired!=null && isOptionManagerAlreadyExpired==true) {
 					managersAlreadyExpired.put(transformIdentityToString(identity),transformIdentityToString(manager));
 					logItemProcessed(identity, new OperationResult.Builder(OperationState.EXECUTED).build());
 				}
 				continue;
 			}
 			
-			if (isOptionManagerExpiringXDays==true) {
+			if (isOptionManagerExpiringXDays!=null && isOptionManagerExpiringXDays==true) {
 				for (IdmIdentityContractDto contract : contracts) {
 					
 					if (contract.getValidTill() == null) {
