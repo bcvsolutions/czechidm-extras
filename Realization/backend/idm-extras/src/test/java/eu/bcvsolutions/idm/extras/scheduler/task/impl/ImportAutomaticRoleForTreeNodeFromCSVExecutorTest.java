@@ -8,12 +8,15 @@ import eu.bcvsolutions.idm.core.api.service.IdmRoleTreeNodeService;
 import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.ecm.api.dto.IdmAttachmentDto;
+import eu.bcvsolutions.idm.core.scheduler.api.config.SchedulerConfiguration;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmProcessedTaskItemDto;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.filter.IdmProcessedTaskItemFilter;
 import eu.bcvsolutions.idm.core.scheduler.api.service.IdmProcessedTaskItemService;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -38,6 +41,17 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractC
 	@Autowired
 	private IdmProcessedTaskItemService taskItemService;
 	
+	@Before
+	public void init() {
+		// To test the fix of the bug #2542 which happens when more automatic roles are added
+		// and they are processed asynchronously (= standard settings for the production usage)
+		getHelper().setConfigurationValue(SchedulerConfiguration.PROPERTY_TASK_ASYNCHRONOUS_ENABLED, true);
+	}
+	
+	@After
+	public void cleanUp() {
+		getHelper().setConfigurationValue(SchedulerConfiguration.PROPERTY_TASK_ASYNCHRONOUS_ENABLED, false);
+	}
 	
 	@Test
 	public void testImport() {
