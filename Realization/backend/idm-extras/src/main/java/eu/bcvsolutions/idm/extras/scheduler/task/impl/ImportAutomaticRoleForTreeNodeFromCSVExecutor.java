@@ -24,6 +24,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleTreeNodeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmTreeNodeFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
+import eu.bcvsolutions.idm.core.api.exception.AcceptedException;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleTreeNodeService;
 import eu.bcvsolutions.idm.core.api.service.IdmTreeNodeService;
@@ -132,7 +133,14 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutor extends AbstractCsvIm
 		
 		++this.counter;
 		this.logItemProcessed(treeNode, taskCompleted(String.format("Automatic role %s on node %s created", role.getName(), treeNode.getName())));
-		return roleTreeNodeService.save(roleTreeNode);
+		try {
+			roleTreeNode = roleTreeNodeService.save(roleTreeNode);
+		} catch (AcceptedException ex) {
+			String roleTreeNodeIdentifier = ex.getIdentifier();
+			LOG.info("Automatic role [{}] on node [{}] was created with UID [{}], but it will be assigned to users asynchronously.",
+					role.getName(), treeNode.getName(), roleTreeNodeIdentifier);
+		}
+		return roleTreeNode;
 	}
 	
 	/**
