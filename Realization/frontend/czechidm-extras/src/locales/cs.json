@@ -44,6 +44,14 @@
       "title": "Vyberte soubor pro import!",
       "message": "Vyberte soubor pro import!"
     },
+    "NO_RECIPIENTS_FOUND": {
+      "title": "Nejsou žádní příjemci. Notifikace nebude poslána!",
+      "message": "Nejsou žádní příjemci. Notifikace nebude poslána!"
+    },
+    "CONTRACT_END_NOTIFICATION_DAYS_BEFORE_NOT_SPECIFIED": {
+      "title": "Nastavte počet dní pro garanty, kteří vyprší za X dní. Číslo musí být větší než nula.",
+      "message": "Nastavte počet dní pro garanty, kteří vyprší za X dní. Číslo musí být větší než nula."
+    },
     "COLUMN_NOT_FOUND": {
       "title": "Sloupec nenalezen.",
       "message": "Sloupec [{{name}}] nebyl nenalezen."

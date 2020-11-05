@@ -44,6 +44,14 @@
       "title": "Choose file to import!",
       "message": "Choose file to import!"
     },
+    "NO_RECIPIENTS_FOUND": {
+      "title": "No recipients found! Notification will not be sent!",
+      "message": "No recipients found! Notification will not be sent!"
+    },
+    "CONTRACT_END_NOTIFICATION_DAYS_BEFORE_NOT_SPECIFIED": {
+      "title": "'Days before contract end' Parameter is required and has to be number greater or equal to zero!",
+      "message": "'Days before contract end' Parameter is required and has to be number greater or equal to zero!"
+    },
     "COLUMN_NOT_FOUND": {
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."

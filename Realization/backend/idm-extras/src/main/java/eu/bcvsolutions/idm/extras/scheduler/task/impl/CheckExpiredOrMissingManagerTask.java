@@ -73,15 +73,15 @@ import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
 public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExecutor<Boolean> {
 
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CheckExpiredOrMissingManagerTask.class);
-	protected static final String PARAMETER_DAYS_BEFORE = "xdaysbeforecontractexpires";
-	protected static final String PARAMETER_DAYS_BEFORE_LESS_THAN = "xdaysbeforecontractexpireslessthan";
-	protected static final String PARAMETER_USER_PROJECTION = "userprojection";
-	protected static final String PARAMETER_ORGANIZATION_UNIT = "organizationunit";
-	protected static final String PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED = "manageralreadyexpired";
-	protected static final String PARAMETER_EMAIL_INFO_MANAGER_MISSING = "managermissing";
-	protected static final String PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS = "managerexpiringinxdays";
-	protected static final String PARAMETER_RECIPIENT_ROLE_PARAM = "recipientrole";
-	protected static final String PARAMETER_RECIPIENT_EMAIL_PARAM = "recipientemail";
+	protected static final String PARAMETER_DAYS_BEFORE = "xDaysBeforeContractExpires";
+	protected static final String PARAMETER_DAYS_BEFORE_LESS_THAN = "xDaysBeforeContractExpiresLessThan";
+	protected static final String PARAMETER_USER_PROJECTION = "userProjection";
+	protected static final String PARAMETER_ORGANIZATION_UNIT = "organizationUnit";
+	protected static final String PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED = "managerAlreadyExpired";
+	protected static final String PARAMETER_EMAIL_INFO_MANAGER_MISSING = "managerMissing";
+	protected static final String PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS = "managerExpiringinXDays";
+	protected static final String PARAMETER_RECIPIENT_ROLE_PARAM = "recipientRole";
+	protected static final String PARAMETER_RECIPIENT_EMAIL_PARAM = "recipientEmail";
 	protected static final String RECIPIENT_EMAIL_DIVIDER = ",";
 	
 	
@@ -127,7 +127,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			identityFilter.setTreeNode(organizationUnit);
 		}
 		
-		Integer counter=0;
+		counter=0l;
 		IdmIdentityDto identity = null;
 		Pageable pageable = PageRequest.of(0, 100, new Sort(Direction.ASC, IdmIdentity_.username.getName()));
 		do {
@@ -155,11 +155,6 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 
 				for (IdmIdentityContractDto contract : contracts) {
 					
-					if(contract==null) {
-						LOG.error("Contract is null for identity with id [{}].", identity);
-						continue;
-					}
-					
 					//search for managers for specific contract
 					List<IdmIdentityDto> managers = new ArrayList<IdmIdentityDto>();
 					IdmContractGuaranteeFilter filter = new IdmContractGuaranteeFilter();
@@ -181,6 +176,9 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 					
 					++counter;
 					canContinue = updateState();
+					if (!canContinue) {
+						break;
+					}
 				} 
 			}
 			
