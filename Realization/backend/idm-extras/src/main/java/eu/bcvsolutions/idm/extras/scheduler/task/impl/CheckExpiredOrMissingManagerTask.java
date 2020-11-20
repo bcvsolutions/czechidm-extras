@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Description;
@@ -138,18 +139,19 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			}
 			boolean canContinue = true;
 
-			for (Iterator<IdmIdentityDto> i = users.iterator(); i.hasNext() && canContinue;) {
-				identity = i.next();
+			users.forEach(identita -> {
+//			for (Iterator<IdmIdentityDto> i = users.iterator(); i.hasNext() && canContinue;) {
+//				identita = i.next();
 
-				if (identity == null) {
-					LOG.error("Identity with id [{}] not exists.", identity);
+				if (identita == null) {
+					LOG.error("Identity with id [{}] not exists.", identita);
 					continue;
 				}
 
-				List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identity.getId(), currentDate, null);
+				List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identita.getId(), currentDate, null);
 
-				if(contracts == null || contracts.size()==0) {
-					LOG.error("Identity with id [{}] has no contracts.", identity);
+				if(contracts == null || contracts.size() == 0) {
+					LOG.error("Identity with id [{}] has no contracts.", identita);
 					continue;
 				}
 
@@ -164,15 +166,15 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 						managers.add(identityService.get(managerContract.getGuarantee()));
 					}
 					
-					if(managers==null || managers.isEmpty()) {
-						if (isOptionManagerMissing!=null && isOptionManagerMissing==true) {
-							managersMissing.add(transformIdentityToString(identity));
-							logItemProcessed(identity, new OperationResult.Builder(OperationState.EXECUTED).build());
+					if(managers.isEmpty()) {
+						if (isOptionManagerMissing != null && isOptionManagerMissing == true) {
+							managersMissing.add(transformIdentityToString(identita));
+							logItemProcessed(identita, new OperationResult.Builder(OperationState.EXECUTED).build());
 						}
 						continue;
 					}
 
-					processManagersContracts(managers, identity);
+					processManagersContracts(managers, identita);
 					
 					++counter;
 					canContinue = updateState();
@@ -180,7 +182,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 						break;
 					}
 				} 
-			}
+			});
 			
 			pageable = users.hasNext() && canContinue ? users.nextPageable() : null;
 		}while (pageable != null);
@@ -191,8 +193,9 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	//public for test
 	public String transformIdentityToString(IdmIdentityDto identity) {
 
-		if (identity==null)
+		if (identity==null) {
 			return null;
+		}
 		
 		StringBuilder fullName = new StringBuilder();
 		fullName.append(identity.getFirstName());
@@ -211,47 +214,88 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			
 			List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(manager.getId(), currentDate, null);
 
-			if(contracts==null || contracts.isEmpty()) {
-				if (isOptionManagerAlreadyExpired!=null && isOptionManagerAlreadyExpired==true) {
-					managersAlreadyExpired.put(transformIdentityToString(identity),transformIdentityToString(manager));
+			if(contracts == null || contracts.isEmpty()) {
+				if (isOptionManagerAlreadyExpired != null && isOptionManagerAlreadyExpired == true) {
+					IdmIdentityContractDto expiredContract = identityContractService.findLastExpiredContract(manager.getId(), currentDate);
+					String ppvEnd = expiredContract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
+					addManagerToHashMap(managersAlreadyExpired,manager,identity,ppvEnd);
 					logItemProcessed(identity, new OperationResult.Builder(OperationState.EXECUTED).build());
 				}
 				continue;
 			}
 			
-			if (isOptionManagerExpiringXDays!=null && isOptionManagerExpiringXDays==true) {
-				for (IdmIdentityContractDto contract : contracts) {
-					
-					if (contract.getValidTill() == null) {
-						//manager is valid - remove if previously added
-						managersExpiritingXDays.remove(transformIdentityToString(identity));
-						break;
-					}
-	
-					validMinusXDays = contract.getValidTill().minusDays(daysBeforeExpired);
-	
-					if (!currentDate.isAfter(validMinusXDays.minusDays(1))) {
-						//manager is valid within X days period - remove if previously added
-						managersExpiritingXDays.remove(transformIdentityToString(identity));
-						break;
-					}
-					
-					String ppvEnd = "";
-					ppvEnd = contract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
-
-					if (optionLessThanXDays!=null && optionLessThanXDays==true) {
-						if (currentDate.isAfter(validMinusXDays.minusDays(1))) {
-							managersExpiritingXDays.put(transformIdentityToString(identity), transformIdentityToString(manager)+" "+ppvEnd);
-						}
-					}else {
-						if (currentDate.isEqual(validMinusXDays)) {
-							managersExpiritingXDays.put(transformIdentityToString(identity), transformIdentityToString(manager)+" "+ppvEnd);
-						}
-					}
+			if (isOptionManagerExpiringXDays != null && isOptionManagerExpiringXDays == true) {
+				
+				//search if any contracts are still valid in X days
+				List<IdmIdentityContractDto> contractsExpiring = identityContractService.findAllValidForDate(
+						manager.getId(),
+						currentDate.plusDays(daysBeforeExpired),
+						null);
+				
+				if(!contractsExpiring.isEmpty()) {
+					continue;
 				}
+				
+				IdmIdentityContractDto expiringContract = identityContractService.getPrimeContract(manager.getId());
+				String ppvEnd = expiringContract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
+				addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
+				logItemProcessed(identity, new OperationResult.Builder(OperationState.EXECUTED).build());
+				
+//				for (IdmIdentityContractDto contract : contractsExpiring) {
+//					
+//					if (contract.getValidTill() == null) {
+//						//manager is valid - remove if previously added
+//						managersExpiritingXDays.remove(transformIdentityToString(identity));
+//						break;
+//					}
+//	
+//					validMinusXDays = contract.getValidTill().minusDays(daysBeforeExpired);
+//	
+//					if (!currentDate.isAfter(validMinusXDays.minusDays(1))) {
+//						//manager is valid within X days period - remove if previously added
+//						managersExpiritingXDays.remove(transformIdentityToString(identity));
+//						break;
+//					}
+//					
+//					String ppvEnd = "";
+//					ppvEnd = contract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
+//
+//					if (optionLessThanXDays != null && optionLessThanXDays == true) {
+//						if (currentDate.isAfter(validMinusXDays.minusDays(1))) {
+//							addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
+//						}
+//					}else {
+//						if (currentDate.isEqual(validMinusXDays)) {
+//							addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
+//						}
+//					}
+//				}
 			}
 			
 		}
+	}
+	
+	private Boolean addManagerToHashMap(HashMap<String,String> managers, IdmIdentityDto manager, IdmIdentityDto identity, String ppvEnd) {
+		if (managers == null || manager == null || identity == null) {
+			return false;
+		}
+		String managerStr;
+		String identityStr = transformIdentityToString(identity);
+		
+		if (StringUtils.isBlank(ppvEnd)) {
+			managerStr = transformIdentityToString(manager);
+		}else{
+			managerStr = transformIdentityToString(manager)+" "+ppvEnd;
+		}
+		
+		if (managers.containsKey(identityStr)) {
+			String tempValue = managers.get(identityStr);
+			managers.put(identityStr, tempValue+", "+managerStr);
+		}else {
+			managers.put(identityStr, managerStr);
+		}
+		
+		return true;
 	}
 	
 	@Override
@@ -268,7 +312,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 		projectionUserType = getParameterConverter().toUuid(properties, PARAMETER_USER_PROJECTION);
 		organizationUnit = getParameterConverter().toUuid(properties, PARAMETER_ORGANIZATION_UNIT);
 		
-		if(isOptionManagerExpiringXDays!=null && isOptionManagerExpiringXDays==true) {
+		if(isOptionManagerExpiringXDays != null && isOptionManagerExpiringXDays == true) {
 			if (daysBeforeExpired == null || daysBeforeExpired.compareTo(0L) <= -1) {
 				throw new ResultCodeException(ExtrasResultCode.CONTRACT_END_NOTIFICATION_DAYS_BEFORE_NOT_SPECIFIED,
 						ImmutableMap.of("daysBeforeExpired", daysBeforeExpired == null ? "null" : daysBeforeExpired));
@@ -276,7 +320,9 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			managersExpiritingXDays = new HashMap<String,String>();
 		}
 		
-		if(recipientRole==null && (recipientEmail==null || recipientEmail.trim().isEmpty())) {
+		
+//		if(recipientRole==null && (recipientEmail==null || recipientEmail.trim().isEmpty())) {
+		if(recipientRole==null && StringUtils.isBlank(recipientEmail)) {
 			throw new ResultCodeException(ExtrasResultCode.NO_RECIPIENTS_FOUND,
 					ImmutableMap.of("recipientRole and recipientEmail is ", "null"));
 		}
@@ -288,11 +334,11 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			}
 		}
 		
-		if (isOptionManagerAlreadyExpired!=null && isOptionManagerAlreadyExpired==true) {
+		if (isOptionManagerAlreadyExpired !=null && isOptionManagerAlreadyExpired == true) {
 			managersAlreadyExpired = new HashMap<String,String>();
 		}
 
-		if (isOptionManagerMissing!=null && isOptionManagerMissing==true) {
+		if (isOptionManagerMissing != null && isOptionManagerMissing == true) {
 			managersMissing= new ArrayList<String>();	
 		}
 		
@@ -399,18 +445,23 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 		return (isRoleSent || isEmailSent);
 	}
 	
-	private Boolean sendToRoleRecipients(UUID role) {
+	private Boolean sendToRoleRecipients(UUID roleId) {
 		List<IdmIdentityDto> recipients = new ArrayList<IdmIdentityDto>();
 		
-		if (role != null) {
-			List<IdmIdentityDto> recipientsFromRoleBefore = getUsersByRoleId(role);
-			recipients.addAll(recipientsFromRoleBefore);
+		if (roleId != null) {
+			IdmRoleDto role = roleService.get(roleId);
+			if (role != null) {
+				List<IdmIdentityDto> recipientsFromRoleBefore = identityService.findAllByRoleName(role.getCode());
+				recipients.addAll(recipientsFromRoleBefore);
+			}
+			
+			if (recipients.isEmpty()) {
+				LOG.info("No identities in role [{}].", role.getCode());
+				return false;
+			}
 		}
 				
-		if (recipients.isEmpty()) {
-			LOG.info("No identities in role [{}].", role);
-			return false;
-		}
+		
 		
 		notificationManager.send(
 				ExtrasModuleDescriptor.TOPIC_CHECK_EXPIRED_OR_MISSING_MANAGER,
@@ -420,6 +471,9 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 						.addParameter("missingManagers", managersMissing)
 						.addParameter("expiredManagers", managersAlreadyExpired)
 						.addParameter("expiringManagers", managersExpiritingXDays)
+						.addParameter("optionExpired", isOptionManagerAlreadyExpired)
+						.addParameter("optionMissing", isOptionManagerMissing)
+						.addParameter("optionExpiring", isOptionManagerExpiringXDays)
 						.build(),
 				recipients
 		);
@@ -443,44 +497,16 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 						.addParameter("missingManagers", managersMissing)
 						.addParameter("expiredManagers", managersAlreadyExpired)
 						.addParameter("expiringManagers", managersExpiritingXDays)
+						.addParameter("optionExpired", isOptionManagerAlreadyExpired)
+						.addParameter("optionMissing", isOptionManagerMissing)
+						.addParameter("optionExpiring", isOptionManagerExpiringXDays)
 						.build(),
 						emails.toArray(new String[0])
 		);
 
 		return true;	
 	}
-	
-	/**
-	 * Returns a list of identities with a role.
-	 * 
-	 * @param roleId
-	 * @return
-	 */
-	protected List<IdmIdentityDto> getUsersByRoleId(UUID roleId) {
-		List<IdmIdentityDto> users = new ArrayList<>();
-		IdmRoleDto roleDto = roleService.get(roleId);
-
-		if (roleDto == null) {
-			return users;
-		}
-
-		IdmIdentityRoleFilter identityRoleFilter = new IdmIdentityRoleFilter();
-		identityRoleFilter.setRoleId(roleDto.getId());
-		Page<IdmIdentityRoleDto> result = identityRoleService.find(identityRoleFilter, null);
-
-		if (!result.getContent().isEmpty()) {
-			users.addAll(result.getContent()
-					.stream()
-					.map(idmIdentityRoleDto -> {
-						IdmIdentityContractDto identityContractDto = DtoUtils.getEmbedded(idmIdentityRoleDto, IdmIdentityRole_.identityContract, IdmIdentityContractDto.class);
-						return DtoUtils.getEmbedded(identityContractDto, IdmIdentityContract_.identity, IdmIdentityDto.class);
-					})
-					.collect(Collectors.toList()));
-		}
 		
-		return users;
-	}
-	
 	@Override
 	public String getName() {
 		return TASK_NAME;

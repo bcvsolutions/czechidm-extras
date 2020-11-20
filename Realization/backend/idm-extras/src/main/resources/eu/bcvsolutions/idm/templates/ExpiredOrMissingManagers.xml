@@ -16,70 +16,79 @@ parameters:
         <![CDATA[
             <html>
                 <body>
+                    <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
                     Dobrý den,<br />
                     <br />
                     uživatelé (vlevo) jsou označeni s garantem, který není validní. <br />
                     <br />
                     
-                    <h2>Identity s již expirovaným garantem</h2>
-					#if($expiredManagers && !$expiredManagers.isEmpty())
-						<table>
-							<tr>
-								<th style="width:25%; text-align: left;">Identita</th>
-								<th style="width:25%; text-align: left;">Garant</th>
-							</tr>
-							#foreach ($identita in $expiredManagers.keySet())
+                    #if($optionExpired)
+	                    <h2>Identity s již expirovaným garantem</h2>
+						#if($expiredManagers && !$expiredManagers.isEmpty())
+							<table>
 								<tr>
-									<td>$identita</td>
-									<td>$expiredManagers[$identita]</td>
+									<th style="width:20%; text-align: left;">Identita</th>
+									<th style="text-align: left;">Garant</th>
 								</tr>
-							#end
-						</table>
-					#else
-						<p>Žádné identity</p>
+								#foreach ($identita in $expiredManagers.keySet())
+									<tr>
+										<td>$identita</td>
+										<td>$expiredManagers[$identita]</td>
+									</tr>
+								#end
+							</table>
+						#else
+							<p>Žádné identity</p>
+						#end
+						<br />
 					#end
+					
+					#if($optionExpiring)
+						<h2>Identity s brzy expirovaným garantem</h2>
+						#if($expiringManagers && !$expiringManagers.isEmpty())
+							<table>
+								<tr>
+									<th style="width:20%; text-align: left;">Identita</th>
+									<th style="text-align: left;">Garant</th>
+								</tr>
+								#foreach ($identita in $expiringManagers.keySet())
+									<tr>
+										<td>$identita</td>
+										<td>$expiringManagers[$identita]</td>
+									</tr>
+								#end
+							</table>
+						#else
+							<p>Žádné identity</p>
+						#end
+						<br />
+					#end
+					
+					#if($optionMissing)
+						<h2>Identity bez přiřazeného garanta</h2>
+	                    #if($missingManagers && !$missingManagers.isEmpty())
+							<table>
+								<tr>
+									<th style="width:20%; text-align: left;">Identita</th>
+									<th style="text-align: left;">Garant</th>
+								</tr>
+								#foreach ($identita in $missingManagers)
+									<tr>
+										<td>$identita</td>
+										<td>Bez garanta</td>
+									</tr>
+								#end
+							</table>
+						#else
+							<p>Žádné identity</p>
+						#end
+					#end
+					
 					<br />
-					
-					<h2>Identity s brzy expirovaným garantem</h2>
-					#if($expiringManagers && !$expiringManagers.isEmpty())
-						<table>
-							<tr>
-								<th style="width:25%; text-align: left;">Identita</th>
-								<th style="width:25%; text-align: left;">Garant</th>
-							</tr>
-							#foreach ($identita in $expiringManagers.keySet())
-								<tr>
-									<td>$identita</td>
-									<td>$expiringManagers[$identita]</td>
-								</tr>
-							#end
-						</table>
-					#else
-						<p>Žádné identity</p>
-					#end
-					<br />
-					
-					<h2>Identity bez přiřazeného garanta</h2>
-                    #if($missingManagers && !$missingManagers.isEmpty())
-						<table>
-							<tr>
-								<th style="width:25%; text-align: left;">Identita</th>
-								<th style="width:25%; text-align: left;">Garant</th>
-							</tr>
-							#foreach ($identita in $missingManagers)
-								<tr>
-									<td>$identita</td>
-									<td>Bez garanta</td>
-								</tr>
-							#end
-						</table>
-					#else
-						<p>Žádné identity</p>
-					#end
-					
 					<br />
                     Přejeme Vám pěkný den.
 					<br />
+				</div>
                 <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
 			        CzechIdM © 2019&nbsp;BCV Solutions s.r.o.&nbsp;
 		        </div>
