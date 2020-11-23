@@ -186,7 +186,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	//public for test
 	public String transformIdentityToString(IdmIdentityDto identity) {
 
-		if (identity==null) {
+		if (identity == null) {
 			return null;
 		}
 		
@@ -297,7 +297,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			managersExpiritingXDays = new HashMap<String,String>();
 		}
 		
-		if(recipientRole==null && StringUtils.isBlank(recipientEmail)) {
+		if(recipientRole == null && StringUtils.isBlank(recipientEmail)) {
 			throw new ResultCodeException(ExtrasResultCode.NO_RECIPIENTS_FOUND,
 					ImmutableMap.of("recipientRole and recipientEmail is ", "null"));
 		}
