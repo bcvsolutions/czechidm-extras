@@ -4,12 +4,10 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.quartz.DisallowConcurrentExecution;
@@ -28,25 +26,19 @@ import eu.bcvsolutions.idm.core.api.domain.OperationState;
 import eu.bcvsolutions.idm.core.api.dto.IdmContractGuaranteeDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
-import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmContractGuaranteeFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
-import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
 import eu.bcvsolutions.idm.core.api.entity.OperationResult;
 import eu.bcvsolutions.idm.core.api.exception.ResultCodeException;
 import eu.bcvsolutions.idm.core.api.service.ConfigurationService;
 import eu.bcvsolutions.idm.core.api.service.IdmContractGuaranteeService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
-import eu.bcvsolutions.idm.core.api.service.IdmIdentityRoleService;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
-import eu.bcvsolutions.idm.core.api.utils.DtoUtils;
 import eu.bcvsolutions.idm.core.eav.api.domain.BaseFaceType;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract_;
-import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole_;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentity_;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
@@ -90,7 +82,6 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	
 	private Long daysBeforeExpired;
 	private LocalDate currentDate = LocalDate.now();
-	private LocalDate validMinusXDays = LocalDate.now();
 	private Boolean optionLessThanXDays;
 	private UUID projectionUserType;
 	private Boolean isOptionManagerAlreadyExpired;
@@ -113,7 +104,6 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 	@Autowired private ConfigurationService configurationService;
 	@Autowired private EmailNotificationSender emailNotificationSender;
 	@Autowired private IdmRoleService roleService;
-	@Autowired private IdmIdentityRoleService identityRoleService;
 	@Autowired private IdmNotificationTemplateService notificationTemplateService;
 
 	@Override
@@ -128,8 +118,8 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			identityFilter.setTreeNode(organizationUnit);
 		}
 		
+		boolean canContinue = true;
 		counter=0l;
-		IdmIdentityDto identity = null;
 		Pageable pageable = PageRequest.of(0, 100, new Sort(Direction.ASC, IdmIdentity_.username.getName()));
 		do {
 			Page<IdmIdentityDto> users = identityService.find(identityFilter, pageable);
@@ -137,11 +127,9 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 				// report extends long running task - show progress by count and counter lrt attributes
 				count = users.getTotalElements();
 			}
-			boolean canContinue = true;
+			
 
-			users.forEach(identita -> {
-//			for (Iterator<IdmIdentityDto> i = users.iterator(); i.hasNext() && canContinue;) {
-//				identita = i.next();
+			for(IdmIdentityDto identita : users) {
 
 				if (identita == null) {
 					LOG.error("Identity with id [{}] not exists.", identita);
@@ -176,18 +164,23 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 
 					processManagersContracts(managers, identita);
 					
-					++counter;
-					canContinue = updateState();
-					if (!canContinue) {
-						break;
-					}
 				} 
-			});
+				
+				++counter;
+				canContinue = updateState();
+				if (!canContinue) {
+					break;
+				}
+			};
 			
 			pageable = users.hasNext() && canContinue ? users.nextPageable() : null;
 		}while (pageable != null);
 		
+		if (!canContinue) {
+			return false;
+		}
 		return getRecipientsAndSend();
+		
 	}
 	
 	//public for test
@@ -229,47 +222,31 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 				//search if any contracts are still valid in X days
 				List<IdmIdentityContractDto> contractsExpiring = identityContractService.findAllValidForDate(
 						manager.getId(),
-						currentDate.plusDays(daysBeforeExpired),
+						currentDate.plusDays(Math.toIntExact(daysBeforeExpired+1)),
 						null);
 				
+				//there are some valid contracts, it is not expiring soon (in x days)
 				if(!contractsExpiring.isEmpty()) {
 					continue;
 				}
 				
 				IdmIdentityContractDto expiringContract = identityContractService.getPrimeContract(manager.getId());
-				String ppvEnd = expiringContract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
-				addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
+				if (expiringContract == null) {
+					continue;
+				}
+				String ppvEnd = expiringContract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));
+				LocalDate validTill = expiringContract.getValidTill();
+				if (optionLessThanXDays != null && optionLessThanXDays == true) {
+					if (currentDate.isBefore(validTill) || currentDate.plusDays(daysBeforeExpired).isEqual(validTill) || currentDate.isEqual(validTill)) {
+						addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
+					}
+				}else {
+					if (currentDate.plusDays(daysBeforeExpired).isEqual(validTill)) {
+						addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
+					}
+				}
 				logItemProcessed(identity, new OperationResult.Builder(OperationState.EXECUTED).build());
-				
-//				for (IdmIdentityContractDto contract : contractsExpiring) {
-//					
-//					if (contract.getValidTill() == null) {
-//						//manager is valid - remove if previously added
-//						managersExpiritingXDays.remove(transformIdentityToString(identity));
-//						break;
-//					}
-//	
-//					validMinusXDays = contract.getValidTill().minusDays(daysBeforeExpired);
-//	
-//					if (!currentDate.isAfter(validMinusXDays.minusDays(1))) {
-//						//manager is valid within X days period - remove if previously added
-//						managersExpiritingXDays.remove(transformIdentityToString(identity));
-//						break;
-//					}
-//					
-//					String ppvEnd = "";
-//					ppvEnd = contract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
-//
-//					if (optionLessThanXDays != null && optionLessThanXDays == true) {
-//						if (currentDate.isAfter(validMinusXDays.minusDays(1))) {
-//							addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
-//						}
-//					}else {
-//						if (currentDate.isEqual(validMinusXDays)) {
-//							addManagerToHashMap(managersExpiritingXDays,manager,identity,ppvEnd);
-//						}
-//					}
-//				}
+
 			}
 			
 		}
@@ -320,21 +297,19 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			managersExpiritingXDays = new HashMap<String,String>();
 		}
 		
-		
-//		if(recipientRole==null && (recipientEmail==null || recipientEmail.trim().isEmpty())) {
 		if(recipientRole==null && StringUtils.isBlank(recipientEmail)) {
 			throw new ResultCodeException(ExtrasResultCode.NO_RECIPIENTS_FOUND,
 					ImmutableMap.of("recipientRole and recipientEmail is ", "null"));
 		}
 
-		if (recipientEmail != null && !recipientEmail.trim().isEmpty()) {
+		if (!StringUtils.isBlank(recipientEmail)) {
 			recipientEmails = new ArrayList<String>();
 			for (String email : recipientEmail.split(RECIPIENT_EMAIL_DIVIDER)) {
 				recipientEmails.add(email.trim());
 			}
 		}
 		
-		if (isOptionManagerAlreadyExpired !=null && isOptionManagerAlreadyExpired == true) {
+		if (isOptionManagerAlreadyExpired != null && isOptionManagerAlreadyExpired == true) {
 			managersAlreadyExpired = new HashMap<String,String>();
 		}
 
@@ -394,25 +369,28 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 				PARAMETER_ORGANIZATION_UNIT,
 				PersistentType.UUID);
 		organizationUnitAttr.setFaceType(BaseFaceType.TREE_NODE_SELECT);
-		organizationUnitAttr.setPlaceholder("Choose projection type");
+		organizationUnitAttr.setPlaceholder("Choose tree node");
 		attributes.add(organizationUnitAttr);
 				
 		IdmFormAttributeDto managerAlreadyExpiredAttr = new IdmFormAttributeDto(
 				PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED,
 				PARAMETER_EMAIL_INFO_MANAGER_ALREADY_EXPIRED,
 				PersistentType.BOOLEAN);
+		managerAlreadyExpiredAttr.setDefaultValue(Boolean.TRUE.toString());
 		attributes.add(managerAlreadyExpiredAttr);
 		
 		IdmFormAttributeDto managerMissingAttr = new IdmFormAttributeDto(
 				PARAMETER_EMAIL_INFO_MANAGER_MISSING,
 				PARAMETER_EMAIL_INFO_MANAGER_MISSING,
 				PersistentType.BOOLEAN);
+		managerMissingAttr.setDefaultValue(Boolean.TRUE.toString());
 		attributes.add(managerMissingAttr);
 		
 		IdmFormAttributeDto managerExpiringXDaysAttr = new IdmFormAttributeDto(
 				PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS,
 				PARAMETER_EMAIL_INFO_MANAGER_EXPIRING_X_DAYS,
 				PersistentType.BOOLEAN);
+		managerExpiringXDaysAttr.setDefaultValue(Boolean.TRUE.toString());
 		attributes.add(managerExpiringXDaysAttr);
 		
 		IdmFormAttributeDto daysBeforeAttr = new IdmFormAttributeDto(
@@ -426,6 +404,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 				PARAMETER_DAYS_BEFORE_LESS_THAN,
 				PARAMETER_DAYS_BEFORE_LESS_THAN,
 				PersistentType.BOOLEAN);
+		daysBeforeLessThanAttr.setDefaultValue(Boolean.TRUE.toString());
 		attributes.add(daysBeforeLessThanAttr);
 		
 		return attributes;
@@ -437,7 +416,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 		if(recipientRole!=null) {
 			isRoleSent = sendToRoleRecipients(recipientRole);
 		}
-		
+
 		if(recipientEmails!=null && !recipientEmails.isEmpty()) {
 			isEmailSent = sendToEmailRecipients(recipientEmails);
 		}

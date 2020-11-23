@@ -167,10 +167,12 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	
 	private IdmIdentityContractDto setupContract(IdmIdentityDto identita, Integer validDays) {
 		IdmIdentityContractDto contract = getHelper().getPrimeContract(identita);
-		if(validDays>0) {
+		if(validDays > 0) {
 			contract.setValidTill(LocalDate.now().plusDays(validDays));	
-		}else {
+		}else if (validDays <0 ) {
 			contract.setValidTill(LocalDate.now().minusDays(validDays*(-1)));
+		}else {
+			contract.setValidTill(LocalDate.now());
 		}
 		
 		return identityContractService.save(contract);
@@ -342,7 +344,6 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 			notificationExpiringXDaysManager.init(properties);
 
 			lrtManager.executeSync(notificationExpiringXDaysManager);
-			
 			HashMap<String,String> expiringManagers = notificationExpiringXDaysManager.getManagersExpiritingXDays();
 			Assert.assertEquals(2, expiringManagers.size());
 			
@@ -414,7 +415,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		getHelper().createIdentityRole(userOneContract, roleOne);
 		getHelper().createIdentityRole(userTwoContract, roleOne);
 		
-		List<IdmIdentityDto> foundIdentities = managersLRT.getUsersByRoleId(roleOne.getId());
+		List<IdmIdentityDto> foundIdentities = identityService.findAllByRole(roleOne.getId());		
 		Assert.assertEquals(2, foundIdentities.size());
 		Assert.assertTrue(foundIdentities.contains(userOne));
 		Assert.assertTrue(foundIdentities.contains(userTwo));

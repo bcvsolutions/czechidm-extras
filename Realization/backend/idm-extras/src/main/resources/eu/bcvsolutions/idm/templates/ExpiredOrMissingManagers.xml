@@ -16,7 +16,7 @@ parameters:
         <![CDATA[
             <html>
                 <body>
-                    <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
+                    <div style="text-align: left;">
                     Dobrý den,<br />
                     <br />
                     uživatelé (vlevo) jsou označeni s garantem, který není validní. <br />
@@ -27,13 +27,13 @@ parameters:
 						#if($expiredManagers && !$expiredManagers.isEmpty())
 							<table>
 								<tr>
-									<th style="width:20%; text-align: left;">Identita</th>
-									<th style="text-align: left;">Garant</th>
+									<th style="min-width:200px; text-align: left;">Identita</th>
+									<th style="text-align: left;padding-left:15px;">Garant</th>
 								</tr>
 								#foreach ($identita in $expiredManagers.keySet())
 									<tr>
 										<td>$identita</td>
-										<td>$expiredManagers[$identita]</td>
+										<td style="padding-left:15px;">$expiredManagers[$identita]</td>
 									</tr>
 								#end
 							</table>
@@ -48,13 +48,13 @@ parameters:
 						#if($expiringManagers && !$expiringManagers.isEmpty())
 							<table>
 								<tr>
-									<th style="width:20%; text-align: left;">Identita</th>
-									<th style="text-align: left;">Garant</th>
+									<th style="min-width:200px; text-align: left;">Identita</th>
+									<th style="text-align: left;padding-left:15px;">Garant</th>
 								</tr>
 								#foreach ($identita in $expiringManagers.keySet())
 									<tr>
 										<td>$identita</td>
-										<td>$expiringManagers[$identita]</td>
+										<td style="padding-left:15px;">$expiringManagers[$identita]</td>
 									</tr>
 								#end
 							</table>
@@ -69,13 +69,13 @@ parameters:
 	                    #if($missingManagers && !$missingManagers.isEmpty())
 							<table>
 								<tr>
-									<th style="width:20%; text-align: left;">Identita</th>
-									<th style="text-align: left;">Garant</th>
+									<th style="min-width:200px; text-align: left;">Identita</th>
+									<th style="text-align: left;padding-left:15px;">Garant</th>
 								</tr>
 								#foreach ($identita in $missingManagers)
 									<tr>
 										<td>$identita</td>
-										<td>Bez garanta</td>
+										<td style="padding-left:15px;">Bez garanta</td>
 									</tr>
 								#end
 							</table>
