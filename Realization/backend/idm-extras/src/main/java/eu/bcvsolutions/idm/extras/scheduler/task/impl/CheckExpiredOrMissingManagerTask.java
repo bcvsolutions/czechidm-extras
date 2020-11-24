@@ -138,7 +138,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 
 				List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(identita.getId(), currentDate, null);
 
-				if(contracts == null || contracts.size() == 0) {
+				if (contracts == null || contracts.size() == 0) {
 					LOG.error("Identity with id [{}] has no contracts.", identita);
 					continue;
 				}
@@ -207,10 +207,13 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 			
 			List<IdmIdentityContractDto> contracts = identityContractService.findAllValidForDate(manager.getId(), currentDate, null);
 
-			if(contracts == null || contracts.isEmpty()) {
+			if (contracts == null || contracts.isEmpty()) {
 				if (isOptionManagerAlreadyExpired != null && isOptionManagerAlreadyExpired == true) {
 					IdmIdentityContractDto expiredContract = identityContractService.findLastExpiredContract(manager.getId(), currentDate);
-					String ppvEnd = expiredContract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
+					String ppvEnd = "";
+					if (expiredContract != null) {
+						ppvEnd = expiredContract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));	
+					}
 					addManagerToHashMap(managersAlreadyExpired,manager,identity,ppvEnd);
 					logItemProcessed(identity, new OperationResult.Builder(OperationState.EXECUTED).build());
 				}
@@ -232,6 +235,7 @@ public class CheckExpiredOrMissingManagerTask extends AbstractSchedulableTaskExe
 				
 				IdmIdentityContractDto expiringContract = identityContractService.getPrimeContract(manager.getId());
 				if (expiringContract == null) {
+					LOG.error("Identity with id [{}] has no prime contract.", manager);
 					continue;
 				}
 				String ppvEnd = expiringContract.getValidTill().format(DateTimeFormatter.ofPattern(configurationService.getDateFormat()));
