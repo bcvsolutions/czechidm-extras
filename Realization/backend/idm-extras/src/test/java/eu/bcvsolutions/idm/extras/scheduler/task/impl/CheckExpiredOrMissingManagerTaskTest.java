@@ -108,7 +108,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 			managersTemplate = notificationTemplateService.find(tf1, null).getContent().get(0);
 
 			NotificationConfigurationDto notificationConfigurationManagers = new NotificationConfigurationDto();
-			notificationConfigurationManagers.setTopic("vfn:vfnExternalContractExpiredXDays");
+			notificationConfigurationManagers.setTopic("extras:checkExpiredOrMissingManager");
 			notificationConfigurationManagers.setNotificationType("email");
 			notificationConfigurationManagers.setLevel(NotificationLevel.SUCCESS);
 			notificationConfigurationManagers.setTemplate(managersTemplate.getId());
@@ -155,10 +155,10 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	}
 	
 	private IdmIdentityDto setupIdentity(String name, Boolean useProjection) {
-		IdmIdentityDto identita = getHelper().createIdentity(name+"_username");
-		identita.setFirstName("Jmeno-"+name);
-		identita.setLastName("Prijmeni-"+name);
-		identita.setEmail(name + "@bcvsolutions.eu");
+		IdmIdentityDto identita = getHelper().createIdentity("rr_test_"+name+"_username");
+		identita.setFirstName("Jmeno-rr_test_"+name);
+		identita.setLastName("Prijmeni-rr_test_"+name);
+		identita.setEmail("rr_test_"+name + "@bcvsolutions.eu");
 		if(useProjection) {
 			identita.setFormProjection(projection.getId());	
 		}
@@ -196,10 +196,10 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Test
 	public void testLrtManagersExpiredWithProjection() {
 		
-		IdmIdentityDto recipient = getHelper().createIdentity("testRecipient5");
+		IdmIdentityDto recipient = getHelper().createIdentity("test_rr_Recipient5");
 		IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
 		
-		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications5");
+		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "test_rr_Notifications5");
 		getHelper().createIdentityRole(recipientContract, notificationRole);
 		
 		Map<String, Object> properties = new HashMap<>();
@@ -221,7 +221,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		Assert.assertEquals(1, expiredManagers.size());
 		
 		IdmNotificationFilter filter = new IdmNotificationFilter();
-		filter.setRecipient("testRecipient5");
+		filter.setRecipient("test_rr_Recipient5");
 		filter.setNotificationType(IdmEmailLog.class);
 
 		// we should find 1 email notification on testRecipient
@@ -238,10 +238,10 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Test
 	public void testLrtManagersMissingAllUsers() {
 		
-		IdmIdentityDto recipient = getHelper().createIdentity("testRecipient4");
+		IdmIdentityDto recipient = getHelper().createIdentity("test_rr_Recipient4");
 		IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
 		
-		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications4");
+		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "test_rr_Notifications4");
 		getHelper().createIdentityRole(recipientContract, notificationRole);
 		
 		Map<String, Object> properties = new HashMap<>();
@@ -263,7 +263,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		Assert.assertEquals(2, missingManagers.size());
 		
 		IdmNotificationFilter filter = new IdmNotificationFilter();
-		filter.setRecipient("testRecipient4");
+		filter.setRecipient("test_rr_Recipient4");
 		filter.setNotificationType(IdmEmailLog.class);
 
 		// we should find 1 email notification on testRecipient
@@ -281,10 +281,10 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Test
 	public void testLrtManagersExpiringXDays() {
 		
-		IdmIdentityDto recipient = getHelper().createIdentity("testRecipient3");
+		IdmIdentityDto recipient = getHelper().createIdentity("test_rr_Recipient3");
 		IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
 		
-		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications3");
+		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "test_rr_Notifications3");
 		getHelper().createIdentityRole(recipientContract, notificationRole);
 		
 		Map<String, Object> properties = new HashMap<>();
@@ -306,7 +306,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		Assert.assertEquals(2, expiringManagers.size());
 		
 		IdmNotificationFilter filter = new IdmNotificationFilter();
-		filter.setRecipient("testRecipient3");
+		filter.setRecipient("test_rr_Recipient3");
 		filter.setNotificationType(IdmEmailLog.class);
 
 		// we should find 1 email notification on testRecipient
@@ -324,10 +324,10 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		@Test
 		public void testLrtManagersExpiringXDaysExactly() {
 			
-			IdmIdentityDto recipient = getHelper().createIdentity("testRecipient2");
+			IdmIdentityDto recipient = getHelper().createIdentity("test_rr_Recipient2");
 			IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
 			
-			IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications2");
+			IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "test_rr_Notifications2");
 			getHelper().createIdentityRole(recipientContract, notificationRole);
 			
 			Map<String, Object> properties = new HashMap<>();
@@ -348,7 +348,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 			Assert.assertEquals(2, expiringManagers.size());
 			
 			IdmNotificationFilter filter = new IdmNotificationFilter();
-			filter.setRecipient("testRecipient2");
+			filter.setRecipient("test_rr_Recipient2");
 			filter.setNotificationType(IdmEmailLog.class);
 
 			// we should find 1 email notification on testRecipient
@@ -411,7 +411,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		IdmIdentityContractDto userOneContract = getHelper().getPrimeContract(userOne); 
 		IdmIdentityDto userTwo = getHelper().createIdentity();
 		IdmIdentityContractDto userTwoContract = getHelper().getPrimeContract(userTwo);
-		IdmRoleDto roleOne = getHelper().createRole("role");
+		IdmRoleDto roleOne = getHelper().createRole("rr_role");
 		getHelper().createIdentityRole(userOneContract, roleOne);
 		getHelper().createIdentityRole(userTwoContract, roleOne);
 		
@@ -424,10 +424,10 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Test
 	public void testLrtManagersOrganizationUnit() {
 		
-		IdmIdentityDto recipient = getHelper().createIdentity("testRecipient1");
+		IdmIdentityDto recipient = getHelper().createIdentity("test_rr_Recipient1");
 		IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
 		
-		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications1");
+		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "test_rr_Notifications1");
 		getHelper().createIdentityRole(recipientContract, notificationRole);
 		
 		Map<String, Object> properties = new HashMap<>();
@@ -450,7 +450,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		Assert.assertEquals(1, missingManagers.size());
 		
 		IdmNotificationFilter filter = new IdmNotificationFilter();
-		filter.setRecipient("testRecipient1");
+		filter.setRecipient("test_rr_Recipient1");
 		filter.setNotificationType(IdmEmailLog.class);
 
 		// we should find 1 email notification on testRecipient
@@ -466,10 +466,10 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 	@Test
 	public void testLrtManagersRoleSent() {
 		
-		IdmIdentityDto recipient = getHelper().createIdentity("testRecipient");
+		IdmIdentityDto recipient = getHelper().createIdentity("test_rr_Recipient");
 		IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
 		
-		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications");
+		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "test_rr_Notifications");
 		getHelper().createIdentityRole(recipientContract, notificationRole);
 				
 		Map<String, Object> properties = new HashMap<>();
@@ -488,7 +488,7 @@ public class CheckExpiredOrMissingManagerTaskTest extends AbstractIntegrationTes
 		lrtManager.executeSync(notificationExpiringXDaysManager);
 		
 		IdmNotificationFilter filter = new IdmNotificationFilter();
-		filter.setRecipient("testRecipient");
+		filter.setRecipient("test_rr_Recipient");
 		filter.setNotificationType(IdmEmailLog.class);
 
 		// we should find 1 email notification on testRecipient
