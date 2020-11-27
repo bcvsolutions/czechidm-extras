@@ -1,0 +1,103 @@
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes" ?>
+<!-- 
+	Notification to administrators what users have expired, missing or expiring managers.
+parameters:
+    missingManagers - identities with missing manager
+    expiredManagers - identities and manager identities
+    expiringManagers - identities and managers identities expiring in X days
+ -->
+
+<template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
+    <code>checkExpiredOrMissingManager</code>
+    <name>Check expired, missing or expiring managers (extras)</name>
+    <subject>IdM - Seznam uživatelů s expirovaným garantem</subject>
+    <bodyHtml>
+        <![CDATA[
+            <html>
+                <body>
+                    <div style="text-align: left;">
+                    Dobrý den,<br />
+                    <br />
+                    uživatelé (vlevo) jsou označeni s garantem, který není validní. <br />
+                    <br />
+                    
+                    #if($optionExpired)
+	                    <h2>Identity s již expirovaným garantem</h2>
+						#if($expiredManagers && !$expiredManagers.isEmpty())
+							<table>
+								<tr>
+									<th style="width:200px; text-align: left;">Identita</th>
+									<th style="text-align: left;padding-left:15px;">Garant</th>
+								</tr>
+								#foreach ($identita in $expiredManagers.keySet())
+									<tr>
+										<td>$identita</td>
+										<td style="padding-left:15px;">$expiredManagers[$identita]</td>
+									</tr>
+								#end
+							</table>
+						#else
+							<p>Žádné identity</p>
+						#end
+						<br />
+					#end
+					
+					#if($optionExpiring)
+						<h2>Identity s brzy expirovaným garantem</h2>
+						#if($expiringManagers && !$expiringManagers.isEmpty())
+							<table>
+								<tr>
+									<th style="width:200px; text-align: left;">Identita</th>
+									<th style="text-align: left;padding-left:15px;">Garant</th>
+								</tr>
+								#foreach ($identita in $expiringManagers.keySet())
+									<tr>
+										<td>$identita</td>
+										<td style="padding-left:15px;">$expiringManagers[$identita]</td>
+									</tr>
+								#end
+							</table>
+						#else
+							<p>Žádné identity</p>
+						#end
+						<br />
+					#end
+					
+					#if($optionMissing)
+						<h2>Identity bez přiřazeného garanta</h2>
+	                    #if($missingManagers && !$missingManagers.isEmpty())
+							<table>
+								<tr>
+									<th style="width:200px; text-align: left;">Identita</th>
+									<th style="text-align: left;padding-left:15px;">Garant</th>
+								</tr>
+								#foreach ($identita in $missingManagers)
+									<tr>
+										<td>$identita</td>
+										<td style="padding-left:15px;">Bez garanta</td>
+									</tr>
+								#end
+							</table>
+						#else
+							<p>Žádné identity</p>
+						#end
+					#end
+					
+					<br />
+					<br />
+                    Přejeme Vám pěkný den.
+					<br />
+				</div>
+                <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
+			        CzechIdM © 2019&nbsp;BCV Solutions s.r.o.&nbsp;
+		        </div>
+                </body>
+            </html>
+        ]]>
+    </bodyHtml>
+    <bodyText></bodyText>
+    <parameter>missingManagers, expiredManagers, expiringManagers</parameter>
+    <systemTemplate>false</systemTemplate>
+    <moduleId>extras</moduleId>
+</template>

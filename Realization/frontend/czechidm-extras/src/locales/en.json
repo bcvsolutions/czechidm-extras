@@ -44,6 +44,14 @@
       "title": "Choose file to import!",
       "message": "Choose file to import!"
     },
+    "NO_RECIPIENTS_FOUND": {
+      "title": "No recipients found! Notification will not be sent!",
+      "message": "No recipients found! Notification will not be sent!"
+    },
+    "CONTRACT_END_NOTIFICATION_DAYS_BEFORE_NOT_SPECIFIED": {
+      "title": "'Days before contract end' Parameter is required and has to be number greater or equal to zero!",
+      "message": "'Days before contract end' Parameter is required and has to be number greater or equal to zero!"
+    },
     "COLUMN_NOT_FOUND": {
       "title": "Column not found.",
       "message": "Column [{{name}}] not found."
@@ -339,6 +347,48 @@
           },
           "multivaluedseparator": {
             "label": "Separator of multivalued attributes"
+          }
+        }
+      },
+      "extras-check-expired-or-missing-manager": {
+        "label": "Notification for expired and missing managers",
+        "help": "Long running task that finds all identities which are missing manager, expired or soon expiring manager",
+        "attributes": {
+          "xdaysbeforecontractexpires": {
+            "label": "Number X days before the manager's contract expires",
+            "help": "This includes only manager's contracts, identity contract must be valid. Number of days equals."
+          },
+          "xdaysbeforecontractexpireslessthan": {
+            "label": "Number X days is lower than"
+          },
+          "userprojection": {
+            "label": "User type",
+            "help": "Select user type for which we do search for managers",
+            "placeholder": "Select type or leave empty to search all ..."
+          },
+          "organizationunit": {
+            "label": "Organization",
+            "help": "Select organization where to look for identities.",
+            "placeholder": "Select one or leave empty to search all ..."
+          },
+          "manageralreadyexpired": {
+            "label": "Option include expired managers"
+          },
+          "managermissing": {
+            "label": "Option include missing managers"
+          },
+          "managerexpiringinxdays": {
+            "label": "Option include managers expiring in X days"
+          },
+          "recipientrole": {
+            "label": "Role recipient",
+            "help": "Recipients are all identities in this role",
+            "placeholder": "Select role ..."
+          },
+          "recipientemail": {
+            "label": "Email address",
+            "help": "Enter email adresses divided by comma",
+            "placeholder": "Enter email ..."
           }
         }
       }
