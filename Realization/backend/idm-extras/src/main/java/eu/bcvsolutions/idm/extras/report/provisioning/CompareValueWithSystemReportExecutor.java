@@ -88,35 +88,44 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 	private static String REGEX = ",";
 	private static String ATT_SCRIPT_SPLIT = ":";
 
-	@Autowired
-	private SysSystemService systemService;
-	@Autowired
-	private IdmIdentityService identityService;
-	@Autowired
-	private AccAccountService accountService;
-	@Autowired
-	private SysSchemaObjectClassService schemaObjectClassService;
-	@Autowired
-	private SysSystemAttributeMappingService systemAttributeMappingService;
-	@Autowired
-	private IdmScriptService scriptService;
-	@Autowired
-	private ProvisioningService provisioningService;
-	@Autowired
-	private SysSystemMappingService systemMappingService;
-	@Autowired
-	private SysSchemaAttributeService schemaAttributeService;
-	@Autowired
-	private FormService formService;
-	@Autowired
-	private ConfidentialStorage confidentialStorage;
-	@Autowired
-	private SysAttributeControlledValueService attributeControlledValueService;
+	private final SysSystemService systemService;
+	private final IdmIdentityService identityService;
+	private final AccAccountService accountService;
+	private final SysSchemaObjectClassService schemaObjectClassService;
+	private final SysSystemAttributeMappingService systemAttributeMappingService;
+	private final IdmScriptService scriptService;
+	private final ProvisioningService provisioningService;
+	private final SysSystemMappingService systemMappingService;
+	private final SysSchemaAttributeService schemaAttributeService;
+	private final FormService formService;
+	private final ConfidentialStorage confidentialStorage;
+	private final SysAttributeControlledValueService attributeControlledValueService;
 
 	/*
 	 * Temporary cache for controlled value
 	 */
 	private Map<UUID, List<SysAttributeControlledValueDto>> controledValueCache = new HashMap<UUID, List<SysAttributeControlledValueDto>>();
+
+	@Autowired
+	public CompareValueWithSystemReportExecutor(SysSystemService systemService, IdmIdentityService identityService, AccAccountService accountService,
+												SysSchemaObjectClassService schemaObjectClassService, SysSystemAttributeMappingService systemAttributeMappingService,
+												IdmScriptService scriptService, ProvisioningService provisioningService, SysSystemMappingService systemMappingService,
+												SysSchemaAttributeService schemaAttributeService, FormService formService, ConfidentialStorage confidentialStorage,
+												SysAttributeControlledValueService attributeControlledValueService) {
+		this.systemService = systemService;
+		this.identityService = identityService;
+		this.accountService = accountService;
+		this.schemaObjectClassService = schemaObjectClassService;
+		this.systemAttributeMappingService = systemAttributeMappingService;
+		this.scriptService = scriptService;
+		this.provisioningService = provisioningService;
+		this.systemMappingService = systemMappingService;
+		this.schemaAttributeService = schemaAttributeService;
+		this.formService = formService;
+		this.confidentialStorage = confidentialStorage;
+		this.attributeControlledValueService = attributeControlledValueService;
+	}
+
 	/**
 	 * Report ~ executor name
 	 */
@@ -270,6 +279,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 		List<CompareValueRowDto> rows = infoData.getRows();
 		do {
 			Page<AccAccountDto> accounts = accountService.find(filterAccount, pageable, IdmBasePermission.READ);
+
 			if (count == null) {
 				count = accounts.getTotalElements();
 			}
@@ -497,7 +507,7 @@ public class CompareValueWithSystemReportExecutor extends AbstractReportExecutor
 	private Collection<?> removeNotControlledValues(List<Object> values, List<SysAttributeControlledValueDto> controlledValues) {
 		List<Object> valuesAfterCheck = new ArrayList<Object>();
 		
-		values.forEach(val -> {
+		Optional.ofNullable(values).orElse(Collections.emptyList()).forEach(val -> {
 			SysAttributeControlledValueDto existingValue = controlledValues.stream().filter(controlledValue -> {
 				return ObjectUtils.equals(String.valueOf(controlledValue.getValue()), String.valueOf(val));
 			}).findAny().orElse(null);
