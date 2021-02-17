@@ -187,7 +187,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		IdmNotificationTemplateDto usedTemplateOne = notificationLogService.find(filter, null).getContent().
 				get(0).getMessage().getTemplate();
 		
-		Assert.assertEquals(2, count);
+		Assert.assertEquals(1, count);
 		Assert.assertEquals(templateFuture, usedTemplateOne);
 
 		IdmNotificationFilter filterTwo = new IdmNotificationFilter();

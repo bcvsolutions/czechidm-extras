@@ -49,14 +49,14 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 		createFormAttribute(eavNameNode, definition.getId());
 		createFormAttribute(eavTreeName, definition.getId());
 		//
-		getHelper().createRole("Manager-A2");
+		getHelper().createRole("Manager-A");
 		getHelper().createRole("MISTER_RL");
 		getHelper().createRole("LAY-OP");
-		getHelper().createRole("LAY-SP2");
+		getHelper().createRole("LAY-SP");
 		getHelper().createRole("LAY-BLL");
 		getHelper().createRole("AMG-BLK");
 		getHelper().createRole("ACC-CLOSE");
-		getHelper().createRole("CORE-CLOSE2");
+		getHelper().createRole("CORE-CLOSE");
 		
 		setPath(path, "importRolesTestFile02.csv");
 		IdmAttachmentDto attachment = createAttachment();

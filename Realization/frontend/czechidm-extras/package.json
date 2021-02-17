@@ -1,6 +1,6 @@
 {
   "name": "czechidm-extras",
-  "version": "2.7.1",
+  "version": "2.7.0",
   "description": "Extras module for CzechIdM devstack.",
   "main": "index.js",
   "scripts": {
