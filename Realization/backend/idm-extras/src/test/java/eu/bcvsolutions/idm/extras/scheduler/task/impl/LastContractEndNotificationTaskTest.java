@@ -6,6 +6,7 @@ import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
+import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationLogDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationFilter;
@@ -155,13 +156,14 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	public void testLrtEndsInFuture() {
 		IdmIdentityDto subject = getHelper().createIdentity();
 		IdmIdentityContractDto subjectContract = getHelper().getPrimeContract(subject);
-		subjectContract.setValidTill(LocalDate.now().plusDays(7));
+		// This may collide with CheckExpiredOrMissingManagerTaskTest so make sure identities from that test do not interfere with followin results
+		subjectContract.setValidTill(LocalDate.now().plusDays(2));
 		identityContractService.saveInternal(subjectContract);
 		
-		IdmIdentityDto manager = getHelper().createIdentity("manager");
+		IdmIdentityDto manager = getHelper().createIdentity("managerContractEnds");
 		getHelper().createContractGuarantee(subjectContract, manager);
 		
-		IdmIdentityDto recipient = getHelper().createIdentity("testRecipient");
+		IdmIdentityDto recipient = getHelper().createIdentity("testRecipientContractEnds");
 		IdmIdentityContractDto recipientContract = getHelper().getPrimeContract(recipient);
 		
 		IdmRoleDto notificationRole = getHelper().createRole(UUID.randomUUID(), "TestNotifications");
@@ -169,29 +171,34 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		
 		Map<String, Object> properties = new HashMap<>();
 		UUID recipientRole = notificationRole.getId();
-		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "7");
+		properties.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "2");
 		properties.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, true);
 		properties.put(LastContractEndNotificationTask.RECIPIENT_ROLE_BEFORE_PARAM, recipientRole);
 		
 		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
 		notificationThree.init(properties);
 
-		lrtManager.executeSync(notificationThree);
-		
 		IdmNotificationFilter filter = new IdmNotificationFilter();
-		filter.setRecipient("testRecipient");
+		filter.setRecipient("testRecipientContractEnds");
 		filter.setNotificationType(IdmEmailLog.class);
+		filter.setTopic("extras:contractEndInXDays");
+
+		List<IdmIdentityContractDto> allByIdentity = identityContractService.findAllByIdentity(recipient.getId());
+		long countBefore = notificationLogService.count(filter);
+
+		lrtManager.executeSync(notificationThree);
 
 		// we should find 1 email notification on testRecipient
 		long count = notificationLogService.count(filter);
+		List<IdmNotificationLogDto> content = notificationLogService.find(filter, null).getContent();
 		IdmNotificationTemplateDto usedTemplateOne = notificationLogService.find(filter, null).getContent().
 				get(0).getMessage().getTemplate();
 		
-		Assert.assertEquals(2, count);
+		Assert.assertEquals(1, count - countBefore);
 		Assert.assertEquals(templateFuture, usedTemplateOne);
 
 		IdmNotificationFilter filterTwo = new IdmNotificationFilter();
-		filterTwo.setRecipient("manager");
+		filterTwo.setRecipient("managerContractEnds");
 		filterTwo.setNotificationType(IdmEmailLog.class);
 
 		// we should find 1 email notification on manager
