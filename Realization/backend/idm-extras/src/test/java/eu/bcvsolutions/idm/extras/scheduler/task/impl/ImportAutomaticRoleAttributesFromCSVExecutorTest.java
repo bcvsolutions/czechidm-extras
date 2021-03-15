@@ -50,11 +50,11 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 		createFormAttribute(eavTreeName, definition.getId());
 		//
 		getHelper().createRole("Manager-A2");
-		getHelper().createRole("MISTER_RL");
-		getHelper().createRole("LAY-OP");
+		getHelper().createRole("MISTER_RL2");
+		getHelper().createRole("LAY-OP2");
 		getHelper().createRole("LAY-SP2");
-		getHelper().createRole("LAY-BLL");
-		getHelper().createRole("AMG-BLK");
+		getHelper().createRole("LAY-BLL2");
+		getHelper().createRole("AMG-BLK2");
 		getHelper().createRole("ACC-CLOSE2");
 		getHelper().createRole("CORE-CLOSE2");
 		
@@ -78,10 +78,10 @@ public class ImportAutomaticRoleAttributesFromCSVExecutorTest extends AbstractRo
 		Assert.assertEquals(total, task.getCounter());
 		// check automatic roles settings
 		List<IdmRoleDto> roles = roleService.find(new IdmRoleFilter(), null).getContent();
-		List<IdmRoleDto> idmRoleDtoStream = roles.stream().filter(r -> r.getCode().equals(CHECK_NAME)).collect(Collectors.toList());
+		List<IdmRoleDto> idmRoleDtoStream = roles.stream().filter(r -> r.getCode().equals("Manager-A2")).collect(Collectors.toList());
 		Assert.assertFalse(idmRoleDtoStream.isEmpty());
 		IdmAutomaticRoleFilter automaticRoleFilter = new IdmAutomaticRoleFilter();
-		automaticRoleFilter.setRoleId(idmRoleDtoStream.get(0).getId());
+		automaticRoleFilter.setRoleId(roles.stream().filter(r -> r.getCode().equals("Manager-A2")).findFirst().orElseThrow(AssertionError::new).getId());
 		List<IdmAutomaticRoleAttributeDto> idmAutomaticRoleAttributeDtos = automaticRoleAttributeService.find(automaticRoleFilter, null).getContent();
 		Assert.assertFalse(idmAutomaticRoleAttributeDtos.isEmpty());
 		List<IdmAutomaticRoleAttributeRuleDto> allRulesForAutomaticRole = automaticRoleAttributeRuleService.findAllRulesForAutomaticRole(idmAutomaticRoleAttributeDtos.get(0).getId());
