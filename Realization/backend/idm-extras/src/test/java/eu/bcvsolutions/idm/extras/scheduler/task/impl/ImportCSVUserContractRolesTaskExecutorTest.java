@@ -1,12 +1,20 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import com.google.common.collect.ImmutableList;
+import eu.bcvsolutions.idm.core.api.dto.filter.IdmRoleFormAttributeFilter;
+import eu.bcvsolutions.idm.core.api.service.IdmAutomaticRoleAttributeService;
+import eu.bcvsolutions.idm.core.api.service.IdmRoleFormAttributeService;
+import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormInstanceDto;
+import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +39,9 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole_;
 import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmLongRunningTaskDto;
 import eu.bcvsolutions.idm.test.api.TestHelper;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 /**
  * 
  * @author Petr Hanák
@@ -40,7 +51,11 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 	private static final String path = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesEav.csv";
 	private static final String path1 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesPrime.csv";
 	private static final String path2 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesAll.csv";
-	
+	private static final String path3 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesParamsSingleValue.csv";
+	private static final String path4 = System.getProperty("user.dir") + "/src/test/resources/scheduler/task/impl/importRolesParamsSingleValueMultipleAttrs.csv";
+	private static final String ROLE_ATTRIBUTE_CODE = "requiredRoleAttribute";
+	private static final String ROLE_ATTRIBUTE_CODE2 = "requiredRoleAttribute2";
+
 	@Autowired
 	private FormService formService;
 	@Autowired
@@ -51,6 +66,8 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 	private IdmFormDefinitionService formDefinitionService;
 	@Autowired
 	private TestHelper testHelper;
+	@Autowired
+	IdmRoleFormAttributeService roleAttributeService;
 	
 	@Test
 	public void assignRolesToEavContractTest() {
@@ -88,6 +105,7 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, "eavContract");
 		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_MULTI_VALUE_SEPARATOR, ',');
 		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_CONTRACT_DEFINITION_CODE, "defContract");
+
 
 		ImportCSVUserContractRolesTaskExecutor userContractRolesLRT = new ImportCSVUserContractRolesTaskExecutor();
 		userContractRolesLRT.init(config);
@@ -238,6 +256,151 @@ public class ImportCSVUserContractRolesTaskExecutorTest extends AbstractCsvImpor
 		Assert.assertTrue(hasRoleOnContract(result1,"testMainContractRole8"));
 
 		logout();
+	}
+
+
+	@Test
+	public void assignRolesToAllContractParamsSingleValueTest() {
+		loginAsAdmin();
+
+		IdmAttachmentDto attachement = createAttachment(path3, "importRolesParamsSingleValue.csv");
+
+		IdmRoleDto testMainContractRole9 = createRoleWithAttributes("assignRolesToAllContractParamsSingleValueTestROLE");
+
+		// create formAttributes
+		IdmIdentityDto identity1 = testHelper.createIdentity("assignRolesToAllContractParamsSingleValueTestUSER1");
+		IdmIdentityDto identity2 = testHelper.createIdentity("assignRolesToAllContractParamsSingleValueTestUSER2");
+
+		testHelper.createIdentityContact(identity1);
+		testHelper.createIdentityContact(identity2);
+
+		Map<String, Object> config = new HashMap<>();
+		config.put(AbstractCsvImportTask.PARAM_PATH_TO_CSV, attachement.getId());
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_USERNAME_COLUMN_NAME, "username");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLES_COLUMN_NAME, "roles");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, "allContracts");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_MULTI_VALUE_SEPARATOR, ',');
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_IS_ROLE_MULTI_VALUE, false);
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLE_ATTRIBUTE_ATTR_NAME_PREFIX, "roleattrname");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLE_ATTRIBUTE_ATTR_VALUE_PREFIX, "roleattrvalue");
+
+		ImportCSVUserContractRolesTaskExecutor userContractRolesLRT = new ImportCSVUserContractRolesTaskExecutor();
+		userContractRolesLRT.init(config);
+		longRunningTaskManager.executeSync(userContractRolesLRT);
+		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(userContractRolesLRT);
+
+		Long count = task.getCount();
+		Long total = 2L; //how many contracts affected? 2 createIdentityContact + 2 default contracts
+		Assert.assertEquals(total, count);
+
+		//user 1 with primeContract
+		// check number of assigned roles to right contracts
+		IdmIdentityRoleFilter identityRoleFilter = new IdmIdentityRoleFilter();
+		identityRoleFilter.setIdentityId(identity1.getId());
+		List<IdmIdentityRoleDto> result = identityRoleService.find(identityRoleFilter, null).getContent();
+		Assert.assertEquals(2, result.size());
+
+		Assert.assertTrue(hasRoleOnContract(result,testMainContractRole9.getCode()));
+
+		List<IdmIdentityRoleDto> allIRoles9AllContractside1 = result.stream().filter(ir -> ir.getRole().equals(testMainContractRole9.getId())).collect(Collectors.toList());
+		allIRoles9AllContractside1
+				.forEach(ir -> Assert.assertEquals("val1", getRoleEavValue(ir,
+								testMainContractRole9.getIdentityRoleAttributeDefinition(), ROLE_ATTRIBUTE_CODE)));
+
+		logout();
+	}
+
+	@Test
+	public void assignRolesToAllContractParamsSingleValueMultipleAttrsTest() {
+		loginAsAdmin();
+
+		IdmAttachmentDto attachement = createAttachment(path4, "importRolesParamsSingleValueMultipleAttrs.csv");
+
+		IdmRoleDto testMainContractRole9 = createRoleWithAttributes("assignRolesToAllContractParamsSingleValueMultipleAttrsTestROLE");
+
+		// create formAttributes
+		IdmIdentityDto identity1 = testHelper.createIdentity("assignRolesToAllContractParamsSingleValueMultipleAttrsTestUSER1");
+		IdmIdentityDto identity2 = testHelper.createIdentity("assignRolesToAllContractParamsSingleValueMultipleAttrsTestUSER2");
+
+		testHelper.createIdentityContact(identity1);
+		testHelper.createIdentityContact(identity2);
+
+		Map<String, Object> config = new HashMap<>();
+		config.put(AbstractCsvImportTask.PARAM_PATH_TO_CSV, attachement.getId());
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_USERNAME_COLUMN_NAME, "username");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLES_COLUMN_NAME, "roles");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLES_ASSIGNED_CONTRACTS_TYPE, "allContracts");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_MULTI_VALUE_SEPARATOR, ',');
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_IS_ROLE_MULTI_VALUE, false);
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLE_ATTRIBUTE_ATTR_NAME_PREFIX, "roleattrname");
+		config.put(ImportCSVUserContractRolesTaskExecutor.PARAM_ROLE_ATTRIBUTE_ATTR_VALUE_PREFIX, "roleattrvalue");
+
+		ImportCSVUserContractRolesTaskExecutor userContractRolesLRT = new ImportCSVUserContractRolesTaskExecutor();
+		userContractRolesLRT.init(config);
+		longRunningTaskManager.executeSync(userContractRolesLRT);
+		IdmLongRunningTaskDto task = longRunningTaskManager.getLongRunningTask(userContractRolesLRT);
+
+		//user 1 with primeContract
+		// check number of assigned roles to right contracts
+		IdmIdentityRoleFilter identityRoleFilter = new IdmIdentityRoleFilter();
+		identityRoleFilter.setIdentityId(identity1.getId());
+		List<IdmIdentityRoleDto> result = identityRoleService.find(identityRoleFilter, null).getContent();
+		Assert.assertEquals(2, result.size());
+
+		Assert.assertTrue(hasRoleOnContract(result,testMainContractRole9.getCode()));
+
+		List<IdmIdentityRoleDto> allIRoles9AllContractside1 = result.stream().filter(ir -> ir.getRole().equals(testMainContractRole9.getId())).collect(Collectors.toList());
+		allIRoles9AllContractside1
+				.forEach(ir -> {
+					Assert.assertEquals("val1", getRoleEavValue(ir, testMainContractRole9.getIdentityRoleAttributeDefinition(), ROLE_ATTRIBUTE_CODE));
+					Assert.assertEquals("val2", getRoleEavValue(ir, testMainContractRole9.getIdentityRoleAttributeDefinition(), ROLE_ATTRIBUTE_CODE2));
+				});
+
+		logout();
+	}
+
+	private IdmRoleDto createRoleWithAttributes(String roleName) {
+		IdmRoleDto role = getHelper().createRole(roleName);
+		assertNull(role.getIdentityRoleAttributeDefinition());
+
+		IdmFormAttributeDto roleAttribute = new IdmFormAttributeDto(ROLE_ATTRIBUTE_CODE);
+		roleAttribute.setPersistentType(PersistentType.SHORTTEXT);
+		roleAttribute.setRequired(false);
+		roleAttribute.setDefaultValue(getHelper().createName());
+
+		IdmFormAttributeDto roleAttribute2 = new IdmFormAttributeDto(ROLE_ATTRIBUTE_CODE2);
+		roleAttribute.setPersistentType(PersistentType.SHORTTEXT);
+		roleAttribute.setRequired(false);
+		roleAttribute.setDefaultValue(getHelper().createName());
+
+		IdmFormDefinitionDto definition = formService.createDefinition(IdmIdentityRole.class, getHelper().createName(),
+				ImmutableList.of(roleAttribute, roleAttribute2));
+		role.setIdentityRoleAttributeDefinition(definition.getId());
+		role = roleService.save(role);
+		assertNotNull(role.getIdentityRoleAttributeDefinition());
+		IdmRoleDto roleFinal = role;
+		definition.getFormAttributes().forEach(attribute -> {
+			roleAttributeService.addAttributeToSubdefintion(roleFinal, attribute);
+		});
+
+		return role;
+	}
+
+	private String getRoleEavValue(IdmIdentityRoleDto ir, UUID formDefinition, String attrName) {
+
+		IdmFormInstanceDto idmFormInstanceDto = formService.getFormInstance(ir, formService.getDefinition(formDefinition));
+
+		if (idmFormInstanceDto == null) {
+			return null;
+		}
+
+		IdmFormAttributeDto mappedAttributeByCode = idmFormInstanceDto.getMappedAttributeByCode(attrName);
+
+		return idmFormInstanceDto.getValues().stream()
+				.filter(fv -> fv.getFormAttribute().equals(mappedAttributeByCode.getId()))
+				.map(IdmFormValueDto::getShortTextValue)
+				.findFirst()
+				.orElse(null);
 	}
 
 	private IdmFormAttributeDto createFormAttribute(String code, UUID formDefinition) {

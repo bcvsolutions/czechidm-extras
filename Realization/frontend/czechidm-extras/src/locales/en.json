@@ -320,6 +320,14 @@
           "contracteavvalueprefix": {
             "label": "Prefix of column name with contract attribute value",
             "help": "Use when 'eavContract' option was used"
+          },
+          "roleattributenameprefix": {
+            "label": "Prefix of column with role parameter name",
+            "help": "Use in combination with 'Prefix of column with role parameter value' to import role attribute values"
+          },
+          "roleattributevalueprefix": {
+            "label": "Prefix of column with role parameter value",
+            "help": "Use in combination with 'Prefix of column with role parameter value' to import role attribute values"
           }
         }
       },
