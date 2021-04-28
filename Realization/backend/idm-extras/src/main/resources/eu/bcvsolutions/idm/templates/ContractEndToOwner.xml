@@ -1,6 +1,6 @@
-<?xml version = "1.0" encoding = "UTF-8" standalone = "yes"?>
+<?xml version = "1.0" encoding = "UTF-8" standalone = "yes" ?>
 <!-- 
-	Notification to role holders and optionally manager that the contract is ending today.
+	Notification to manager that contract is ending in future.
 parameters:
     userIdentity - full IdmIdentityDto
     user - full name and login
@@ -11,19 +11,19 @@ parameters:
 
 <template xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="IdmNotificationTemplate.xsd">
-    <code>contractEndNow</code>
-    <name>Contract end now (extras)</name>
-    <subject>IdM - Uživateli $!user bude dnes ukončen PPV</subject>
+    <code>contractEndToOwner</code>
+    <name>Contract end to owner (extras)</name>
+    <subject>IdM - Váš PPV $!user bude v následujících dnech ukončen</subject>
     <bodyHtml>
         <![CDATA[
             <html>
                 <body>
                     Dobrý den,<br />
                     <br />
-                    zaměstnanec $!user odchází k dnešnímu dni $!ppvEnd (konec pracovního poměru) z oddělení $!department.<br />
+                    Váš pracovní poměr $!user končí ke dni $ppvEnd (konec pracovního poměru) z oddělení $!department.<br />
+                    V případě potřeby změny prosím kontaktujte svého nadřízeného.<br />
                     <br />
                     Přejeme Vám pěkný den.<br />
-                    <br />
                 <div style="display: block; margin: 30px auto; max-width: 400px; text-align: center;">
 			        CzechIdM © 2019&nbsp;BCV Solutions s.r.o.&nbsp;
 		        </div>
