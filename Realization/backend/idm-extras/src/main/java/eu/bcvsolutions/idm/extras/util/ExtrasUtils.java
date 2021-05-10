@@ -124,27 +124,7 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * @return
 	 */
 	public String getTitlesAfter(String value) {
-		List<String> dictonary = extrasConfiguration.getTitlesAfter();
-		if (StringUtils.isEmpty(value)) {
-			return null;
-		}
-		List<String> result = new ArrayList<String>();
-
-		String[] titles = value.trim().split(extrasConfiguration.getTitlesSourceSeparator());
-		for (String title : titles) {
-			final String finalTitle = title.trim().toLowerCase();
-
-			String exits = dictonary.stream()
-					.map(String::trim)
-					.map(String::toLowerCase).filter(t -> t.equals(finalTitle))
-					.findFirst()
-					.orElse(null);
-			if (exits != null) {
-				result.add(title);
-			}
-		}
-
-		return String.join(extrasConfiguration.getTitlesAfterSeparator(), result);
+		return getTitles(value, extrasConfiguration.getTitlesAfter(), extrasConfiguration.getTitlesAfterSeparator());	
 	}
 
 	/**
@@ -154,7 +134,18 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * @return
 	 */
 	public String getTitlesBefore(String value) {
-		List<String> dictonary = extrasConfiguration.getTitlesBefore();
+		return getTitles(value, extrasConfiguration.getTitlesBefore(), extrasConfiguration.getTitlesBeforeSeparator());
+	}
+
+	/**
+	 * Private method for same behavior for titles after and before
+	 *
+	 * @param value
+	 * @param dictonary
+	 * @param titlesSeparator
+	 * @return
+	 */
+	private String getTitles(String value, List<String> dictonary, String titlesSeparator) {
 		if (StringUtils.isEmpty(value)) {
 			return null;
 		}
@@ -174,9 +165,10 @@ public class ExtrasUtils implements ScriptEnabled {
 			}
 		}
 
-		return String.join(extrasConfiguration.getTitlesBeforeSeparator(), result);
+		return String.join(titlesSeparator, result);
 	}
-
+	
+	
 	public static Date convertToDateViaInstant(LocalDate dateToConvert) {
 		return java.util.Date.from(dateToConvert.atStartOfDay()
 				.atZone(ZoneId.systemDefault())
