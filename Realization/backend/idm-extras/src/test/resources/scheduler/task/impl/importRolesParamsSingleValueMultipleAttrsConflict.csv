@@ -1,0 +1,2 @@
+username;roles;description;roleattrname1;roleattrvalue1;roleattrname2;roleattrvalue2
+assignRolesToAllContractParamsSingleValueMultipleAttrsEmptyRequiredTestUSER1;assignRolesToAllContractParamsSingleValueMultipleAttrsEmptyRequiredTestROLE;Desc;requiredRoleAttribute;"";requiredRoleAttribute2;""

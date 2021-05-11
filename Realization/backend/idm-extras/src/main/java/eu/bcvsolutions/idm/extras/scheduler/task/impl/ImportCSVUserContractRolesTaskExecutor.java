@@ -4,7 +4,9 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormInstanceDto;
+import eu.bcvsolutions.idm.core.api.domain.CoreResultCode;
+import eu.bcvsolutions.idm.core.api.exception.InvalidFormException;
+import eu.bcvsolutions.idm.core.eav.api.dto.*;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +37,6 @@ import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleRequestService;
 import eu.bcvsolutions.idm.core.api.service.IdmRoleService;
 import eu.bcvsolutions.idm.core.eav.api.domain.PersistentType;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormDefinitionDto;
-import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormValueDto;
 import eu.bcvsolutions.idm.core.eav.api.service.FormService;
 import eu.bcvsolutions.idm.core.eav.api.service.IdmFormDefinitionService;
 import eu.bcvsolutions.idm.core.model.entity.IdmIdentityContract;
@@ -306,24 +305,46 @@ public class ImportCSVUserContractRolesTaskExecutor extends AbstractCsvImportTas
 			}
 			
 			if (!roleAssigned) {
-				IdmConceptRoleRequestDto conceptRoleRequest = new IdmConceptRoleRequestDto();
-				conceptRoleRequest.setRoleRequest(roleRequest.getId());
-				conceptRoleRequest.setIdentityContract(contract.getId());
-				conceptRoleRequest.setValidFrom(null);
-				conceptRoleRequest.setIdentityRole(identityRoleId);
-				conceptRoleRequest.setValidTill(null);
-				conceptRoleRequest.setRole(ir.getRole());
-				conceptRoleRequest.setOperation(operation);
-				conceptRoleRequest.setEavs(ir.getEavs());
-				conceptRoleRequestService.save(conceptRoleRequest);
+				createConcept(contract, identityRoleId, operation, roleRequest, ir);
 			}
 		}
-		
+		/*
+		 There is a possibility of creating non unique values of role attributes despite
+		 them having set unique value requirement. This is due to the asynchronous nature of role requests.
+		 Note that starting request with immediate priority slows import significantly, but as far as i know
+		 it is currently the only way to prevent such unwanted behavior. Nevertheless i opted for leaving
+		 the issue open since it should not occur very often and i put a note in documentation describing
+		 this behavior and how to work around it.
+		 TODO: patch this in future versions
+		*/
 		roleRequestService.startRequestInternal(roleRequest.getId(), true);
 		if (!roleIds.isEmpty()) {
 			this.logItemProcessed(contract, taskCompleted("Assigned roles: " + getAssignedRolesToString(roleIds)));
 		} else {
 			--this.count;
+		}
+	}
+
+	private void createConcept(IdmIdentityContractDto contract, UUID identityRoleId, ConceptRoleRequestOperation operation, IdmRoleRequestDto roleRequest, IdmIdentityRoleDto ir) {
+		IdmConceptRoleRequestDto conceptRoleRequest = new IdmConceptRoleRequestDto();
+		conceptRoleRequest.setRoleRequest(roleRequest.getId());
+		conceptRoleRequest.setIdentityContract(contract.getId());
+		conceptRoleRequest.setValidFrom(null);
+		conceptRoleRequest.setIdentityRole(identityRoleId);
+		conceptRoleRequest.setValidTill(null);
+		conceptRoleRequest.setRole(ir.getRole());
+		conceptRoleRequest.setOperation(operation);
+		conceptRoleRequest.setEavs(ir.getEavs());
+		//
+		try {
+			conceptRoleRequestService.save(conceptRoleRequest);
+		} catch (InvalidFormException ex) {
+			// Exception could be thrown here in case some of the role attributes do not pass form validation. Not much to
+			// do here but to log more information and rethrow the exception.
+			throw new ResultCodeException(
+					CoreResultCode.FORM_INVALID,
+					String.format("Error importing record role %s for contract %s of identity %s. Role attributes did not pass form validation",
+							ir.getRole(), contract.getId(), contract.getIdentity()), ex);
 		}
 	}
 

@@ -323,7 +323,7 @@
           },
           "roleattributenameprefix": {
             "label": "Prefix of column with role parameter name",
-            "help": "Use in combination with 'Prefix of column with role parameter value' to import role attribute values"
+            "help": "Use in combination with 'Prefix of column with role parameter name' to import role attribute names"
           },
           "roleattributevalueprefix": {
             "label": "Prefix of column with role parameter value",
