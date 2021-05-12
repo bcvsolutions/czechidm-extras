@@ -64,6 +64,12 @@ public class ExtrasUtils implements ScriptEnabled {
 	public static final List<String> TITLES_BEFORE = Lists.newArrayList("Bc.", "BcA.", "Ing.", "Ing. arch.", "MUDr.",
 			"MVDr.", "MgA.", "Mgr.", "JUDr.", "PhDr.", "RNDr.", "PharmDr.", "ThLic.", "ThDr.", "prof.", "doc.",
 			"PaedDr.", "Dr.", "PhMr.");
+	/*
+	 * This is only default value, real value is stored in configuration. See ExtrasConfiguration.
+	 */
+	public static final String TITLES_SOURCE_SEPARATOR = " ";
+	public static final String TITLES_AFTER_SEPARATOR = ", ";
+	public static final String TITLES_BEFORE_SEPARATOR = ", ";
 
 	public Predicate getGuaranteePredicate(CriteriaBuilder builder) {
 		IdmIdentityDto currentIdentity = securityService.getAuthentication().getCurrentIdentity();
@@ -118,7 +124,7 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * @return
 	 */
 	public String getTitlesAfter(String value) {
-		return getTitles(value, extrasConfiguration.getTitlesAfter());
+		return getTitles(value, extrasConfiguration.getTitlesAfter(), extrasConfiguration.getTitlesAfterSeparator());	
 	}
 
 	/**
@@ -128,7 +134,7 @@ public class ExtrasUtils implements ScriptEnabled {
 	 * @return
 	 */
 	public String getTitlesBefore(String value) {
-		return getTitles(value, extrasConfiguration.getTitlesBefore());
+		return getTitles(value, extrasConfiguration.getTitlesBefore(), extrasConfiguration.getTitlesBeforeSeparator());
 	}
 
 	/**
@@ -136,15 +142,16 @@ public class ExtrasUtils implements ScriptEnabled {
 	 *
 	 * @param value
 	 * @param dictonary
+	 * @param titlesSeparator
 	 * @return
 	 */
-	private String getTitles(String value, List<String> dictonary) {
+	private String getTitles(String value, List<String> dictonary, String titlesSeparator) {
 		if (StringUtils.isEmpty(value)) {
 			return null;
 		}
 		List<String> result = new ArrayList<String>();
 
-		String[] titles = value.split(" ");
+		String[] titles = value.trim().split(extrasConfiguration.getTitlesSourceSeparator());
 		for (String title : titles) {
 			final String finalTitle = title.trim().toLowerCase();
 
@@ -158,10 +165,10 @@ public class ExtrasUtils implements ScriptEnabled {
 			}
 		}
 
-		return String.join(", ", result);
+		return String.join(titlesSeparator, result);
 	}
-
-
+	
+	
 	public static Date convertToDateViaInstant(LocalDate dateToConvert) {
 		return java.util.Date.from(dateToConvert.atStartOfDay()
 				.atZone(ZoneId.systemDefault())
