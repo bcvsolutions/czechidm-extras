@@ -17,6 +17,9 @@ public interface ExtrasConfiguration extends Configurable {
 
 	String EXTRAS_TITLES_AFTER = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesAfter";
 	String EXTRAS_TITLES_BEFORE = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesBefore";
+	String EXTRAS_TITLES_SOURCE_SEPARATOR = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesSourceSeparator";
+	String EXTRAS_TITLES_AFTER_SEPARATOR = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesAfterSeparator";
+	String EXTRAS_TITLES_BEFORE_SEPARATOR = IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID + ".configuration.titlesBeforeSeparator";
 	String EXTRAS_SYSTEM_EXCHANGE_ID =
 			IdmConfigurationService.IDM_PRIVATE_PROPERTY_PREFIX + ExtrasModuleDescriptor.MODULE_ID +
 					".configuration.systemId";
@@ -51,6 +54,27 @@ public interface ExtrasConfiguration extends Configurable {
 	 * @return
 	 */
 	List<String> getTitlesBefore();
+	
+	/**
+	 * Return titles source separator
+	 *
+	 * @return
+	 */
+	String getTitlesSourceSeparator();
+	
+	/**
+	 * Return titles after separator used in idm
+	 *
+	 * @return
+	 */
+	String getTitlesAfterSeparator();
+	
+	/**
+	 * Return titles before separator used in idm
+	 *
+	 * @return
+	 */
+	String getTitlesBeforeSeparator();
 
 	UUID getSystemId();
 	
