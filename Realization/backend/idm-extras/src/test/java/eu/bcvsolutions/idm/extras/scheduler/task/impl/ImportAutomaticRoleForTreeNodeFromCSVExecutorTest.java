@@ -56,15 +56,12 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractC
 	@Test
 	public void testImport() {
 		// create tree node
-		IdmTreeNodeDto treeNode = getHelper().createTreeNode();
-		treeNode.setCode("testtreenode");
-		treeNode.setName("testtreenode");
-		treeNodeService.saveInternal(treeNode);
-		
+		IdmTreeNodeDto testtreenode = createTreeNode("testtreenode");
+
 		// create role
 		IdmRoleDto role = getHelper().createRole("testrole");
 		IdmRoleDto roletwo = getHelper().createRole("testroletwo");
-		
+
 		// create config of LRT
 		IdmAttachmentDto attachment = createAttachment();
 		
@@ -84,7 +81,7 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractC
 
 		// check results
 		IdmRoleTreeNodeFilter filter = new IdmRoleTreeNodeFilter();
-		filter.setName("testtreenode");
+		filter.setTreeNodeId(testtreenode.getId());
 		
 		List<IdmRoleTreeNodeDto> found = roleTreeNodeService.find(filter, null).getContent();
 		
@@ -134,7 +131,14 @@ public class ImportAutomaticRoleForTreeNodeFromCSVExecutorTest extends AbstractC
 		Assert.assertEquals(2, executed.size());
 		Assert.assertEquals(2, notExecuted.size());
 	}
-	
+
+	private IdmTreeNodeDto createTreeNode(String name) {
+		IdmTreeNodeDto treeNode = getHelper().createTreeNode();
+		treeNode.setCode(name);
+		treeNode.setName(name);
+		return treeNodeService.saveInternal(treeNode);
+	}
+
 	public IdmAttachmentDto createAttachment() {
 		File file = new File(PATH);
 		DataInputStream stream = null;

@@ -320,6 +320,14 @@
           "contracteavvalueprefix": {
             "label": "Prefix názvu sloupce s hodnotou EAV atributu",
             "help": "Vyplňte v kombinaci s volbou 'eavContract'"
+          },
+          "roleattributenameprefix": {
+            "label": "Prefix názvu sloupce s názvem parametru role",
+            "help": "Vyplňte spolu s polem 'Prefix názvu sloupce s hodnotou parametru role', pokud chcete importovat parametry přiřazených rolí."
+          },
+          "roleattributevalueprefix": {
+            "label": "Prefix názvu sloupce s hodnotou parametru role",
+            "help": "Vyplňte spolu s polem 'Prefix názvu sloupce s názvem parametru role', pokud chcete importovat parametry přiřazených rolí."
           }
         }
       },

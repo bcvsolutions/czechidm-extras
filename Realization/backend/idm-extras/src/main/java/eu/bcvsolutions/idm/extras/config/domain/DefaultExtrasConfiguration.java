@@ -38,6 +38,33 @@ public class DefaultExtrasConfiguration
 
 		return splitStringByComma(value);
 	}
+	@Override
+	public String getTitlesSourceSeparator() {
+		String value = getConfigurationService().getValue(EXTRAS_TITLES_SOURCE_SEPARATOR);
+		if (value == null) {
+			return ExtrasUtils.TITLES_SOURCE_SEPARATOR;
+		}
+
+		return value;
+	}
+	@Override
+	public String getTitlesAfterSeparator() {
+		String value = getConfigurationService().getValue(EXTRAS_TITLES_AFTER_SEPARATOR);
+		if (value == null) {
+			return ExtrasUtils.TITLES_AFTER_SEPARATOR;
+		}
+
+		return value;
+	}
+	@Override
+	public String getTitlesBeforeSeparator() {
+		String value = getConfigurationService().getValue(EXTRAS_TITLES_BEFORE_SEPARATOR);
+		if (value == null) {
+			return ExtrasUtils.TITLES_BEFORE_SEPARATOR;
+		}
+
+		return value;
+	}
 
 	@Override
 	public UUID getSystemId() {
