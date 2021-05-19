@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>java.io.IOException</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.exception.CoreException</className>
+        </allowClass>
+        <allowClass>
+            <className>java.io.FileInputStream</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto</className>
+        </allowClass>
+        <allowClass>
+            <className>java.io.InputStream</className>
+        </allowClass>
+        <allowClass>
+            <className>org.apache.commons.io.IOUtils</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.dto.IdmProfileDto</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.api.service.IdmProfileService</className>
+        </allowClass>
+        <allowClass>
+            <className>eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[
+import java.io.IOException;
+import java.io.InputStream;
+
+import org.apache.commons.io.IOUtils;
+
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmProfileDto;
+import eu.bcvsolutions.idm.core.api.exception.CoreException;
+import eu.bcvsolutions.idm.core.api.service.IdmProfileService;
+import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager
+
+IdmProfileDto profileDto = profileService.findOneByIdentity(entity.getId());
+if (profileDto == null && profileDto.getImage() == null) {
+	return null;
+}
+
+InputStream inputStream = attachmentManager.getAttachmentData(profileDto.getImage());
+if (inputStream == null) {
+	return null;
+}
+
+try {
+    // Depends on end system implementation
+// 	return new String(IOUtils.toByteArray(inputStream));
+    return IOUtils.toByteArray(inputStream);
+} catch (IOException e) {
+	throw new CoreException(e);
+} finally {
+	IOUtils.closeQuietly(inputStream);
+}]]></body>
+    <category>TRANSFORM_TO</category>
+    <code>extrasGetProfilePhoto</code>
+    <description><![CDATA[<p>Profile photo transformation to byte array</p>]]></description>
+    <name>extrasGetProfilePhoto</name>
+    <services>
+        <service>
+            <name>profileService</name>
+        </service>
+        <service>
+            <name>attachmentManager</name>
+        </service>
+    </services>
+    <type>groovy</type>
+</script>
