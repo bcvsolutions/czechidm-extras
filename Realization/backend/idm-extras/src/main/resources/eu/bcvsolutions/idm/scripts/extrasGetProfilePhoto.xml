@@ -42,7 +42,7 @@ import eu.bcvsolutions.idm.core.api.service.IdmProfileService;
 import eu.bcvsolutions.idm.core.ecm.api.service.AttachmentManager
 
 IdmProfileDto profileDto = profileService.findOneByIdentity(entity.getId());
-if (profileDto == null && profileDto.getImage() == null) {
+if (profileDto == null || profileDto.getImage() == null) {
 	return null;
 }
 
