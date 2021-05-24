@@ -144,7 +144,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	@Test
 	public void getFormAttributesTest() {
 		List<IdmFormAttributeDto> attributes = notification.getFormAttributes();
-		Assert.assertEquals(3, attributes.size());
+		Assert.assertEquals(5, attributes.size());
 	}
 	
 	@After
