@@ -39,15 +39,16 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * This task sends a notification to those with a specified role and optionally the manager of the contract. The
+ * This task sends a notification to those with a specified role and optionally the manager of the contract or owner of the contract. The
  * notifications says that the user is leaving in a specified number of days, i. e., the user's last contract
  * ends.
  * 
  * @author Tomáš Doischer
+ * @author Luboš Čábelka
  */
 @Service
 @DisallowConcurrentExecution
-@Description("Task which will send notification X days before end of the last contract. It is recommended to"
+@Description("Task which will send notification X days before end of the last contract. It is recommended to "
 		+ "run for the first time without sending emails.")
 
 public class LastContractEndNotificationTask extends AbstractSchedulableStatefulExecutor<IdmIdentityContractDto> {
@@ -55,12 +56,16 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected static final String PARAMETER_DAYS_BEFORE = "How many days before the end of the contract should the notification be sent";
 	protected static final String RECIPIENT_ROLE_BEFORE_PARAM = "Recipient role of notification";
 	protected static final String SEND_TO_MANAGER_BEFORE_PARAM = "Should the manager of the contract receive the notification?";
+	protected static final String PARAMETER_SEND_TO_IDENTITY = "Should the owner of the contract receive the notification?";
+	protected static final String PARAMETER_NOTIFICATION_TOPIC = "User specified topic for notification (can be empty)";
 	
 	private Long daysBeforeEnd;
 	private LocalDate currentDate = LocalDate.now();
 	private LocalDate validMinusXDays = LocalDate.now();
 	private UUID recipientRoleBefore = null;
 	private Boolean sendToManagerBefore;
+	private Boolean sendToIdentity;
+	private String notificationTopic;
 	
 	@Autowired
 	private IdmIdentityService identityService;
@@ -85,10 +90,17 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		if (sendToManagerBefore == null) {
 			sendToManagerBefore = Boolean.FALSE;
 		}
+		sendToIdentity = getParameterConverter().toBoolean(properties, PARAMETER_SEND_TO_IDENTITY);
+		if (sendToIdentity == null) {
+			sendToIdentity = Boolean.FALSE;
+		}
 		if (daysBeforeEnd == null || daysBeforeEnd.compareTo(0L) <= -1) {
 			throw new ResultCodeException(ExtrasResultCode.CONTRACT_END_NOTIFICATION_DAYS_BEFORE,
 					ImmutableMap.of("daysBeforeEnd", daysBeforeEnd == null ? "null" : daysBeforeEnd));
 		}
+		
+		notificationTopic = getParameterConverter().toString(properties, PARAMETER_NOTIFICATION_TOPIC);
+		
 	}
 	
 	@Override
@@ -97,6 +109,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		props.put(PARAMETER_DAYS_BEFORE, daysBeforeEnd);
 		props.put(RECIPIENT_ROLE_BEFORE_PARAM, recipientRoleBefore);
 		props.put(SEND_TO_MANAGER_BEFORE_PARAM, sendToManagerBefore);
+		props.put(PARAMETER_SEND_TO_IDENTITY, sendToIdentity);
+		props.put(PARAMETER_NOTIFICATION_TOPIC, notificationTopic);
 		return props;
 	}
 	
@@ -204,6 +218,18 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 				PersistentType.BOOLEAN);
 		attributes.add(sendToManagerBeforeAttr);
 
+		IdmFormAttributeDto sendToIdentityAttr = new IdmFormAttributeDto(
+				PARAMETER_SEND_TO_IDENTITY,
+				PARAMETER_SEND_TO_IDENTITY,
+				PersistentType.BOOLEAN);
+		attributes.add(sendToIdentityAttr);
+		
+		IdmFormAttributeDto notificationTopicAttr = new IdmFormAttributeDto(
+				PARAMETER_NOTIFICATION_TOPIC,
+				PARAMETER_NOTIFICATION_TOPIC,
+				PersistentType.SHORTTEXT);
+		attributes.add(notificationTopicAttr);
+		
 		return attributes;
 	}
 
@@ -230,11 +256,15 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	 * @param manager
 	 * @return
 	 */
-	private List<IdmIdentityDto> getRecipients(IdmIdentityDto manager) {
+	private List<IdmIdentityDto> getRecipients(IdmIdentityDto manager, IdmIdentityDto identity) {
 		List<IdmIdentityDto> recipients = new ArrayList<>();
 
 		if (sendToManagerBefore && manager != null) {
 			recipients.add(manager);
+		}
+		
+		if (sendToIdentity && identity != null) {
+			recipients.add(identity);
 		}
 		
 		if (recipientRoleBefore != null) {
@@ -306,13 +336,17 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	
 	private Optional<OperationResult> getRecipientsAndSend(IdmIdentityDto guarantee, boolean sendBefore, 
 			String fullName, IdmIdentityDto identity, String position, String ppvEnd) {
-		List<IdmIdentityDto> recipients = getRecipients(guarantee);
+		List<IdmIdentityDto> recipients = getRecipients(guarantee, identity);
 		if (recipients.isEmpty()) {
 			return Optional.of(new OperationResult.Builder(OperationState.EXCEPTION).
 					setModel(new DefaultResultModel(ExtrasResultCode.NO_RECIPIENTS_FOUND)).
 					build()); 
 		}
-		if (sendBefore) {
+		
+		if (notificationTopic != null) {
+			sendNotification(notificationTopic, new ArrayList<>(recipients), guarantee, 
+					fullName, identity, position, ppvEnd);
+		} else if (sendBefore) {
 			sendNotification(ExtrasModuleDescriptor.TOPIC_CONTRACT_END_IN_X_DAYS, new ArrayList<>(recipients), guarantee, 
 				fullName, identity, position, ppvEnd);
 		} else {
