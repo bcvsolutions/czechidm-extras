@@ -399,6 +399,27 @@
             "placeholder": "Zadejte email ..."
           }
         }
+      },
+      "extras-import-password": {
+        "label": "Import hesel",
+        "help": "Úloha, která vytvoří/aktualizuje hesla daných uživatelů.",
+        "attributes": {
+          "importfile": {
+            "label": "Vložte CSV soubor"
+          },
+          "dateFormatColumn": {
+            "label": "Formát datumů ve vstupním csv souboru."
+          },
+          "usernameColumn": {
+            "label": "Název sloupce s uživatelským jménem identity"
+          },
+          "separator": {
+            "label": "Oddělovač sloupců"
+          },
+          "encoding": {
+            "label": "Kódování souboru"
+          }
+        }
       }
     }
   }
