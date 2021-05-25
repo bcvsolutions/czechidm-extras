@@ -52,7 +52,10 @@ public enum ExtrasResultCode implements ResultCode {
 	IMPORT_CODE_LIST_EXECUTED(HttpStatus.OK, "[%s]"),
 	IMPORT_CODE_LIST_ERROR(HttpStatus.BAD_REQUEST, "[%s]"),
 	AUTO_ROLE_ITEM_COMPLETED(HttpStatus.OK, "[%s]"),
-	AUTO_ROLE_ITEM_ERROR(HttpStatus.BAD_REQUEST, "Definition was not created: [%s]");
+	AUTO_ROLE_ITEM_ERROR(HttpStatus.BAD_REQUEST, "Definition was not created: [%s]"),
+	IMPORT_PASSWORD_EXECUTED(HttpStatus.OK, "[%s]"),
+	IMPORT_PASSWORD_ERROR(HttpStatus.BAD_REQUEST, "[%s]");
+
 
 	private final HttpStatus status;
 	private final String message;
