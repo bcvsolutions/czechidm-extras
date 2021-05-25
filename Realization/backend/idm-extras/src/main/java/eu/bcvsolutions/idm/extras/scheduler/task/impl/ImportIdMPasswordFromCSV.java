@@ -122,7 +122,7 @@ public class ImportIdMPasswordFromCSV extends AbstractCsvImportTask {
 				currentPassword.setVerificationSecret(record.get(IdmPassword_.VERIFICATION_SECRET));
 			}
 
-			passwordService.save(currentPassword);
+			currentPassword = passwordService.save(currentPassword);
 
 			LOG.info("Password for identity [{}] saved", login);
 
