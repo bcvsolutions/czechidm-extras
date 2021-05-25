@@ -1,7 +1,7 @@
 # czechidm-extras
 Extra functionality and useful tools not included in the CzechIdM core.
 
-Currently supported CzechIdM version : 10.0.0
+Currently supported CzechIdM version : 11.0.0
 
 Documentation and feature list: https://wiki.czechidm.com/devel/documentation/modules_extras
 
