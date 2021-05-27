@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<script>
+    <allowClasses>
+        <allowClass>
+            <className>org.apache.commons.lang3.StringUtils</className>
+        </allowClass>
+        <allowClass>
+            <className>groovy.lang.Binding</className>
+        </allowClass>
+        <allowClass>
+            <className>java.lang.Math</className>
+        </allowClass>
+    </allowClasses>
+    <body><![CDATA[import org.apache.commons.lang3.StringUtils;
+import java.lang.Math;
+
+if (!binding.hasVariable('attributeValue') || StringUtils.isBlank(attributeValue)) {
+	return StringUtils.EMPTY;
+}
+
+int maximumFinal = 255;
+if (binding.hasVariable('maximum')) {
+	maximumFinal = (int) maximum;
+}
+
+if (StringUtils.length(attributeValue) <= maximumFinal) {
+	return attributeValue;
+}
+
+String temp = StringUtils.substring(attributeValue, 0, maximum);
+return StringUtils.substring(temp, 0, Math.min(StringUtils.length(temp), StringUtils.lastIndexOf(temp, " ")));]]></body>
+    <category>TRANSFORM_TO</category>
+    <code>extrasAbbreviateString</code>
+    <description><![CDATA[<p>Script abbreviate given string in parameter <strong>attributeValue</strong>.&nbsp;</p>
+<p>Default maximum size of whole string is 255 (standard CzechIdM application size). The maximum can be increased or decreased byparameter <strong>maximum</strong>. EQ:</p>
+<p><em>.addParameter('maximum', 60)</em></p>]]></description>
+    <name>extrasAbbreviateString</name>
+    <type>groovy</type>
+</script>
