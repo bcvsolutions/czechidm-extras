@@ -1,12 +1,25 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import eu.bcvsolutions.idm.core.api.domain.IdentityState;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
 import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
 import eu.bcvsolutions.idm.core.api.service.IdmIdentityContractService;
+import eu.bcvsolutions.idm.core.api.service.IdmIdentityService;
 import eu.bcvsolutions.idm.core.eav.api.dto.IdmFormAttributeDto;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
-import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationLogDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmNotificationTemplateDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.NotificationConfigurationDto;
 import eu.bcvsolutions.idm.core.notification.api.dto.filter.IdmNotificationFilter;
@@ -17,17 +30,6 @@ import eu.bcvsolutions.idm.core.notification.api.service.IdmNotificationTemplate
 import eu.bcvsolutions.idm.core.notification.entity.IdmEmailLog;
 import eu.bcvsolutions.idm.core.scheduler.api.service.LongRunningTaskManager;
 import eu.bcvsolutions.idm.test.api.AbstractIntegrationTest;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * @author Tomáš Doischer
@@ -49,6 +51,8 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	private IdmNotificationTemplateService notificationTemplateService;
 	@Autowired
 	private IdmIdentityContractService identityContractService;
+	@Autowired
+	private IdmIdentityService identityService;
 	@Autowired
 	private LastContractEndNotificationTask notification;
 
@@ -91,7 +95,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		Boolean lastOne = notification.isLastContract(userOneContract);
 		Assert.assertTrue(lastOne);
 		
-		IdmIdentityContractDto userOneContractTwo = getHelper().createIdentityContact(userOne);
+		IdmIdentityContractDto userOneContractTwo = getHelper().createContract(userOne);
 		Boolean lastTwo = notification.isLastContract(userOneContract);
 		Assert.assertFalse(lastTwo);
 		
@@ -144,7 +148,7 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 	@Test
 	public void getFormAttributesTest() {
 		List<IdmFormAttributeDto> attributes = notification.getFormAttributes();
-		Assert.assertEquals(5, attributes.size());
+		Assert.assertEquals(6, attributes.size());
 	}
 	
 	@After
@@ -183,14 +187,12 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		filter.setNotificationType(IdmEmailLog.class);
 		filter.setTopic("extras:contractEndInXDays");
 
-		List<IdmIdentityContractDto> allByIdentity = identityContractService.findAllByIdentity(recipient.getId());
 		long countBefore = notificationLogService.count(filter);
 
 		lrtManager.executeSync(notificationThree);
 
 		// we should find 1 email notification on testRecipient
 		long count = notificationLogService.count(filter);
-		List<IdmNotificationLogDto> content = notificationLogService.find(filter, null).getContent();
 		IdmNotificationTemplateDto usedTemplateOne = notificationLogService.find(filter, null).getContent().
 				get(0).getMessage().getTemplate();
 		
@@ -208,6 +210,32 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 
 		Assert.assertEquals(1, count2);
 		Assert.assertEquals(templateFuture, usedTemplateTwo);
+		
+		// extend the contract's validity and run again
+		subjectContract.setValidTill(LocalDate.now().plusDays(365));
+		identityContractService.saveInternal(subjectContract);
+		LastContractEndNotificationTask notificationFour = new LastContractEndNotificationTask();
+		notificationFour.init(properties);
+		lrtManager.executeSync(notificationFour);
+		
+		// we should still see the same number of notifications
+		count = notificationLogService.count(filter);
+		Assert.assertEquals(1, count - countBefore);
+		count2 = notificationLogService.count(filterTwo);
+		Assert.assertEquals(1, count2);
+		
+		// make the contract's validity short and run again
+		subjectContract.setValidTill(LocalDate.now().plusDays(2));
+		identityContractService.saveInternal(subjectContract);
+		LastContractEndNotificationTask notificationFive = new LastContractEndNotificationTask();
+		notificationFive.init(properties);
+		lrtManager.executeSync(notificationFive);
+		
+		// we should see that the notification was sent again
+		count = notificationLogService.count(filter);
+		Assert.assertEquals(2, count - countBefore);
+		count2 = notificationLogService.count(filterTwo);
+		Assert.assertEquals(2, count2);
 		
 		getHelper().deleteIdentity(subject.getId());
 	}
@@ -263,5 +291,53 @@ public class LastContractEndNotificationTaskTest extends AbstractIntegrationTest
 		Assert.assertEquals(0, countFour);
 		
 		getHelper().deleteIdentity(subjectTwo.getId());
+	}
+	
+	@Test
+	public void doNotSendForManuallyDisabledContractValidityTest() {
+		IdmIdentityDto subject = getHelper().createIdentity();
+		IdmIdentityContractDto subjectContract = getHelper().getPrimeContract(subject);
+		subjectContract.setValidTill(LocalDate.now());
+		identityContractService.saveInternal(subjectContract);
+		
+		IdmIdentityDto subjectDisabled = getHelper().createIdentity();
+		IdmIdentityContractDto subjectDisabledContract = getHelper().getPrimeContract(subjectDisabled);
+		subjectDisabledContract.setValidTill(LocalDate.now());
+		identityContractService.saveInternal(subjectDisabledContract);
+		subjectDisabled.setState(IdentityState.DISABLED_MANUALLY);
+		identityService.save(subjectDisabled);
+		
+		IdmIdentityDto recipientThree = getHelper().createIdentity();
+		IdmIdentityContractDto recipientThreeContract = getHelper().getPrimeContract(recipientThree);
+		
+		IdmRoleDto notificationRoleThree = getHelper().createRole();
+		getHelper().createIdentityRole(recipientThreeContract, notificationRoleThree);
+		
+		Map<String, Object> propertiesThree = new HashMap<>();
+		propertiesThree.put(LastContractEndNotificationTask.PARAMETER_DAYS_BEFORE, "0");
+		propertiesThree.put(LastContractEndNotificationTask.SEND_TO_MANAGER_BEFORE_PARAM, false);
+		propertiesThree.put(LastContractEndNotificationTask.PARAMETER_SEND_IF_MANUALLY_DISABLED, false);
+		propertiesThree.put(LastContractEndNotificationTask.RECIPIENT_ROLE_BEFORE_PARAM, notificationRoleThree.getId());
+
+		LastContractEndNotificationTask notificationThree = new LastContractEndNotificationTask();
+		
+		notificationThree.init(propertiesThree); 
+		
+		lrtManager.executeSync(notificationThree);
+		
+		IdmNotificationFilter filterThree = new IdmNotificationFilter();
+		filterThree.setRecipient(recipientThree.getUsername());
+		filterThree.setNotificationType(IdmEmailLog.class);
+
+		// we should find 1 email notification on testRecipient because the manually disabled identity should not be included 
+		long countThree = notificationLogService.count(filterThree);
+		
+		IdmNotificationTemplateDto usedTemplateThree = notificationLogService.find(filterThree, null).getContent().
+				get(0).getMessage().getTemplate();
+		
+		Assert.assertEquals(1, countThree);
+		Assert.assertEquals(templateNow, usedTemplateThree);
+		
+		getHelper().deleteIdentity(subject.getId());
 	}
 }

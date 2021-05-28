@@ -1,8 +1,36 @@
 package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.quartz.DisallowConcurrentExecution;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Description;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
+
 import com.google.common.collect.ImmutableMap;
+
+import eu.bcvsolutions.idm.core.api.domain.IdentityState;
 import eu.bcvsolutions.idm.core.api.domain.OperationState;
-import eu.bcvsolutions.idm.core.api.dto.*;
+import eu.bcvsolutions.idm.core.api.dto.DefaultResultModel;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityContractDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmIdentityRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmRoleDto;
+import eu.bcvsolutions.idm.core.api.dto.IdmTreeNodeDto;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityContractFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityFilter;
 import eu.bcvsolutions.idm.core.api.dto.filter.IdmIdentityRoleFilter;
@@ -22,21 +50,12 @@ import eu.bcvsolutions.idm.core.model.entity.IdmIdentityRole_;
 import eu.bcvsolutions.idm.core.notification.api.domain.NotificationLevel;
 import eu.bcvsolutions.idm.core.notification.api.dto.IdmMessageDto;
 import eu.bcvsolutions.idm.core.notification.api.service.NotificationManager;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.IdmProcessedTaskItemDto;
+import eu.bcvsolutions.idm.core.scheduler.api.dto.filter.IdmProcessedTaskItemFilter;
 import eu.bcvsolutions.idm.core.scheduler.api.service.AbstractSchedulableStatefulExecutor;
+import eu.bcvsolutions.idm.core.scheduler.api.service.IdmProcessedTaskItemService;
 import eu.bcvsolutions.idm.extras.ExtrasModuleDescriptor;
 import eu.bcvsolutions.idm.extras.domain.ExtrasResultCode;
-
-import org.quartz.DisallowConcurrentExecution;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * This task sends a notification to those with a specified role and optionally the manager of the contract or owner of the contract. The
@@ -58,6 +77,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected static final String SEND_TO_MANAGER_BEFORE_PARAM = "Should the manager of the contract receive the notification?";
 	protected static final String PARAMETER_SEND_TO_IDENTITY = "Should the owner of the contract receive the notification?";
 	protected static final String PARAMETER_NOTIFICATION_TOPIC = "User specified topic for notification (can be empty)";
+	protected static final String PARAMETER_SEND_IF_MANUALLY_DISABLED = "Should the notification be sent when the user is manually disabled?";
 	
 	private Long daysBeforeEnd;
 	private LocalDate currentDate = LocalDate.now();
@@ -66,6 +86,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	private Boolean sendToManagerBefore;
 	private Boolean sendToIdentity;
 	private String notificationTopic;
+	private Boolean sendIfManuallyDisabled;
 	
 	@Autowired
 	private IdmIdentityService identityService;
@@ -79,6 +100,8 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	private IdmIdentityRoleService identityRoleService;
 	@Autowired
 	private ConfigurationService configurationService;
+	@Autowired
+	private IdmProcessedTaskItemService itemService;
 
 	@Override
 	public void init(Map<String, Object> properties) {
@@ -100,7 +123,10 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		}
 		
 		notificationTopic = getParameterConverter().toString(properties, PARAMETER_NOTIFICATION_TOPIC);
-		
+		sendIfManuallyDisabled = getParameterConverter().toBoolean(properties, PARAMETER_SEND_IF_MANUALLY_DISABLED);
+		if (sendIfManuallyDisabled == null) {
+			sendIfManuallyDisabled = Boolean.FALSE;
+		}
 	}
 	
 	@Override
@@ -110,6 +136,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		props.put(RECIPIENT_ROLE_BEFORE_PARAM, recipientRoleBefore);
 		props.put(SEND_TO_MANAGER_BEFORE_PARAM, sendToManagerBefore);
 		props.put(PARAMETER_SEND_TO_IDENTITY, sendToIdentity);
+		props.put(PARAMETER_SEND_IF_MANUALLY_DISABLED, sendIfManuallyDisabled);
 		props.put(PARAMETER_NOTIFICATION_TOPIC, notificationTopic);
 		return props;
 	}
@@ -134,7 +161,7 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 
 		validMinusXDays = dto.getValidTill().minusDays(Math.toIntExact(daysBeforeEnd));
 		
-		// this we are interested in contracts which end in x days or sooner 
+		// we are interested in contracts which end in x days or sooner 
 		if (!currentDate.isAfter(validMinusXDays.minusDays(1))) {
 			// the contract ends on different times than specified, leave alone
 			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
@@ -146,6 +173,10 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 		}
 		
 		IdmIdentityDto identity = DtoUtils.getEmbedded(dto, IdmIdentityContract_.identity, IdmIdentityDto.class);
+		if (!sendIfManuallyDisabled && identity.getState() == IdentityState.DISABLED_MANUALLY) {
+			LOG.info("Identity [{}] is manually disabled, notification will not be sent.", identity.getUsername());
+			return Optional.of(new OperationResult.Builder(OperationState.NOT_EXECUTED).build());
+		}
 		String fullName = identity.getFirstName() + " " + identity.getLastName() + " (" + 
 				identity.getUsername() + ")";
 
@@ -223,6 +254,13 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 				PARAMETER_SEND_TO_IDENTITY,
 				PersistentType.BOOLEAN);
 		attributes.add(sendToIdentityAttr);
+		
+		IdmFormAttributeDto sendIfManuallyDisabledAttr = new IdmFormAttributeDto(
+				PARAMETER_SEND_IF_MANUALLY_DISABLED,
+				PARAMETER_SEND_IF_MANUALLY_DISABLED,
+				PersistentType.BOOLEAN);
+		sendIfManuallyDisabledAttr.setDefaultValue("true");
+		attributes.add(sendIfManuallyDisabledAttr);
 		
 		IdmFormAttributeDto notificationTopicAttr = new IdmFormAttributeDto(
 				PARAMETER_NOTIFICATION_TOPIC,
@@ -360,5 +398,55 @@ public class LastContractEndNotificationTask extends AbstractSchedulableStateful
 	protected void setDatesForTest(LocalDate currentDate, Long daysBeforeEnd) {
 		this.currentDate = currentDate;
 		this.daysBeforeEnd = daysBeforeEnd;
+	}
+
+	/**
+	 * Overridden method. This ensures that if the contract's validity is extended, the contract will be removed from the processed queue.
+	 * 
+	 * @param dto
+	 * @return
+	 */
+	@Override
+	public boolean isInProcessedQueue(IdmIdentityContractDto dto) {
+		if (!supportsQueue()) {
+			return false;
+		}
+		Assert.notNull(dto, "DTO is required for LRT processing.");
+		//
+		Page<IdmProcessedTaskItemDto> p = getContractItemFromQueue(dto.getId());
+		
+		return p.getTotalElements() > 0;
+	}
+	
+	/**
+	 * Check whether the contract was extended - if so, remove it from the processed queue.
+	 * 
+	 * @param entityRef
+	 * @return
+	 */
+	private Page<IdmProcessedTaskItemDto> getContractItemFromQueue(UUID entityRef) {
+		if (this.getScheduledTaskId() == null) {
+			return new PageImpl<>(Collections.emptyList());
+		}
+		IdmProcessedTaskItemFilter filter = new IdmProcessedTaskItemFilter();
+		filter.setReferencedEntityId(entityRef);
+		filter.setScheduledTaskId(this.getScheduledTaskId());
+		Page<IdmProcessedTaskItemDto> items = itemService.find(filter, PageRequest.of(0, 1));
+		if (items.getTotalElements() > 1) {
+			LOG.warn("Multiple same item references found in [{}] process queue.", this.getClass());
+		}
+		for (IdmProcessedTaskItemDto item : items) {
+			if (item.getOperationResult().getState() == OperationState.EXECUTED) {
+				IdmIdentityContractDto contract = identityContractService.get(entityRef);
+				LocalDate dateToSendNotification = contract.getValidTill().minusDays(Math.toIntExact(daysBeforeEnd));
+				if (!currentDate.isAfter(dateToSendNotification.minusDays(1))) {
+					// the contract was extended since the first run
+					super.removeFromProcessedQueue(contract);
+					return new PageImpl<>(Collections.emptyList());
+				}
+			}
+		}
+
+		return items;
 	}
 }
