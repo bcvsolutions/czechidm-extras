@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.io.input.BOMInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +76,7 @@ public abstract class AbstractCsvImportTask extends AbstractSchedulableTaskExecu
 		}
 
 		try (InputStream attachmentData = attachmentManager.getAttachmentData(attachmentId);
-			 Reader attachmentReader = new InputStreamReader(attachmentData, encoding);) {
+			 Reader attachmentReader = new InputStreamReader(new BOMInputStream(attachmentData), encoding);) {
 			LOG.info("Reader is created");
 
 			if (StringUtils.isBlank(separator)) {
