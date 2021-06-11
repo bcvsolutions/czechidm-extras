@@ -391,6 +391,27 @@
             "placeholder": "Enter email ..."
           }
         }
+      },
+      "extras-import-password": {
+        "label": "Import identity passwords from CSV",
+        "help": "Task which will create/update identities passwords from CSV file",
+        "attributes": {
+          "importfile": {
+            "label": "Upload CSV file"
+          },
+          "dateFormatColumn": {
+            "label": "Date format used in the input file"
+          },
+          "usernameColumn": {
+            "label": "Name of the column with username of target identity"
+          },
+          "separator": {
+            "label": "Column separator"
+          },
+          "encoding": {
+            "label": "File encoding"
+          }
+        }
       }
     }
   }
