@@ -420,6 +420,25 @@
             "label": "Kódování souboru"
           }
         }
+      },
+      "extras-code-list-sync": {
+        "label": "Synchronizace číselníku",
+        "help": "Úloha, která umožňuje synchornizaci číselníků dle napojení systému.",
+        "attributes": {
+          "system": {
+            "label": "Systém",
+            "help": "Systém bude použit pro načtení dat. Musí mít vyplněnou konfiguraci a vygenerované schéma.",
+            "placeholder": "Vyberte systém..."
+          },
+          "code": {
+            "label": "Kód číselníku",
+            "help": "Číselník musí již existovat."
+          },
+          "nameattribute": {
+            "label": "Atribut s názvem",
+            "help": "Hodnota, která bude použita jako název položky v číselníku."
+          }
+        }
       }
     }
   }

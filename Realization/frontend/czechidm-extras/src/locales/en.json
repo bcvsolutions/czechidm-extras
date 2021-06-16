@@ -420,6 +420,25 @@
             "label": "File encoding"
           }
         }
+      },
+      "extras-code-list-sync": {
+        "label": "Code list synchronization",
+        "help": "Task, which will synchronize code list from connected system.",
+        "attributes": {
+          "system": {
+            "label": "System",
+            "help": "System will be used for loading data. Configuration and schema must be prepared.",
+            "placeholder": "Choose system..."
+          },
+          "code": {
+            "label": "Code of code list",
+            "help": "Code list has to already exist."
+          },
+          "nameattribute": {
+            "label": "Attribute with name",
+            "help": "Value, which will be used as item name."
+          }
+        }
       }
     }
   }
