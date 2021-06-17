@@ -2,12 +2,14 @@ package eu.bcvsolutions.idm.extras.scheduler.task.impl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
 
@@ -199,6 +201,9 @@ public class CodeListSynchronizationTaskTest extends AbstractIntegrationTest {
 		assertNotNull(items);
 		assertEquals(2, items.size());
 
+		List<String> codes = items.stream().map(IdmCodeListItemDto::getCode).collect(Collectors.toList());
+		assertTrue(codes.contains("one"));
+		assertTrue(codes.contains("second"));
 	}
 
 }
