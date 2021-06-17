@@ -129,7 +129,7 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 	 */
 	@Override
 	public SysSystemDto createSystem(String tableName, String systemName) {
-		return this.createSystem(tableName, systemName, "status", "name");
+		return this.createSystem(tableName, systemName, "status", "name", null);
 	}
 
 	/**
@@ -141,7 +141,7 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 	 */
 	@Override
 	@SuppressWarnings("deprecation")
-	public SysSystemDto createSystem(String tableName, String systemName, String statusColumnName, String keyColumnName) {
+	public SysSystemDto createSystem(String tableName, String systemName, String statusColumnName, String keyColumnName, String changeLogColumnName) {
 		// create owner
 		SysSystemDto system = new SysSystemDto();
 		system.setName(systemName == null ? tableName + "_" + System.currentTimeMillis() : systemName);
@@ -206,7 +206,7 @@ public class DefaultAccTestHelper extends eu.bcvsolutions.idm.test.api.DefaultTe
 		values.add(enabledStatusValue);
 		IdmFormValueDto changeLogColumnValue = new IdmFormValueDto(
 				savedFormDefinition.getMappedAttributeByCode("changeLogColumn"));
-		changeLogColumnValue.setValue(null);
+		changeLogColumnValue.setValue(changeLogColumnName);
 		values.add(changeLogColumnValue);
 
 		formService.saveValues(system, savedFormDefinition, values);

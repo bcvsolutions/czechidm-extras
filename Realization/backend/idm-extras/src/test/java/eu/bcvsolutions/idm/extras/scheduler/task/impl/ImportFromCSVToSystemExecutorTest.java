@@ -81,7 +81,7 @@ public class ImportFromCSVToSystemExecutorTest extends AbstractCsvImportTaskTest
 	private SysSystemDto initData() {
 
 		// create test system
-		SysSystemDto system = helper.createSystem(TestResource.TABLE_NAME, null, "status", "NAME");
+		SysSystemDto system = helper.createSystem(TestResource.TABLE_NAME, null, "status", "NAME", null);
 		Assert.assertNotNull(system);
 
 		// generate schema for system
